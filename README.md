@@ -9,7 +9,8 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 - **Shop**: 82 Sachen in 9 Kategorien. Vor dem Kauf kannst du alles anprobieren. Behalten kannst du nur, was du mit genug Münzen kaufst. Bezahlt wird mit Spielgeld, nicht mit echtem Geld.
 - **Spiele-Karten mit Vorschaubild**.
 - **Münzen verdienen**: Im Himmelsparcours bringt jede Münze 5, das Ziel 25. Zum Start gibt es 150 Münzen.
-- **Himmelsparcours**: Inselsprünge, Lava, bewegliche Plattformen und Wendelturm, mit Checkpoints, Stoppuhr und Bestzeit.
+- **Himmelsparcours**: 5 Stufen mit runden schwebenden Inseln, Drehbalken, Lava, Trampolinen, Wackelplatten, Drehscheiben und Wendelturm, mit Checkpoints, Stoppuhr und Bestzeit.
+- **Tod wie im Comic**: eigenes „Uff!“ und die Figur zerfällt in ihre Teile, danach geht es am letzten Checkpoint weiter.
 - **Baukasten**: Klötze in 12 Farben setzen und entfernen. Dein Bau wird gespeichert.
 - **Als App auf dem iPhone**: Web-App mit eigenem Symbol und Vollbild, die auch offline läuft.
 

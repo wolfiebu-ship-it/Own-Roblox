@@ -156,7 +156,7 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
       <div class="game obby">
         <img class="preview" id="prevObby" alt="Vorschau: Himmelsparcours" hidden>
         <h3>Himmelsparcours</h3>
-        <p>Springe über Inseln und Lava bis ins goldene Ziel. Jede Münze bringt dir <i class="coin"></i> 5, das Ziel <i class="coin"></i> 25. <span id="best"></span></p>
+        <p>Schwebende Inseln, Drehbalken, Trampoline, Wackelplatten und Drehscheiben bis ins goldene Ziel. Jede Münze bringt dir <i class="coin"></i> 5, das Ziel <i class="coin"></i> 25. <span id="best"></span></p>
         <button class="btn primary" id="playObby">Spielen</button>
       </div>
       <div class="game build">
@@ -315,11 +315,51 @@ function boxGeo(w, h, d) {
 }
 
 // ---------- Sound ----------
-let actx = null, soundOn = store.get('klotzwelt-ton', true);
+let actx = null, soundOn = store.get('klotzwelt-ton', true), noiseBuf = null;
+function audio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+// Eigenes "Uff!": Stimme aus Sägezahn durch U-Formanten mit fallender Tonhöhe, danach ein kurzes "ff"
+function oof() {
+  if (!soundOn) return;
+  try {
+    const ac = audio(), t = ac.currentTime + 0.01;
+    const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+    const v = ac.createOscillator(); v.type = 'sawtooth';
+    v.frequency.setValueAtTime(270, t); v.frequency.exponentialRampToValueAtTime(150, t + 0.26);
+    const env = ac.createGain();
+    env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(1, t + 0.025);
+    env.gain.setValueAtTime(1, t + 0.12); env.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    for (const [f, q, gain] of [[330, 5, 1.8], [850, 7, 0.6], [2400, 9, 0.15]]) {
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      const gg = ac.createGain(); gg.gain.value = gain; v.connect(bp).connect(gg).connect(env);
+    }
+    env.connect(out); v.start(t); v.stop(t + 0.32);
+    if (!noiseBuf) { noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.4), ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const n = ac.createBufferSource(); n.buffer = noiseBuf;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
+    const ne = ac.createGain(); ne.gain.setValueAtTime(0.0001, t + 0.18); ne.gain.exponentialRampToValueAtTime(0.12, t + 0.24); ne.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    n.connect(hp).connect(ne).connect(out); n.start(t + 0.18); n.stop(t + 0.45);
+  } catch (e) {}
+}
+// Federndes "Boing" für Trampoline
+function boing() {
+  if (!soundOn) return;
+  try {
+    const ac = audio(), t = ac.currentTime + 0.01;
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(560, t + 0.12); o.frequency.exponentialRampToValueAtTime(240, t + 0.45);
+    const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 14; lg.gain.value = 35; lfo.connect(lg).connect(o.frequency);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g).connect(ac.destination); o.start(t); lfo.start(t); o.stop(t + 0.5); lfo.stop(t + 0.5);
+  } catch (e) {}
+}
 function beep(kind) {
   if (!soundOn) return;
   try {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    audio();
     const seq = {
       jump: [[420, 'square', 0.07], [620, 'square', 0.05]],
       coin: [[988, 'square', 0.06], [1318, 'square', 0.12]],
@@ -965,10 +1005,13 @@ function thumbFor(item) {
 // Welt
 // ======================================================================
 let world = null, solids = [], coins = [], movers = [], pads = [], particles = [];
+let spinners = [], fades = [], discs = [], bouncers = [], debris = [], dead = 0, obbyStages = 5;
 function clearWorld() {
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   solids = []; coins = []; movers = []; pads = []; particles = [];
+  spinners = []; fades = []; discs = []; bouncers = []; debris = []; dead = 0;
+  if (avatar) avatar.visible = true;
 }
 function updateBox(s) {
   const p = s.mesh.position;
@@ -986,7 +1029,7 @@ function addBox(x, y, z, w, h, d, color, kind = 'solid') {
 }
 const plat = (x, top, z, w, d, color, h = 1) => addBox(x, top - h / 2, z, w, h, d, color);
 function addPad(x, top, z, type, index) {
-  const m = new THREE.Mesh(boxGeo(2.4, 0.16, 2.4), type === 'goal' ? goalMat : padMat);
+  const m = new THREE.Mesh(cylGeo(1.3, 0.16), type === 'goal' ? goalMat : padMat);
   m.position.set(x, top + 0.08, z); m.receiveShadow = true; world.add(m);
   pads.push({ mesh: m, type, index, x, top, z, done: false });
 }
@@ -1011,55 +1054,155 @@ function addClouds(seed) {
   }
 }
 
+// ---------- Runde und bewegte Bauteile ----------
+const cylCache = new Map();
+function cylGeo(r, h) { const k = r + '|' + h; if (!cylCache.has(k)) cylCache.set(k, new THREE.CylinderGeometry(r, r, h, 40)); return cylCache.get(k); }
+const bounceMat = new THREE.MeshToonMaterial({ color: 0xff6fae, gradientMap: gradMap });
+const killMat = new THREE.MeshToonMaterial({ gradientMap: gradMap, emissive: 0x401010, map: canvasTex('kill', 64, (g, n) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#fffdf6' : '#e2453c'; g.fillRect(0, i * 8, n, 8); } }) });
+const lighten = c => new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.35).getHex();
+function addCyl(x, top, z, r, h, color, kind = 'solid', opts = {}) {
+  const m = new THREE.Mesh(cylGeo(r, h), kind === 'lava' ? lavaMat : kind === 'bounce' ? bounceMat : pm(color));
+  m.position.set(x, top - h / 2, z); m.castShadow = true; m.receiveShadow = true; world.add(m);
+  m.add(new THREE.Mesh(cylGeo(r + 0.05, h + 0.05), outlineMat));
+  const lip = new THREE.Mesh(cylGeo(r * 0.8, 0.03), pm(kind === 'bounce' ? 0xffd23f : lighten(color)));
+  lip.position.y = h / 2 + 0.005; lip.receiveShadow = true; m.add(lip);
+  if (opts.rock !== false) {
+    const rh = Math.min(6, 1.5 + r * 1.2);
+    const rock = new THREE.Mesh(new THREE.ConeGeometry(r * 0.92, rh, 9), pm(0x8b6a4a));
+    rock.rotation.x = Math.PI; rock.position.y = -h / 2 - rh / 2; m.add(rock);
+  }
+  const s = { mesh: m, kind, shape: 'cyl', r, w: r * 2, h, d: r * 2, box: new THREE.Box3() };
+  updateBox(s); solids.push(s); m.userData.solid = s;
+  if (kind === 'bounce') { s.squish = 0; bouncers.push(s); }
+  return s;
+}
+function addSpinner(x, y, z, half, speed) {
+  const piv = new THREE.Group(); piv.position.set(x, y, z);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, half * 2, 16), killMat);
+  bar.rotation.z = Math.PI / 2; bar.castShadow = true;
+  bar.add(new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, half * 2 + 0.05, 16), outlineMat));
+  piv.add(bar); world.add(piv);
+  spinners.push({ piv, x, y, z, half, speed });
+}
+function addFade(x, top, z, color) {
+  const s = addBox(x, top - 0.25, z, 1.8, 0.5, 1.8, color);
+  s.mesh.material = mat(color).clone(); s.mesh.material.transparent = true;
+  s.kind = 'fade'; s.base = s.mesh.position.clone(); s.t = -1; fades.push(s);
+  return s;
+}
+function addDisc(x, top, z, r, spin) {
+  const s = addCyl(x, top, z, r, 0.6, 0xff8a2b);
+  for (const rot of [0, Math.PI / 2]) { const st = new THREE.Mesh(new THREE.BoxGeometry(r * 1.7, 0.04, 0.3), pm(0x1d2a44)); st.position.y = 0.32; st.rotation.y = rot; s.mesh.add(st); }
+  s.spin = spin; discs.push(s);
+  return s;
+}
+function addDecor(seed) {
+  let s = seed;
+  const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 22; i++) {
+    const z = 10 - rnd() * 170, side = rnd() < 0.5 ? -1 : 1, x = side * (12 + rnd() * 20), y = rnd() * 28 - 4, k = rnd();
+    let m;
+    if (k < 0.4) { m = new THREE.Mesh(new THREE.TorusGeometry(1.5 + rnd() * 1.5, 0.3, 10, 32), pm(RAINBOW[i % 6])); m.rotation.set(rnd() * 3, rnd() * 3, 0); m.userData.spin = (rnd() - 0.5) * 1.2; }
+    else if (k < 0.75) { m = new THREE.Mesh(new THREE.SphereGeometry(1 + rnd() * 1.5, 20, 14), pm(RAINBOW[(i + 2) % 6])); m.userData.bob = rnd() * 6; }
+    else { m = new THREE.Mesh(new THREE.OctahedronGeometry(1.2 + rnd()), pm(0x6fd0f0)); m.userData.spin = 0.8; }
+    m.position.set(x, y, z); m.userData.decor = true; m.userData.baseY = y; world.add(m);
+  }
+}
+function updateParts(dt) {
+  for (const sp of spinners) sp.piv.rotation.y += sp.speed * dt;
+  for (const s of fades) {
+    if (!s.off && s.t < 0 && P.ground === s && P.onGround) s.t = 0.5;
+    if (!s.off && s.t >= 0) {
+      s.t -= dt; s.mesh.position.x = s.base.x + Math.sin(tAll * 60) * 0.06;
+      if (s.t <= 0) { s.off = true; s.back = 3; s.vy = 0; }
+    } else if (s.off) {
+      s.vy -= 20 * dt; s.mesh.position.y += s.vy * dt;
+      s.mesh.material.opacity = Math.max(0, s.mesh.material.opacity - dt * 0.8);
+      if ((s.back -= dt) <= 0) { s.off = false; s.t = -1; s.mesh.position.copy(s.base); s.mesh.material.opacity = 1; updateBox(s); }
+    }
+  }
+  for (const s of discs) {
+    const a = s.spin * dt; s.mesh.rotation.y += a;
+    if (P.ground === s && P.onGround) {
+      const cx = s.mesh.position.x, cz = s.mesh.position.z, dx = P.pos.x - cx, dz = P.pos.z - cz, c = Math.cos(a), sn = Math.sin(a);
+      P.pos.x = cx + dx * c + dz * sn; P.pos.z = cz - dx * sn + dz * c; P.facing += a;
+    }
+  }
+  for (const s of bouncers) if (s.squish > 0) { s.squish = Math.max(0, s.squish - dt); s.mesh.scale.y = 1 - Math.sin(s.squish / 0.25 * Math.PI) * 0.35; }
+  if (world) for (const m of world.children) {
+    if (!m.userData.decor) continue;
+    if (m.userData.spin) m.rotation.y += m.userData.spin * dt;
+    if (m.userData.bob !== undefined) m.position.y = m.userData.baseY + Math.sin(tAll + m.userData.bob) * 0.6;
+  }
+}
+
 const RAINBOW = [0xe2453c, 0xff8a2b, 0xffd23f, 0x3fb55e, 0x3b7de0, 0x8b5cd6];
 function buildObby() {
   clearWorld();
   addClouds(7);
-  plat(0, 0, 0, 14, 14, 0x9aa3b5);
-  for (let i = 0; i < 6; i++) plat(-6 + i * 2.4, 0.5, 6.5, 2.4, 1, RAINBOW[i], 0.5);
+  addDecor(42);
+  // Start mit Torbogen
+  addCyl(0, 0, 0, 7, 1, 0x9aa3b5);
+  const gate = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.35, 12, 40, Math.PI), pm(0xff6b3d));
+  gate.position.set(0, 0, -5.2); gate.castShadow = true; world.add(gate);
   setSpawn(0, 0, 3);
-  for (let i = 0; i < 6; i++) {
-    const x = i % 2 ? 2 : -2, top = i * 0.8, z = -10 - i * 5;
-    plat(x, top, z, 3, 3, RAINBOW[i]);
+  // Stufe 1: runde Inseln
+  [[-2.5, -11, 0], [2, -16, 0.6], [-1.5, -21, 1.2], [2.5, -26, 1.8], [0, -31, 2.4]].forEach(([x, z, top], i) => {
+    addCyl(x, top, z, 1.6, 1, RAINBOW[i]);
     if (i % 2) addCoin(x, top + 1.3, z);
-  }
-  plat(0, 4, -43, 6, 6, 0x9aa3b5); addPad(0, 4, -43, 'check', 1);
-  addBox(0, 2.5, -54, 12, 1, 16, 0, 'lava');
-  plat(0, 4, -49, 1, 6, 0xf4f4f0);
-  plat(2, 4, -52.5, 5, 1, 0xf4f4f0);
-  plat(4, 4, -56.5, 1, 8, 0xf4f4f0);
-  addBox(4, 4.25, -57.5, 1, 0.5, 1, 0, 'lava');
-  addCoin(2, 5.3, -52.5); addCoin(4, 6, -57.5);
-  plat(2, 4, -65, 6, 6, 0x9aa3b5); addPad(2, 4, -65, 'check', 2);
-  [[-72.5, 0], [-79.5, Math.PI], [-86.5, 0.6]].forEach(([z, ph], i) => {
-    const s = plat(2, 4, z, 3, 3, 0x8b5cd6, 0.6);
-    movers.push({ s, axis: 'x', base: 2, amp: 3.5, speed: 1.1 + i * 0.15, phase: ph });
-    addCoin(2, 5.6, z);
   });
-  plat(2, 4, -93, 6, 6, 0x9aa3b5); addPad(2, 4, -93, 'check', 3);
-  const cx = 2, cz = -102;
+  addCyl(0, 3, -38, 3.5, 1, 0x9aa3b5); addPad(0, 3, -38, 'check', 1);
+  // Stufe 2: Drehbalken, dann Steine über Lava
+  addCyl(0, 3, -48, 5, 1, 0x3b7de0);
+  addCyl(0, 3.9, -48, 0.45, 0.9, 0x2a2d34, 'solid', { rock: false });
+  addSpinner(0, 3.55, -48, 4.8, 1.7);
+  addCoin(0, 4.9, -51.5);
+  addBox(0, 2, -62, 10, 1, 14, 0, 'lava');
+  [[-1.5, -56.5], [1.5, -60], [-1, -63.5], [1.5, -67]].forEach(([x, z], i) => {
+    addCyl(x, 3, z, 1, 1, 0xf4f4f0, 'solid', { rock: false });
+    if (i === 1) addCoin(x, 4.3, z);
+  });
+  addCyl(0, 3, -72, 3, 1, 0x9aa3b5); addPad(0, 3, -72, 'check', 2);
+  // Stufe 3: Trampoline nach oben
+  addCyl(0, 3.35, -78.5, 1.2, 0.35, 0, 'bounce');
+  addCyl(0, 9.5, -84.5, 2.5, 1, 0xffd23f); addCoin(0, 10.8, -84.5);
+  addCyl(0, 9.85, -90.5, 1.2, 0.35, 0, 'bounce');
+  addCyl(0, 16, -96.5, 3, 1, 0x9aa3b5); addPad(0, 16, -96.5, 'check', 3);
+  // Stufe 4: Wackelplatten, Drehscheiben und ein Schieber
+  for (let i = 0; i < 8; i++) addFade(i % 2 ? 0.6 : -0.6, 16, -101 - i * 2.1, RAINBOW[i % 6]);
+  addCoin(0, 17.4, -108.4);
+  addDisc(0, 16, -119.5, 2.2, 1.2);
+  const mv = plat(0, 16, -126, 2.5, 2.5, 0x8b5cd6, 0.6);
+  movers.push({ s: mv, axis: 'x', base: 0, amp: 3, speed: 1.4, phase: 0 });
+  addCoin(0, 17.6, -126);
+  addDisc(0, 16, -131, 2.2, -1.5);
+  addCyl(0, 16, -138, 3, 1, 0x9aa3b5); addPad(0, 16, -138, 'check', 4);
+  // Stufe 5: Wendelturm mit runden Stufen
+  const cx = 0, cz = -148.5;
   let last;
   for (let i = 0; i < 10; i++) {
-    const a = i * 0.9, top = 4 + (i + 1) * 1.2;
-    const x = cx + Math.sin(a) * 4, z = cz + Math.cos(a) * 4;
-    plat(x, top, z, 2, 2, RAINBOW[i % 6]);
-    if (i === 4 || i === 8) addCoin(x, top + 1.3, z);
+    const a = i * 0.85, top = 16 + (i + 1) * 1.2;
+    const x = cx + Math.sin(a) * 4.5, z = cz + Math.cos(a) * 4.5;
+    addCyl(x, top, z, 1.1, 0.8, RAINBOW[i % 6], 'solid', { rock: false });
+    if (i === 3 || i === 7) addCoin(x, top + 1.3, z);
     last = { x, z, top, a };
   }
-  plat(cx, 15.6, cz, 1.4, 1.4, 0xf4f4f0, 15.6);
-  const gx = last.x + Math.sin(last.a) * 5.5, gz = last.z + Math.cos(last.a) * 5.5;
-  plat(gx, last.top, gz, 6, 6, 0xffd23f);
-  addPad(gx, last.top, gz, 'goal', 4);
-  for (const [dx, dz] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) plat(gx + dx, last.top + 2, gz + dz, 0.6, 0.6, 0xffc83d, 2);
+  addCyl(cx, 26, cz, 1.4, 12, 0xf4f4f0);
+  const gx = last.x + Math.sin(last.a) * 5, gz = last.z + Math.cos(last.a) * 5;
+  addCyl(gx, last.top, gz, 3, 1, 0xffd23f);
+  addPad(gx, last.top, gz, 'goal', 5);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.785; addCyl(gx + Math.sin(a) * 2.5, last.top + 1.6, gz + Math.cos(a) * 2.5, 0.25, 1.6, 0xffc83d, 'solid', { rock: false }); }
+  obbyStages = 5;
 }
 
 // Bühne für die Startseite
 function buildStage() {
   clearWorld();
   addClouds(11);
-  plat(0, 0, 0, 7, 7, 0x9aa3b5);
-  plat(0, 0.3, 0, 3, 3, 0xffd23f, 0.3);
-  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5; plat(Math.sin(a) * 7, -1 + (i % 2), Math.cos(a) * 7 - 3, 2, 2, RAINBOW[i]); }
+  addDecor(5);
+  addCyl(0, 0, 0, 4.5, 1, 0x9aa3b5);
+  addCyl(0, 0.3, 0, 1.8, 0.3, 0xffd23f, 'solid', { rock: false });
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5; addCyl(Math.sin(a) * 8, -1 + (i % 2), Math.cos(a) * 8 - 3, 1.4, 1, RAINBOW[i]); }
   P.spawn.set(0, 0.3, 0);
 }
 
@@ -1161,7 +1304,25 @@ function moveAxis(axis, amount) {
   if (!amount) return;
   P.pos[axis] += amount;
   for (const s of solids) {
+    if (s.off) continue;
     const pb = playerBox();
+    if (s.shape === 'cyl') {
+      if (!(pb.min.y < s.box.max.y - EPS && pb.max.y > s.box.min.y + EPS)) continue;
+      const cx = s.mesh.position.x, cz = s.mesh.position.z, rr = s.r + R * 0.75;
+      let dx = P.pos.x - cx, dz = P.pos.z - cz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= rr * rr) continue;
+      if (axis === 'y') {
+        if (amount < 0) { P.pos.y = s.box.max.y; P.onGround = true; P.ground = s; }
+        else P.pos.y = s.box.min.y - H;
+        P.vel.y = 0;
+      } else {
+        let d = Math.sqrt(d2);
+        if (d < 1e-5) { dx = axis === 'x' ? -Math.sign(amount) : 0; dz = axis === 'z' ? -Math.sign(amount) : 0; d = 1; }
+        P.pos.x = cx + dx / d * (rr + 1e-3); P.pos.z = cz + dz / d * (rr + 1e-3);
+      }
+      continue;
+    }
     if (!overlaps(pb, s.box)) continue;
     if (axis === 'y') {
       if (amount < 0) { P.pos.y = s.box.max.y; P.onGround = true; P.ground = s; }
@@ -1176,7 +1337,46 @@ function setSpawn(x, y, z) { P.spawn.set(x, y, z); respawn(true); }
 function respawn(silent) {
   P.pos.copy(P.spawn); P.vel.set(0, 0, 0); P.facing = Math.PI; P.ground = null;
   cam.yaw = 0; camTarget.copy(P.pos).add(new V3(0, 1.6, 0));
-  if (!silent) { beep('die'); toast('Autsch!'); game.deaths++; }
+}
+// Tod: Figur zerfällt in ihre Teile, die durch die Gegend fliegen; danach Neustart am Checkpoint
+function die() {
+  if (dead > 0 || mode === 'win' || mode === 'menu') return;
+  dead = 1.8; game.deaths++; oof(); toast('Uff!');
+  avatar.visible = false;
+  const parts = makeAvatar(currentLook(), { tag: false });
+  parts.position.copy(P.pos); parts.rotation.y = P.facing;
+  const u = avatar.userData, pu = parts.userData;
+  for (const k of ['legL', 'legR', 'armL', 'armR']) pu[k].rotation.copy(u[k].rotation);
+  parts.updateMatrixWorld(true);
+  const box = new THREE.Box3(), c = new V3();
+  for (const ch of [...parts.children]) {
+    box.setFromObject(ch); if (box.isEmpty()) continue; box.getCenter(c);
+    const holder = new THREE.Group(); holder.position.copy(c); world.add(holder); holder.updateMatrixWorld(true); holder.attach(ch);
+    const out = new V3(c.x - P.pos.x, 0, c.z - P.pos.z);
+    if (out.lengthSq() < 1e-4) out.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    out.normalize();
+    const sp = 3 + Math.random() * 4;
+    debris.push({ o: holder, v: new V3(out.x * sp + P.vel.x * 0.4, 5 + Math.random() * 5, out.z * sp + P.vel.z * 0.4), w: new V3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12) });
+  }
+}
+function updateDebris(dt) {
+  for (const d of debris) {
+    d.v.y -= 30 * dt;
+    const p = d.o.position;
+    p.addScaledVector(d.v, dt);
+    d.o.rotation.x += d.w.x * dt; d.o.rotation.y += d.w.y * dt; d.o.rotation.z += d.w.z * dt;
+    if (d.v.y > 0) continue;
+    for (const s of solids) {
+      if (s.off) continue;
+      const top = s.box.max.y;
+      if (p.y > top + 0.15 || p.y < top - 0.6) continue;
+      const inside = s.shape === 'cyl' ? Math.hypot(p.x - s.mesh.position.x, p.z - s.mesh.position.z) < s.r
+        : (p.x > s.box.min.x && p.x < s.box.max.x && p.z > s.box.min.z && p.z < s.box.max.z);
+      if (!inside) continue;
+      p.y = top + 0.15; d.v.y *= -0.3; d.v.x *= 0.6; d.v.z *= 0.6; d.w.multiplyScalar(0.5);
+      break;
+    }
+  }
 }
 
 // ---------- Kamera ----------
@@ -1376,7 +1576,7 @@ function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add(
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
 function renderStats() {
   if (mode === 'obby') {
-    $('stats').innerHTML = `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/4</b></span>`;
+    $('stats').innerHTML = `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'build') {
     $('stats').innerHTML = `<span class="pill">Klötze <b>${blocks.size}</b></span><span class="pill">Farbe <b>${PALETTE_NAMES[buildColor]}</b></span>`;
   }
@@ -1506,6 +1706,11 @@ function animateAvatar(dt) {
   avatar.position.copy(P.pos); avatar.rotation.y = P.facing;
 }
 function updatePlayer(dt) {
+  if (dead > 0) {
+    dead -= dt;
+    if (dead <= 0) { for (const d of debris) world.remove(d.o); debris = []; dead = 0; respawn(); avatar.visible = true; }
+    return;
+  }
   const active = mode === 'obby' || mode === 'build';
   let f = 0, r = 0;
   if (active) {
@@ -1542,10 +1747,19 @@ function updatePlayer(dt) {
     moveAxis('y', P.vel.y * sdt);
     if (!P.onGround) P.ground = null;
   }
+  if (P.onGround && P.ground && P.ground.kind === 'bounce') {
+    P.vel.y = 24; P.ground.squish = 0.25; P.onGround = false; P.ground = null; P.coyote = 0; boing();
+  }
   if (active) {
     const pb = playerBox().clone().expandByScalar(0.05);
-    if (mode === 'obby' && solids.some(s => s.kind === 'lava' && overlaps(pb, s.box))) respawn();
-    else if (P.pos.y < -25) respawn();
+    if (mode === 'obby' && solids.some(s => s.kind === 'lava' && overlaps(pb, s.box))) die();
+    else if (P.pos.y < -25) die();
+    if (mode === 'obby') for (const sp of spinners) {
+      if (P.pos.y > sp.y + 0.22 || P.pos.y + H < sp.y - 0.22) continue;
+      const a = sp.piv.rotation.y, dx = Math.cos(a), dz = -Math.sin(a), px = P.pos.x - sp.x, pz = P.pos.z - sp.z;
+      const t = Math.max(-sp.half, Math.min(sp.half, px * dx + pz * dz));
+      if (Math.hypot(px - dx * t, pz - dz * t) < R + 0.22) { die(); break; }
+    }
   }
   animateAvatar(dt);
 }
@@ -1583,6 +1797,7 @@ let last = performance.now(), statTimer = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; tAll += dt;
   updateMovers();
+  updateParts(dt);
   if (mode === 'menu') {
     P.vel.set(0, 0, 0); P.onGround = true;
     animateAvatar(dt);
@@ -1601,6 +1816,7 @@ function frame(now) {
   }
   if (mode === 'obby' || mode === 'win') updateObby(dt);
   updateParticles(dt);
+  updateDebris(dt);
   placeCamera();
   sun.position.set(P.pos.x + 25, P.pos.y + 50, P.pos.z + 18); sun.target.position.copy(P.pos);
   if (mode === 'build' && lastMouse && !drags.size) updateGhost(pickTarget(lastMouse.x, lastMouse.y));
