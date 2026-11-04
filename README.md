@@ -11,6 +11,8 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 - **Münzen verdienen**: Im Himmelsparcours bringt jede Münze 5, das Ziel 25. Zum Start gibt es 150 Münzen.
 - **Himmelsparcours**: 5 Stufen mit runden schwebenden Inseln, Drehbalken, Lava, Trampolinen, Wackelplatten, Drehscheiben und Wendelturm, mit Checkpoints, Stoppuhr und Bestzeit.
 - **Tod wie im Comic**: eigenes „Uff!“ und die Figur zerfällt in ihre Teile, danach geht es am letzten Checkpoint weiter.
+- **Klotz-Rennen**: Kart-Rennen über 3 Runden gegen Testfahrer, mit Turbo-Pfeilen, Münzen auf der Strecke und Belohnung je nach Platz.
+- **Gruselvilla** (ein bisschen gruselig, ab 8): dunkles Labyrinth mit Taschenlampe. Finde 3 Schlüssel und entkomme durch die Tür, bevor dich der Geist erwischt.
 - **Baukasten**: Klötze in 12 Farben setzen und entfernen. Dein Bau wird gespeichert.
 - **Als App auf dem iPhone**: Web-App mit eigenem Symbol und Vollbild, die auch offline läuft.
 
