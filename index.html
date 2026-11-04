@@ -25,6 +25,7 @@
   --gold: #ffc83d;
   --muted: #5a6a88;
   --soft: #eef3fa;
+  --bad: #c8362b;
   --display: 'Lilita One', 'Arial Black', Impact, system-ui, sans-serif;
   --body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
@@ -63,7 +64,10 @@ input { -webkit-user-select: text; user-select: text; }
 .game { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 14px; border: 3px solid var(--ink); border-radius: 12px; }
 .game h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; }
 .game p { margin: 0; color: var(--muted); font-size: 14px; grid-column: 1; }
-.game .btn { grid-row: 1 / span 2; grid-column: 2; }
+.game .btn { grid-row: 2 / span 2; grid-column: 2; }
+.game h3 { grid-column: 1; }
+.game .preview { grid-column: 1 / -1; grid-row: 1; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 8px; background: var(--sky); margin-bottom: 6px; }
+.err { color: var(--bad); font-weight: 800; }
 .game.obby { background: #ffe9a8; }
 .game.build { background: #c9f0d6; }
 
@@ -150,11 +154,13 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     <div class="tab" id="tab-games">
       <h2>Was spielst du?</h2>
       <div class="game obby">
+        <img class="preview" id="prevObby" alt="Vorschau: Himmelsparcours" hidden>
         <h3>Himmelsparcours</h3>
         <p>Springe über Inseln und Lava bis ins goldene Ziel. Jede Münze bringt dir <i class="coin"></i> 5, das Ziel <i class="coin"></i> 25. <span id="best"></span></p>
         <button class="btn primary" id="playObby">Spielen</button>
       </div>
       <div class="game build">
+        <img class="preview" id="prevBuild" alt="Vorschau: Baukasten" hidden>
         <h3>Baukasten</h3>
         <p>Setze und entferne Klötze in zwölf Farben. Dein Bau wird gespeichert.</p>
         <button class="btn go" id="playBuild">Bauen</button>
@@ -166,7 +172,8 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
       <div class="chips" id="avatarCats"></div>
       <div id="avatarBody" class="sect" hidden>
         <div class="label">Name</div>
-        <input id="name" maxlength="16" placeholder="Dein Name" aria-label="Name der Figur">
+        <input id="name" maxlength="16" placeholder="Dein Name" aria-label="Name der Figur" autocomplete="off">
+        <p class="small" id="nameMsg">3 bis 16 Zeichen. Beleidigungen und unanständige Namen sind nicht erlaubt.</p>
         <div class="label">Körperfarbe</div>
         <div class="parts" id="bodyParts"></div>
         <div class="swatches" id="bodySwatches"></div>
@@ -178,6 +185,7 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     <div class="tab" id="tab-shop" hidden>
       <div id="shopScroll">
         <div class="chips" id="shopCats"></div>
+        <p class="small">Tippe auf eine Sache, um sie anzuprobieren. Behalten kannst du sie erst, wenn du sie mit genug Münzen kaufst.</p>
         <div class="grid" id="shopGrid"></div>
       </div>
       <div class="buybar" id="buybar" hidden>
@@ -338,7 +346,7 @@ function beep(kind) {
 // Avatar-Katalog
 // ======================================================================
 const BODY_COLORS = [0xffd9b0, 0xf2c08f, 0xd49a6a, 0xa86b42, 0x6e4426, 0xffe066, 0xf4f4f0, 0x8a8f99, 0x2a2d34, 0xe2453c, 0xff8a2b, 0x3fb55e, 0x3b7de0, 0x6fd0f0, 0x8b5cd6, 0xff6fae];
-const SLOTS = [['hat', 'Hüte'], ['face', 'Gesichter'], ['shirt', 'Shirts'], ['pants', 'Hosen'], ['back', 'Rücken']];
+const SLOTS = [['hair', 'Haare'], ['hat', 'Hüte'], ['face', 'Gesichter'], ['acc', 'Brillen & Co.'], ['neck', 'Hals'], ['shirt', 'Oberteile'], ['pants', 'Hosen & Röcke'], ['shoes', 'Schuhe'], ['back', 'Rücken']];
 const ITEMS = [
   // Gesichter
   { id: 'f-smile', slot: 'face', name: 'Lächeln', price: 0, face: 'smile' },
@@ -384,13 +392,88 @@ const ITEMS = [
   { id: 'b-wings', slot: 'back', name: 'Engelsflügel', price: 400, back: 'wings', color: 0xffffff },
   { id: 'b-jetpack', slot: 'back', name: 'Jetpack', price: 600, back: 'jetpack', color: 0x8a8f99 }
 ];
+ITEMS.push(
+  // Haare
+  { id: 'hr-short-brown', slot: 'hair', name: 'Kurze Haare braun', price: 0, hair: 'short', color: 0x6b4423 },
+  { id: 'hr-short-blond', slot: 'hair', name: 'Kurze Haare blond', price: 0, hair: 'short', color: 0xe8c55a },
+  { id: 'hr-spiky-black', slot: 'hair', name: 'Stachelfrisur', price: 60, hair: 'spiky', color: 0x2a2d34 },
+  { id: 'hr-long-brown', slot: 'hair', name: 'Lange Haare braun', price: 80, hair: 'long', color: 0x6b4423 },
+  { id: 'hr-long-blond', slot: 'hair', name: 'Lange Haare blond', price: 80, hair: 'long', color: 0xe8c55a },
+  { id: 'hr-bob-black', slot: 'hair', name: 'Bob schwarz', price: 80, hair: 'bob', color: 0x2a2d34 },
+  { id: 'hr-pony-red', slot: 'hair', name: 'Pferdeschwanz rot', price: 100, hair: 'ponytail', color: 0xc4472b },
+  { id: 'hr-curly', slot: 'hair', name: 'Lockenkopf', price: 120, hair: 'curly', color: 0x3b2a1a },
+  { id: 'hr-buns-pink', slot: 'hair', name: 'Zwei Dutts pink', price: 150, hair: 'buns', color: 0xff6fae },
+  { id: 'hr-spiky-blue', slot: 'hair', name: 'Blaue Stachelfrisur', price: 150, hair: 'spiky', color: 0x3b7de0 },
+  // Brillen & Co.
+  { id: 'a-mustache', slot: 'acc', name: 'Schnurrbart', price: 70, acc: 'mustache', color: 0x5a3a1e },
+  { id: 'a-nose', slot: 'acc', name: 'Clownsnase', price: 50, acc: 'nose', color: 0xe2453c },
+  { id: 'a-nerd', slot: 'acc', name: 'Lesebrille', price: 60, acc: 'nerd', color: 0xbfe6ff },
+  { id: 'a-patch', slot: 'acc', name: 'Augenklappe', price: 80, acc: 'eyepatch', color: 0x1d2a44 },
+  { id: 'a-sun', slot: 'acc', name: 'Sonnenbrille', price: 90, acc: 'sunglasses', color: 0x1d2a44 },
+  { id: 'a-hearts', slot: 'acc', name: 'Herzbrille', price: 120, acc: 'hearts', color: 0xff6fae },
+  // Hals
+  { id: 'n-scarf', slot: 'neck', name: 'Roter Schal', price: 70, neck: 'scarf', color: 0xe2453c },
+  { id: 'n-scarf-g', slot: 'neck', name: 'Grüner Schal', price: 70, neck: 'scarf', color: 0x3fb55e },
+  { id: 'n-bow', slot: 'neck', name: 'Fliege', price: 90, neck: 'bowtie', color: 0x8b5cd6 },
+  { id: 'n-tie', slot: 'neck', name: 'Krawatte', price: 90, neck: 'tie', color: 0x3b7de0 },
+  { id: 'n-chain', slot: 'neck', name: 'Goldkette', price: 250, neck: 'chain', color: 0xffc83d },
+  { id: 'n-medal', slot: 'neck', name: 'Goldmedaille', price: 400, neck: 'medal', color: 0xffc83d },
+  // Schuhe
+  { id: 'sh-white', slot: 'shoes', name: 'Weiße Turnschuhe', price: 0, shoe: 'sneaker', color: 0xf4f4f0, sole: 0x8a8f99 },
+  { id: 'sh-red', slot: 'shoes', name: 'Rote Sneaker', price: 60, shoe: 'sneaker', color: 0xe2453c },
+  { id: 'sh-black', slot: 'shoes', name: 'Schwarze Sneaker', price: 60, shoe: 'sneaker', color: 0x2a2d34 },
+  { id: 'sh-boots', slot: 'shoes', name: 'Wanderstiefel', price: 80, shoe: 'boot', color: 0x8b5a2b, sole: 0x2a2d34 },
+  { id: 'sh-glow', slot: 'shoes', name: 'Leuchtschuhe', price: 200, shoe: 'sneaker', color: 0x6fd0f0, glow: true },
+  { id: 'sh-gold', slot: 'shoes', name: 'Goldschuhe', price: 300, shoe: 'sneaker', color: 0xffc83d, sole: 0xffe066 },
+  // mehr Kleidung
+  { id: 's-white', slot: 'shirt', name: 'Weißes Shirt', price: 0, shirt: { base: 0xf4f4f0 } },
+  { id: 's-winter', slot: 'shirt', name: 'Winterpulli', price: 110, shirt: { base: 0xe2453c, accent: 0xf4f4f0, pattern: 'zigzag' } },
+  { id: 's-hawaii', slot: 'shirt', name: 'Hawaiihemd', price: 140, shirt: { base: 0x6fd0f0, accent: 0xff6fae, pattern: 'flowers' } },
+  { id: 's-rainbow', slot: 'shirt', name: 'Regenbogenshirt', price: 160, shirt: { base: 0xe2453c, pattern: 'rainbow' } },
+  { id: 's-armor', slot: 'shirt', name: 'Ritterrüstung', price: 400, shirt: { base: 0xb8c2cf, accent: 0x7d8796, pattern: 'armor' } },
+  { id: 'p-jogger', slot: 'pants', name: 'Jogginghose', price: 40, pants: { base: 0x8a8f99, pattern: 'stripe' } },
+  { id: 'p-skirt', slot: 'pants', name: 'Rosa Rock', price: 80, pants: { base: 0xff6fae, pattern: 'skirt' } },
+  { id: 'p-pleated', slot: 'pants', name: 'Faltenrock', price: 90, pants: { base: 0x3b4fb0, accent: 0x2a3b90, pattern: 'skirt' } },
+  { id: 'p-leder', slot: 'pants', name: 'Kurze Lederhose', price: 90, pants: { base: 0x8b5a2b, pattern: 'shorts' } },
+  // mehr Hüte & Rücken
+  { id: 'h-beanie', slot: 'hat', name: 'Wollmütze', price: 60, hat: 'beanie', color: 0x3fb55e },
+  { id: 'h-catears', slot: 'hat', name: 'Katzenohren', price: 120, hat: 'catears', color: 0x2a2d34 },
+  { id: 'h-cowboy', slot: 'hat', name: 'Cowboyhut', price: 180, hat: 'cowboy', color: 0x8b5a2b },
+  { id: 'h-pirate', slot: 'hat', name: 'Piratenhut', price: 220, hat: 'pirate', color: 0x2a2d34 },
+  { id: 'h-halo', slot: 'hat', name: 'Heiligenschein', price: 800, hat: 'halo', color: 0xffe066 },
+  { id: 'b-guitar', slot: 'back', name: 'Gitarre', price: 300, back: 'guitar', color: 0xe2453c },
+  { id: 'b-dragon', slot: 'back', name: 'Drachenflügel', price: 450, back: 'wings', color: 0x3fb55e }
+);
+ITEMS.sort((a, b) => a.price - b.price);
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+
+// ---------- Namensfilter ----------
+// Blockiert unanständige Namen und Beleidigungen, auch mit Tricks wie F1ck, Fiiick oder Groß-/Kleinschreibung.
+const BAD_SUB = ['fick', 'fuck', 'fuk', 'porn', 'sex', 'fotze', 'hurensohn', 'wichs', 'wixer', 'schlampe', 'arschloch', 'missgeburt', 'nigger', 'nigga', 'neger', 'schwuchtel', 'vergewalt', 'paedophil', 'pedophil', 'hitler', 'nazi', 'siegheil', 'nutte', 'titten', 'penis', 'pimmel', 'vagina', 'muschi', 'pussy', 'bitch', 'slut', 'whore', 'horny', 'nudes', 'nackt', 'kanake', 'faggot', 'retard', 'asshole', 'bastard', 'scheis', 'shit', 'kacke', 'spast', 'behindert', 'suicide', 'selbstmord', 'dildo', 'orgasm', 'cock', 'tits', 'dummkopf', 'vollidiot', 'blowjob', 'erotik', 'kondom', 'busen', 'schwanzlutsch', 'milf'];
+const BAD_WORD = ['arsch', 'dick', 'cum', 'geil', 'opfer', 'dumm', 'idiot', 'depp', 'hure', 'ass', 'anal', 'heil', 'kill', 'tod', 'loser', 'penner', 'nsfw', 'sau', 'schwein', 'fett', 'hass', 'schwanz', 'boobs', 'kys', 'noob'];
+function normName(t) {
+  return t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[0]/g, 'o').replace(/[@4]/g, 'a').replace(/[1!|]/g, 'i').replace(/3/g, 'e').replace(/[5$]/g, 's').replace(/7/g, 't').replace(/8/g, 'b')
+    .replace(/[^a-z]/g, '').replace(/(.)\1+/g, '$1');
+}
+const SUB_N = BAD_SUB.map(normName), WORD_N = BAD_WORD.map(normName);
+function nameProblem(name) {
+  const n = String(name || '').trim();
+  if (n.length < 3) return 'Der Name braucht mindestens 3 Zeichen.';
+  if (n.length > 16) return 'Der Name darf höchstens 16 Zeichen haben.';
+  if (!/^[A-Za-zÄÖÜäöüß0-9_ -]+$/.test(n)) return 'Nur Buchstaben, Zahlen, Leerzeichen, - und _ sind erlaubt.';
+  const all = normName(n);
+  const tokens = n.replace(/([a-zäöüß])([A-ZÄÖÜ])/g, '$1 $2').split(/[\s_-]+/).map(normName).filter(Boolean);
+  const bad = SUB_N.some(w => all.includes(w)) ||
+    WORD_N.some(w => tokens.includes(w) || all === w || (w.length >= 4 && w !== 'anal' && w !== 'heil' && (all.startsWith(w) || all.endsWith(w))));
+  return bad ? 'Dieser Name ist nicht erlaubt. Bitte wähle einen freundlichen Namen.' : '';
+}
 
 // Profil (Münzen, Inventar, Aussehen)
 const DEFAULT_PROFILE = {
   name: 'Klotzi', coins: 150,
   body: { head: 0, torso: 0, arms: 0, legs: 0 },
-  wear: { face: 'f-smile', shirt: 's-blue', pants: 'p-dark', hat: null, back: null },
+  wear: { face: 'f-smile', hair: 'hr-short-brown', shirt: 's-blue', pants: 'p-dark', shoes: 'sh-white', hat: null, acc: null, neck: null, back: null },
   owned: ITEMS.filter(i => i.price === 0).map(i => i.id)
 };
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -409,6 +492,7 @@ const profile = (() => {
   for (const id of DEFAULT_PROFILE.owned) if (!np.owned.includes(id)) np.owned.push(id);
   for (const k in np.wear) if (np.wear[k] && (!ITEM[np.wear[k]] || !np.owned.includes(np.wear[k]))) np.wear[k] = DEFAULT_PROFILE.wear[k];
   np.coins = Math.max(0, Number(np.coins) || 0);
+  if (nameProblem(np.name)) np.name = 'Klotzi';
   return np;
 })();
 function saveProfile() { store.set('klotzwelt-profil', profile); $('coinCount').textContent = profile.coins; }
@@ -491,6 +575,26 @@ function shirtTex(item, side) {
           g.lineTo(n, n); g.closePath(); g.fill();
         }
         break;
+      case 'flowers':
+        for (const [x, y] of [[24, 26], [92, 22], [60, 66], [20, 104], [102, 98], [64, 120]]) {
+          g.fillStyle = ac;
+          for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; g.beginPath(); g.arc(x + Math.cos(a) * 9, y + Math.sin(a) * 9, 7, 0, 7); g.fill(); }
+          g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill();
+        }
+        break;
+      case 'zigzag':
+        g.fillStyle = ac; g.fillRect(0, 0, n, 14); g.fillRect(0, n - 12, n, 12);
+        g.strokeStyle = ac; g.lineWidth = 12; g.lineJoin = 'round'; g.beginPath();
+        for (let x = 0; x <= n; x += 16) g.lineTo(x, (x / 16) % 2 ? 52 : 76);
+        g.stroke(); break;
+      case 'rainbow':
+        [0xe2453c, 0xff8a2b, 0xffd23f, 0x3fb55e, 0x3b7de0, 0x8b5cd6].forEach((c, i) => { g.fillStyle = hex(c); g.fillRect(0, i * n / 6, n, n / 6 + 1); });
+        break;
+      case 'armor':
+        g.fillStyle = ac; g.fillRect(0, 62, n, 5); g.fillRect(61, 0, 5, n);
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(8, 8, 46, 20); g.fillRect(74, 8, 46, 20);
+        g.fillStyle = ac; for (const x of [12, 52, 76, 116]) for (const y of [44, 84, 116]) { g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); }
+        break;
       case 'suit':
         if (side === 'front') {
           g.fillStyle = ac; g.beginPath(); g.moveTo(38, 0); g.lineTo(90, 0); g.lineTo(64, 72); g.closePath(); g.fill();
@@ -509,6 +613,8 @@ function pantsTex(item) {
       for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.1})`; g.fillRect(Math.random() * n, Math.random() * n, 1, 3); }
       g.fillStyle = 'rgba(255,230,150,0.7)'; g.fillRect(5, 0, 2, n); g.fillRect(n - 7, 0, 2, n);
     }
+    if (p.pattern === 'stripe') { g.fillStyle = '#f4f4f0'; g.fillRect(2, 0, 5, n); g.fillRect(n - 7, 0, 5, n); }
+    if (p.pattern === 'skirt' && p.accent !== undefined) { g.fillStyle = hex(p.accent); for (let x = 6; x < n; x += 12) g.fillRect(x, 0, 3, n); }
     if (p.pattern === 'camo') {
       for (const col of [hex(p.accent), '#7d8a52']) { g.fillStyle = col; for (let i = 0; i < 9; i++) { g.beginPath(); g.ellipse(Math.random() * n, Math.random() * n, 5 + Math.random() * 8, 3 + Math.random() * 5, Math.random() * 3, 0, Math.PI * 2); g.fill(); } }
     }
@@ -562,6 +668,28 @@ function buildHat(item) {
       add(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 24), c, 0, HEAD_TOP + 0.01, 0);
       add(new THREE.ConeGeometry(0.3, 0.8, 20), c, 0.04, HEAD_TOP + 0.41, 0).rotation.z = -0.15;
       add(new THREE.OctahedronGeometry(0.06), pm(0xffd23f), 0.12, HEAD_TOP + 0.34, 0.2); break;
+    case 'beanie':
+      add(roundedBox(0.66, 0.3, 0.62, 0.14), c, 0, HEAD_TOP + 0.02, -0.01);
+      add(roundedBox(0.68, 0.08, 0.64, 0.04), pm(0xf4f4f0), 0, HEAD_TOP - 0.1, -0.01);
+      add(new THREE.SphereGeometry(0.09, 12, 8), pm(0xf4f4f0), 0, HEAD_TOP + 0.2, 0); break;
+    case 'catears':
+      for (const s of [-1, 1]) {
+        add(new THREE.ConeGeometry(0.11, 0.24, 4), c, s * 0.2, HEAD_TOP + 0.1, 0).rotation.z = -s * 0.2;
+        add(new THREE.ConeGeometry(0.055, 0.14, 4), pm(0xff9fc0), s * 0.2, HEAD_TOP + 0.08, 0.05).rotation.z = -s * 0.2;
+      }
+      add(roundedBox(0.5, 0.05, 0.12, 0.02), c, 0, HEAD_TOP, 0); break;
+    case 'cowboy':
+      add(new THREE.CylinderGeometry(0.55, 0.55, 0.04, 28), c, 0, HEAD_TOP + 0.02, 0);
+      add(roundedBox(0.44, 0.3, 0.4, 0.1), c, 0, HEAD_TOP + 0.17, 0);
+      add(roundedBox(0.45, 0.06, 0.41, 0.03), pm(0x3b2a1a), 0, HEAD_TOP + 0.07, 0); break;
+    case 'pirate':
+      add(roundedBox(0.86, 0.26, 0.24, 0.1), c, 0, HEAD_TOP + 0.1, 0);
+      add(roundedBox(0.52, 0.12, 0.5, 0.05), c, 0, HEAD_TOP + 0.02, 0);
+      add(new THREE.SphereGeometry(0.06, 10, 8), pm(0xf4f4f0), 0, HEAD_TOP + 0.12, 0.13); break;
+    case 'halo': {
+      const t = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 10, 28), new THREE.MeshBasicMaterial({ color: item.color }));
+      t.position.set(0, HEAD_TOP + 0.3, 0); t.rotation.x = Math.PI / 2; g.add(t); break;
+    }
     case 'crown': {
       const gold = new THREE.MeshLambertMaterial({ color: item.color, emissive: 0x6a4a00, emissiveIntensity: 0.3 });
       add(new THREE.BoxGeometry(0.58, 0.14, 0.58), gold, 0, HEAD_TOP + 0.05, 0);
@@ -596,6 +724,13 @@ function buildBack(item) {
         for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.75 - i * 0.12, 0.14, 0.04), c, sd * (0.38 - i * 0.04), 0.2 - i * 0.16, 0, w);
         w.position.set(sd * 0.1, 1.35, -0.28); w.rotation.z = sd * 0.35; w.rotation.y = -sd * 0.35; g.add(w);
       } break;
+    case 'guitar': {
+      const gr = new THREE.Group();
+      add(roundedBox(0.42, 0.5, 0.12, 0.12), c, 0, -0.1, 0, gr);
+      add(new THREE.CylinderGeometry(0.07, 0.07, 0.13, 16), pm(0x2a2d34), 0, -0.05, 0, gr).rotation.x = Math.PI / 2;
+      add(roundedBox(0.08, 0.62, 0.05, 0.02), pm(0x5a3a1e), 0, 0.45, 0, gr);
+      gr.position.set(0, 1.15, -0.3); gr.rotation.z = -0.6; g.add(gr); break;
+    }
     case 'jetpack':
       for (const s of [-1, 1]) {
         add(new THREE.CylinderGeometry(0.13, 0.13, 0.62, 14), c, s * 0.16, 1.22, -0.36);
@@ -661,8 +796,10 @@ function makeAvatar(lk, opts = {}) {
   const OL = 0.045;
   const add = (geo, m, x, y, z, parent = g) => {
     const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = true; parent.add(me);
-    const [w, h, d] = geo.userData.dims;
-    const o = new THREE.Mesh(geo, outlineMat); o.scale.set((w + OL) / w, (h + OL) / h, (d + OL) / d); me.add(o);
+    if (geo.userData.dims) {
+      const [w, h, d] = geo.userData.dims;
+      const o = new THREE.Mesh(geo, outlineMat); o.scale.set((w + OL) / w, (h + OL) / h, (d + OL) / d); me.add(o);
+    }
     return me;
   };
   // Box-Seiten: +x, -x, +y, -y, +z (vorne), -z (hinten)
@@ -690,15 +827,82 @@ function makeAvatar(lk, opts = {}) {
   if (pants) {
     const ptex = pantsTex(pants);
     if (pants.pants.pattern === 'shorts') { const S = tt('short' + pants.id + legC, splitTex(pants.id + '-' + legC, ptex.image, legC, 0.45)); legM = [S, S, tt('pl' + pants.id, ptex), tc(legC), S, S]; }
+    else if (pants.pants.pattern === 'skirt') { legM = tc(legC); add(roundedBox(0.92, 0.42, 0.52, 0.13), tt('pl' + pants.id, ptex), 0, 0.72, 0); }
     else legM = tt('pl' + pants.id, ptex);
   }
   const legL = limb(-0.21, 0.82, legM, 0.4), legR = limb(0.21, 0.82, legM, 0.4);
-  if (lk.wear.hat && ITEM[lk.wear.hat]) g.add(buildHat(ITEM[lk.wear.hat]));
+  const shoe = lk.wear.shoes && ITEM[lk.wear.shoes];
+  if (shoe) for (const piv of [legL, legR]) buildShoe(shoe, add, piv);
+  const hair = lk.wear.hair && ITEM[lk.wear.hair];
+  if (hair) buildHair(hair, add);
+  if (lk.wear.acc && ITEM[lk.wear.acc]) buildAcc(ITEM[lk.wear.acc], add);
+  if (lk.wear.neck && ITEM[lk.wear.neck]) buildNeck(ITEM[lk.wear.neck], add);
+  if (lk.wear.hat && ITEM[lk.wear.hat]) { const hg = buildHat(ITEM[lk.wear.hat]); if (hair) hg.position.y += 0.07; g.add(hg); }
   let back = null;
   if (lk.wear.back && ITEM[lk.wear.back]) { back = buildBack(ITEM[lk.wear.back]); g.add(back); }
   if (opts.tag !== false) g.add(nameTag(lk.name || 'Klotzi'));
   g.userData = { legL, legR, armL, armR, back };
   return g;
+}
+// Haare, Brillen, Halsschmuck und Schuhe bekommen ebenfalls die Comic-Kontur
+const gd = (geo, w, h = w, d = w) => { geo.userData.dims = [w, h, d]; return geo; };
+function buildHair(item, add) {
+  const c = tc(item.color);
+  const top = () => add(roundedBox(0.66, 0.2, 0.62, 0.09), c, 0, 2.11, -0.02);
+  const back = (h = 0.32) => add(roundedBox(0.66, h, 0.14, 0.06), c, 0, 2.06 - h / 2, -0.27);
+  const ball = (r, x, y, z) => add(gd(new THREE.SphereGeometry(r, 14, 10), r * 2), c, x, y, z);
+  switch (item.hair) {
+    case 'short': top(); back(); break;
+    case 'spiky':
+      top(); back();
+      for (const [x, z, rz, rx] of [[-0.2, 0.05, 0.35, 0], [0, 0.08, 0, 0], [0.2, 0.05, -0.35, 0], [-0.12, -0.17, 0.2, -0.35], [0.12, -0.17, -0.2, -0.35]]) {
+        const k = add(gd(new THREE.ConeGeometry(0.1, 0.3, 6), 0.2, 0.3, 0.2), c, x, 2.3, z); k.rotation.set(rx, 0, rz);
+      }
+      break;
+    case 'long': top(); back(0.78); for (const s of [-1, 1]) add(roundedBox(0.1, 0.55, 0.44, 0.04), c, s * 0.33, 1.86, -0.05); break;
+    case 'bob': top(); back(0.5); for (const s of [-1, 1]) add(roundedBox(0.1, 0.42, 0.46, 0.04), c, s * 0.33, 1.92, -0.04); break;
+    case 'ponytail': top(); back(0.28); ball(0.12, 0, 2.02, -0.37); add(roundedBox(0.17, 0.44, 0.17, 0.08), c, 0, 1.76, -0.41); break;
+    case 'curly':
+      for (const x of [-0.22, 0, 0.22]) for (const [y, z] of [[2.17, 0.12], [2.2, -0.08], [2.12, -0.26], [1.92, -0.32]]) ball(0.14, x, y, z);
+      for (const s of [-1, 1]) ball(0.12, s * 0.33, 1.98, -0.08);
+      break;
+    case 'buns': top(); back(); for (const s of [-1, 1]) ball(0.13, s * 0.24, 2.24, -0.06); break;
+  }
+}
+function buildAcc(item, add) {
+  const c = tc(item.color), ink = tc(0x1d2a44);
+  switch (item.acc) {
+    case 'sunglasses': for (const s of [-1, 1]) add(roundedBox(0.2, 0.12, 0.04, 0.03), c, s * 0.11, 1.9, 0.3); add(roundedBox(0.06, 0.03, 0.03, 0.01), c, 0, 1.92, 0.3); break;
+    case 'nerd': {
+      const lens = toon('lens' + item.color, { color: item.color, transparent: true, opacity: 0.45 });
+      for (const s of [-1, 1]) add(roundedBox(0.18, 0.15, 0.03, 0.03), lens, s * 0.11, 1.9, 0.3);
+      add(roundedBox(0.06, 0.03, 0.03, 0.01), ink, 0, 1.92, 0.3); break;
+    }
+    case 'hearts': for (const s of [-1, 1]) add(roundedBox(0.15, 0.15, 0.04, 0.05), c, s * 0.11, 1.9, 0.3).rotation.z = Math.PI / 4; add(roundedBox(0.06, 0.03, 0.03, 0.01), c, 0, 1.92, 0.3); break;
+    case 'mustache': for (const s of [-1, 1]) add(roundedBox(0.15, 0.06, 0.04, 0.025), c, s * 0.07, 1.775, 0.3).rotation.z = -s * 0.25; break;
+    case 'nose': add(gd(new THREE.SphereGeometry(0.07, 14, 10), 0.14), c, 0, 1.83, 0.3); break;
+    case 'eyepatch': add(roundedBox(0.15, 0.14, 0.03, 0.05), c, 0.1, 1.9, 0.3); add(roundedBox(0.64, 0.03, 0.6, 0.012), c, 0, 1.98, 0).rotation.z = 0.35; break;
+  }
+}
+function buildNeck(item, add) {
+  const c = tc(item.color);
+  switch (item.neck) {
+    case 'scarf': add(roundedBox(0.64, 0.15, 0.5, 0.07), c, 0, 1.6, 0); add(roundedBox(0.15, 0.36, 0.06, 0.03), c, 0.17, 1.42, 0.25); break;
+    case 'bowtie': for (const s of [-1, 1]) add(roundedBox(0.14, 0.12, 0.05, 0.04), c, s * 0.08, 1.53, 0.24).rotation.z = s * 0.2; add(roundedBox(0.06, 0.07, 0.06, 0.02), c, 0, 1.53, 0.25); break;
+    case 'tie': add(roundedBox(0.1, 0.08, 0.05, 0.02), c, 0, 1.54, 0.235); add(roundedBox(0.12, 0.4, 0.03, 0.04), c, 0, 1.3, 0.235); break;
+    case 'chain':
+      add(new THREE.TorusGeometry(0.24, 0.025, 8, 28), c, 0, 1.52, 0.06).rotation.x = Math.PI / 2 - 0.55;
+      add(gd(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 20), 0.14, 0.03, 0.14), c, 0, 1.36, 0.24).rotation.x = Math.PI / 2; break;
+    case 'medal':
+      for (const s of [-1, 1]) add(roundedBox(0.06, 0.3, 0.02, 0.01), tc(0x3b7de0), s * 0.07, 1.45, 0.235).rotation.z = -s * 0.3;
+      add(gd(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 20), 0.18, 0.03, 0.18), c, 0, 1.27, 0.245).rotation.x = Math.PI / 2; break;
+  }
+}
+function buildShoe(item, add, piv) {
+  const c = item.glow ? toon('glow' + item.color, { color: item.color, emissive: item.color, emissiveIntensity: 0.7 }) : tc(item.color);
+  const sole = tc(item.sole ?? 0xf4f4f0);
+  if (item.shoe === 'boot') { add(roundedBox(0.44, 0.36, 0.48, 0.09), c, 0, -0.64, 0.03, piv); add(roundedBox(0.46, 0.07, 0.5, 0.03), sole, 0, -0.8, 0.03, piv); }
+  else { add(roundedBox(0.43, 0.16, 0.52, 0.07), c, 0, -0.73, 0.05, piv); add(roundedBox(0.45, 0.06, 0.54, 0.03), sole, 0, -0.8, 0.05, piv); }
 }
 function nameTag(text) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 64;
@@ -740,12 +944,12 @@ function thumbFor(item) {
       const d = new THREE.DirectionalLight(0xffffff, 0.6); d.position.set(2, 4, 5); thumbScene.add(d);
       thumbCam = new THREE.PerspectiveCamera(35, 1, 0.05, 50);
     }
-    const lk = { name: '', body: { head: 1, torso: 1, arms: 1, legs: 1 }, wear: { face: 'f-smile', shirt: null, pants: null, hat: null, back: null } };
-    if (item.slot === 'shirt' || item.slot === 'pants') { lk.wear.shirt = 's-blue'; lk.wear.pants = 'p-black'; }
+    const lk = { name: '', body: { head: 1, torso: 1, arms: 1, legs: 1 }, wear: { face: 'f-smile' } };
+    if (item.slot === 'shirt' || item.slot === 'pants' || item.slot === 'shoes' || item.slot === 'neck') { lk.wear.shirt = 's-white'; lk.wear.pants = 'p-black'; }
     lk.wear[item.slot] = item.id;
     const a = makeAvatar(lk, { tag: false });
     thumbScene.add(a);
-    const views = { hat: [2.2, 1.7, 0.55], face: [1.86, 1.3, 0.2], shirt: [1.2, 2.6, 0.45], pants: [0.5, 2.5, 0.4], back: [1.25, 3.4, Math.PI + 0.7] };
+    const views = { hat: [2.2, 1.7, 0.55], hair: [2.0, 1.7, 0.7], face: [1.86, 1.3, 0.2], acc: [1.86, 1.2, 0.35], neck: [1.5, 1.6, 0.35], shirt: [1.2, 2.6, 0.45], pants: [0.6, 2.6, 0.4], shoes: [0.15, 1.9, 0.6], back: [1.25, 3.4, Math.PI + 0.7] };
     const [ty, dist, yaw] = views[item.slot];
     thumbCam.position.set(Math.sin(yaw) * dist, ty + dist * 0.15, Math.cos(yaw) * dist);
     thumbCam.lookAt(0, ty, 0);
@@ -1118,7 +1322,15 @@ function renderAvatarTab() {
   const missing = ITEMS.filter(i => i.slot === avatarCat && !profile.owned.includes(i.id)).length;
   $('avatarHint').textContent = missing ? `Im Shop gibt es noch ${missing} weitere Sachen in dieser Kategorie.` : 'Du hast alles aus dieser Kategorie!';
 }
-$('name').addEventListener('change', () => { profile.name = $('name').value.trim().slice(0, 16) || 'Klotzi'; saveProfile(); rebuildAvatar(); });
+const NAME_HELP = '3 bis 16 Zeichen. Beleidigungen und unanständige Namen sind nicht erlaubt.';
+function showNameMsg(text, bad) { const m = $('nameMsg'); m.textContent = text; m.className = bad ? 'small err' : 'small'; }
+$('name').addEventListener('input', () => { const v = $('name').value; const pr = v.trim().length >= 3 ? nameProblem(v) : ''; showNameMsg(pr || NAME_HELP, !!pr); });
+$('name').addEventListener('change', () => {
+  const v = $('name').value.trim();
+  const pr = nameProblem(v);
+  if (pr) { showNameMsg(pr, true); $('name').value = profile.name; return; }
+  profile.name = v; saveProfile(); rebuildAvatar(); showNameMsg('Name gespeichert.', false); beep('equip');
+});
 
 // Shop
 let shopCat = 'hat', shopSel = null;
@@ -1136,7 +1348,7 @@ function renderShop() {
   if (!shopSel) { bar.hidden = true; return; }
   const it = ITEM[shopSel], own = profile.owned.includes(it.id), worn = profile.wear[it.slot] === it.id;
   bar.hidden = false;
-  $('buyName').textContent = it.name;
+  $('buyName').textContent = own ? it.name : 'Anprobe: ' + it.name;
   const btn = $('buyBtn');
   if (own) {
     $('buyInfo').textContent = worn ? 'Hast du gerade an.' : 'Gehört dir schon.';
@@ -1144,7 +1356,7 @@ function renderShop() {
   } else {
     const can = profile.coins >= it.price;
     $('buyInfo').innerHTML = can ? `Kostet <i class="coin"></i> ${it.price}` : `Dir fehlen <i class="coin"></i> ${it.price - profile.coins}. Sammle Münzen im Parcours!`;
-    btn.textContent = 'Kaufen'; btn.disabled = !can; btn.className = 'btn primary';
+    btn.textContent = can ? 'Kaufen' : 'Zu wenig Münzen'; btn.disabled = !can; btn.className = 'btn primary';
   }
 }
 $('buyBtn').onclick = () => {
@@ -1320,9 +1532,10 @@ function updatePlayer(dt) {
     P.vel.y = JUMP; P.jumpBuf = 0; P.coyote = 0; beep('jump');
     if (mode === 'obby' && !game.running && game.time === 0) game.running = true;
   }
-  P.vel.y = Math.max(-45, P.vel.y - GRAV * dt);
+  // Schwerkraft pro Teilschritt, damit die Figur auch im Stehen den Boden spürt (sonst kein Sprung)
   const steps = 2, sdt = dt / steps;
   for (let i = 0; i < steps; i++) {
+    P.vel.y = Math.max(-45, P.vel.y - GRAV * sdt);
     moveAxis('x', P.vel.x * sdt);
     moveAxis('z', P.vel.z * sdt);
     P.onGround = false;
@@ -1395,6 +1608,22 @@ function frame(now) {
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+// Vorschaubilder für die Spiele-Karten
+function previewShot(setup, pos, look) {
+  try {
+    setup();
+    thumbFor(ITEMS[0]);
+    thumbR.setSize(480, 270); thumbCam.aspect = 16 / 9; thumbCam.fov = 55; thumbCam.updateProjectionMatrix();
+    thumbCam.position.set(...pos); thumbCam.lookAt(...look);
+    animateAvatar(0);
+    thumbR.render(scene, thumbCam);
+    return thumbR.domElement.toDataURL('image/jpeg', 0.85);
+  } catch (e) { return ''; }
+  finally { if (thumbR) { thumbR.setSize(160, 160); thumbCam.aspect = 1; thumbCam.fov = 35; thumbCam.updateProjectionMatrix(); } }
+}
+function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
+setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
+setPreview('prevBuild', previewShot(() => { buildSandbox(); P.pos.set(2.5, 0, 6.5); P.facing = Math.PI * 1.1; }, [11, 8, 15], [1, 1.5, -1]));
 showMenu();
 requestAnimationFrame(frame);
 
