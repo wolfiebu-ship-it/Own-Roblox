@@ -1,0 +1,17 @@
+{
+  "name": "Klotzwelt",
+  "short_name": "Klotzwelt",
+  "description": "Blockwelt-Spiel mit eigenem Avatar, Shop, Parcours und Baukasten.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#8fd0f5",
+  "theme_color": "#8fd0f5",
+  "lang": "de",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
