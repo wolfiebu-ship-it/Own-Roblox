@@ -129,6 +129,14 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 #adminBar .btn { padding: 5px 10px; font-size: 14px; background: #ffe9a8; }
 #adminBar .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 #downBtn { position: absolute; right: max(120px, calc(env(safe-area-inset-right, 0px) + 116px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 70px; height: 70px; border-radius: 50%; font-family: var(--display); font-size: 15px; touch-action: none; }
+#hitBtn { position: absolute; right: max(24px, env(safe-area-inset-right, 0px)); bottom: max(180px, calc(env(safe-area-inset-bottom, 0px) + 170px)); width: 84px; height: 84px; border-radius: 50%; font-family: var(--display); font-size: 18px; touch-action: none; background: var(--gold); }
+body.build #hitBtn { bottom: max(240px, calc(env(safe-area-inset-bottom, 0px) + 230px)); }
+.game .lock { grid-column: 1 / -1; margin: 4px 0 0; }
+.mail { border: 3px solid var(--ink); border-radius: 12px; background: #dff3ff; padding: 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+.mail b { font-family: var(--display); font-weight: 400; font-size: 18px; }
+.mail p { margin: 0; grid-column: 1; font-size: 14px; }
+.mail .btn { grid-row: 1 / span 2; grid-column: 2; }
+select.field { appearance: none; -webkit-appearance: none; }
 body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) + 130px)); }
 .adminList { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .adminList li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--soft); font-weight: 800; min-width: 0; overflow-wrap: anywhere; }
@@ -163,6 +171,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     </div>
 
     <div class="tab" id="tab-games">
+      <div id="inbox" class="sect" hidden></div>
       <h2>Was spielst du?</h2>
       <div class="game obby">
         <img class="preview" id="prevObby" alt="Vorschau: Himmelsparcours" hidden>
@@ -219,6 +228,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="stick" hidden><div id="knob"></div></div>
   <button class="btn primary" id="jumpBtn" hidden>Sprung</button>
   <button class="btn" id="downBtn" hidden>Runter</button>
+  <button class="btn" id="hitBtn" hidden>Hau!</button>
   <div id="adminBar" hidden></div>
 </div>
 
@@ -556,9 +566,30 @@ function saveProfile() { store.set('klotzwelt-profil', profile); $('coinCount').
 // Hinweis: Ohne Server liegt alles nur auf diesem Gerät. Der Code-Schutz ist für die Familie gedacht, nicht gegen Profis.
 const adminData = (() => {
   const a = store.get('klotzwelt-admin', {}) || {};
-  return { creatorName: a.creatorName || null, creatorHash: a.creatorHash || null, admins: Array.isArray(a.admins) ? a.admins : [], bans: Array.isArray(a.bans) ? a.bans : [] };
+  return { creatorName: a.creatorName || null, creatorHash: a.creatorHash || null, admins: Array.isArray(a.admins) ? a.admins : [], bans: normBans(a.bans), mail: Array.isArray(a.mail) ? a.mail : [] };
 })();
 function saveAdmin() { store.set('klotzwelt-admin', adminData); }
+// Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten' };
+function normBans(b) {
+  const out = { obby: [], build: [] };
+  if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
+  else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
+  return out;
+}
+function isBanned(game, name) { return !!adminData.bans[game] && adminData.bans[game].some(b => same(b.name, name)); }
+function banFrom(game, name) {
+  if (!isBanned(game, name)) adminData.bans[game].push({ name, by: session.name, at: Date.now() });
+  saveAdmin();
+}
+function unbanFrom(game, i) {
+  const b = adminData.bans[game].splice(i, 1)[0];
+  if (!b) return null;
+  adminData.mail.push({ to: b.name, from: session.name, game, at: Date.now(), read: false,
+    text: `Gute Nachricht! Du darfst wieder in „${GAMES[game]}“ spielen. Viel Spaß und bleib fair!` });
+  saveAdmin();
+  return b.name;
+}
 const sess = {
   get() { try { return JSON.parse(sessionStorage.getItem('klotzwelt-sitzung')) || null; } catch (e) { return null; } },
   set(v) { try { if (v && v.role) sessionStorage.setItem('klotzwelt-sitzung', JSON.stringify(v)); else sessionStorage.removeItem('klotzwelt-sitzung'); } catch (e) {} }
@@ -1246,7 +1277,7 @@ function buildObby() {
   blockKey = EDIT_KEY;
   const edits = store.get(EDIT_KEY, []);
   if (Array.isArray(edits)) for (const [x, y, z, c] of edits) placeBlock(x, y, z, c, true);
-  spawnBots([{ x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: -38, top: 3, r: 3 }, { x: 0, z: -72, top: 3, r: 2.6 }]);
+  spawnBots([{ x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: -38, top: 3, r: 3 }, { x: 0, z: -72, top: 3, r: 2.6 }], 'obby');
   for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.785; addCyl(gx + Math.sin(a) * 2.5, last.top + 1.6, gz + Math.cos(a) * 2.5, 0.25, 1.6, 0xffc83d, 'solid', { rock: false }); }
   obbyStages = 5;
 }
@@ -1293,7 +1324,7 @@ function buildSandbox() {
   const saved = store.get(SAVE_KEY, null);
   for (const [x, y, z, c] of (Array.isArray(saved) ? saved : sampleBuild())) placeBlock(x, y, z, c, true);
   blockKey = SAVE_KEY;
-  spawnBots([{ x: 7, z: 10, top: 0, r: 5 }, { x: -7, z: 12, top: 0, r: 4 }, { x: 0, z: 15, top: 0, r: 4 }]);
+  spawnBots([{ x: 7, z: 10, top: 0, r: 5 }, { x: -7, z: 12, top: 0, r: 4 }, { x: 0, z: 15, top: 0, r: 4 }], 'build');
   setSpawn(0.5, 0, 10);
 }
 const keyOf = (x, y, z) => x + ',' + y + ',' + z;
@@ -1433,11 +1464,11 @@ function botLook(name) {
   const skin = Math.floor(rnd() * 6);
   return { name, body: { head: skin, torso: skin, arms: skin, legs: skin }, wear: { face: pick('face'), hair: pick('hair', 0.85), shirt: pick('shirt'), pants: pick('pants'), shoes: pick('shoes'), hat: pick('hat', 0.4), acc: pick('acc', 0.3), neck: pick('neck', 0.3), back: pick('back', 0.3) } };
 }
-function spawnBots(spots) {
+function spawnBots(spots, game) {
   let i = 0;
   for (const name of BOT_NAMES) {
     if (i >= spots.length) break;
-    if (adminData.bans.some(b => same(b, name))) continue;
+    if (isBanned(game, name)) continue;
     const spot = spots[i++];
     const g = makeAvatar(botLook(name));
     g.position.set(spot.x + (Math.random() - 0.5) * spot.r, spot.top, spot.z + (Math.random() - 0.5) * spot.r);
@@ -1482,18 +1513,39 @@ function syncHammer() {
   else if (!want && u.hammer) { u.armR.remove(u.hammer); u.hammer = null; }
 }
 function hammerAction(cx, cy) {
+  if (dead > 0) return;
   swing = 0.3; beep('bonk');
-  ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
-  raycaster.setFromCamera(ndc, camera); raycaster.far = 60;
-  const hits = raycaster.intersectObjects(bots.map(b => b.g), true);
-  if (!hits.length) return;
-  const bot = bots.find(b => { for (let x = hits[0].object; x; x = x.parent) if (x === b.g) return true; return false; });
-  if (!bot) return;
-  if (bot.g.position.distanceTo(P.pos) > 12) { toast('Zu weit weg!'); return; }
+  const game = mode === 'build' ? 'build' : 'obby';
+  let bot = null;
+  if (cx !== undefined) {
+    // 1. direkt angeklickt
+    ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera); raycaster.far = 80;
+    const hits = raycaster.intersectObjects(bots.map(b => b.g), true);
+    if (hits.length) bot = bots.find(b => { for (let x = hits[0].object; x; x = x.parent) if (x === b.g) return true; return false; }) || null;
+    // 2. knapp daneben geklickt: nächster Bot am Klickpunkt auf dem Bildschirm
+    if (!bot) {
+      let best = isTouch ? 90 : 70;
+      const v = new V3();
+      for (const b of bots) {
+        v.copy(b.g.position); v.y += 1.2; v.project(camera);
+        if (v.z > 1) continue;
+        const d = Math.hypot((v.x + 1) / 2 * innerWidth - cx, (1 - v.y) / 2 * innerHeight - cy);
+        if (d < best) { best = d; bot = b; }
+      }
+    }
+  }
+  // 3. sonst der nächste Bot direkt neben dir
+  if (!bot) {
+    let best = cx === undefined ? 6 : 4.5;
+    for (const b of bots) { const d = b.g.position.distanceTo(P.pos); if (d < best) { best = d; bot = b; } }
+  }
+  if (!bot) { if (cx === undefined) toast('Niemand in der Nähe'); return; }
+  if (bot.g.position.distanceTo(P.pos) > 30) { toast('Zu weit weg!'); return; }
   explode(botLook(bot.name), bot.g.position.clone(), bot.facing, bot.g.userData, new V3());
   world.remove(bot.g); bots.splice(bots.indexOf(bot), 1);
-  if (!adminData.bans.some(b => same(b, bot.name))) adminData.bans.push(bot.name);
-  saveAdmin(); oof(); toast('Gebannt!');
+  banFrom(game, bot.name);
+  oof(); toast(bot.name + ' gebannt!');
 }
 function updateDebris(dt) {
   for (let i = debris.length - 1; i >= 0; i--) if ((debris[i].life -= dt) <= 0) { world.remove(debris[i].o); debris.splice(i, 1); }
@@ -1539,6 +1591,7 @@ addEventListener('keydown', e => {
   if (isAdmin() && (mode === 'obby' || mode === 'build')) {
     if (e.code === 'KeyF') togglePower('fly');
     if (e.code === 'KeyH') togglePower('hammer');
+    if (e.code === 'KeyG' && powers.hammer) hammerAction();
     if (e.code === 'KeyB' && mode === 'obby') togglePower('build');
   }
   if (canBuild()) {
@@ -1601,6 +1654,7 @@ for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   $('downBtn').addEventListener(ev, () => { keys.TouchDown = false; });
 }
 $('downBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchDown = true; });
+$('hitBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (isAdmin() && powers.hammer) hammerAction(); });
 
 // ======================================================================
 // Startseite: Tabs, Avatar-Editor, Shop
@@ -1614,6 +1668,7 @@ function showTab(t) {
   if (t === 'avatar') renderAvatarTab();
   if (t === 'shop') renderShop();
   if (t === 'admin') renderAdminTab();
+  if (t === 'games') renderGames();
   menuZoom = t === 'games' ? 0 : 1;
 }
 for (const b of $('tabs').children) b.onclick = () => showTab(b.dataset.tab);
@@ -1756,7 +1811,7 @@ function renderAdminTab() {
       <div class="label">Deine Kräfte im Spiel</div>
       <ul class="powers">
         <li><b>Fliegen</b> (Taste F): Leertaste hoch, Shift runter. Beim Fliegen kann dir nichts passieren.</li>
-        <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken, um ihn zu bannen.</li>
+        <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder neben ihm G drücken (am Handy „Hau!“). Er wird nur aus diesem Spiel gebannt.</li>
         <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen. Bleibt gespeichert.</li>
       </ul>
       <p class="small">Am Handy erscheinen die Knöpfe oben rechts im Spiel.</p>
@@ -1773,8 +1828,19 @@ function renderAdminTab() {
         ${adminData.admins.map((a, i) => `<li>${esc(a.name)} ${creator ? `<button class="btn" data-remove="${i}">Entfernen</button>` : '<span class="small">Admin</span>'}</li>`).join('')}
       </ul>
       ${creator ? '' : '<p class="small">Nur der Erfinder kann Admins wieder entfernen.</p>'}
-      <div class="label">Gebannte Spieler</div>
-      ${adminData.bans.length ? `<ul class="adminList">${adminData.bans.map((b, i) => `<li>${esc(b)} <button class="btn" data-unban="${i}">Entbannen</button></li>`).join('')}</ul>` : '<p class="small">Noch niemand gebannt.</p>'}
+      <div class="label">Spieler aus einem Spiel bannen</div>
+      <form id="fBan" class="sect">
+        <input id="bName" class="field" placeholder="Name des Spielers" autocomplete="off" aria-label="Name des Spielers">
+        <select id="bGame" class="field" aria-label="Spiel">${Object.entries(GAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+        <p class="small err" id="bMsg"></p>
+        <button class="btn primary" type="submit">Aus diesem Spiel bannen</button>
+      </form>
+      <p class="small">Ein Bann gilt nur für das eine Spiel. Alle anderen Spiele kann der Spieler weiter spielen, sein Konto bleibt.</p>
+      ${Object.entries(GAMES).map(([g, gname]) => `
+        <div class="label">Gebannt aus ${gname}</div>
+        ${adminData.bans[g].length ? `<ul class="adminList">${adminData.bans[g].map((b, i) => `<li>${esc(b.name)} <button class="btn" data-unban="${g}|${i}">Wieder reinholen</button></li>`).join('')}</ul>` : '<p class="small">Niemand gebannt.</p>'}`).join('')}
+      <div class="label">Gesendete Nachrichten</div>
+      ${adminData.mail.length ? `<ul class="adminList">${adminData.mail.slice(-5).reverse().map(m => `<li><span>An ${esc(m.to)}: ${esc(m.text)}</span></li>`).join('')}</ul>` : '<p class="small">Noch keine Nachrichten.</p>'}
       <p class="small">Bis es Mehrspieler gibt, laufen Testspieler (Bots) herum, damit du den Bann-Hammer ausprobieren kannst.</p>
       <div class="row" style="justify-content:flex-start">
         <button class="btn" id="resetEdits">Parcours-Bauten löschen</button>
@@ -1814,7 +1880,21 @@ function renderAdminTab() {
     toast('Admin hinzugefügt!'); beep('buy'); renderAdminTab();
   };
   el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => { if (session.role !== 'creator') return; adminData.admins.splice(+b.dataset.remove, 1); saveAdmin(); renderAdminTab(); });
-  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => { adminData.bans.splice(+b.dataset.unban, 1); saveAdmin(); toast('Entbannt!'); renderAdminTab(); });
+  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => {
+    const [g, i] = b.dataset.unban.split('|');
+    const name = unbanFrom(g, +i);
+    if (name) { toast('Nachricht gesendet'); beep('check'); }
+    renderAdminTab();
+  });
+  const fB = $('fBan');
+  if (fB) fB.onsubmit = e => {
+    e.preventDefault();
+    const n = $('bName').value.trim(), g = $('bGame').value, bm = $('bMsg');
+    if (n.length < 3) { bm.textContent = 'Bitte gib den Namen des Spielers ein.'; return; }
+    if (reservedBy(n)) { bm.textContent = 'Admins und den Erfinder kann man nicht bannen.'; return; }
+    if (isBanned(g, n)) { bm.textContent = n + ' ist dort schon gebannt.'; return; }
+    banFrom(g, n); toast('Gebannt!'); renderAdminTab();
+  };
   const rs = $('resetEdits');
   if (rs) rs.onclick = () => {
     if (!resetArmed) { resetArmed = true; rs.textContent = 'Wirklich löschen?'; setTimeout(() => { resetArmed = false; if (rs.isConnected) rs.textContent = 'Parcours-Bauten löschen'; }, 2500); return; }
@@ -1837,6 +1917,7 @@ function renderAdminBar() {
   const bar = $('adminBar');
   bar.hidden = !isAdmin() || mode === 'menu';
   $('downBtn').hidden = !(isTouch && isAdmin() && powers.fly && mode !== 'menu');
+  $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
   $('jumpBtn').textContent = isAdmin() && powers.fly ? 'Hoch' : 'Sprung';
   if (bar.hidden) return;
   const items = [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
@@ -1847,6 +1928,29 @@ function renderAdminBar() {
     b.textContent = label + (isTouch ? '' : ' (' + key + ')');
     b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
     bar.appendChild(b);
+  }
+}
+
+// ---------- Spiele-Tab: Sperren und Postfach ----------
+function renderGames() {
+  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen']]) {
+    const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name);
+    btn.disabled = banned; btn.textContent = banned ? 'Gesperrt' : label;
+    let note = card.querySelector('.lock');
+    if (!note) { note = document.createElement('p'); note.className = 'small err lock'; card.appendChild(note); }
+    note.hidden = !banned;
+    note.textContent = banned ? `Du wurdest aus „${GAMES[g]}“ gebannt. Alle anderen Spiele kannst du weiter spielen.` : '';
+  }
+  const box = $('inbox');
+  const mine = adminData.mail.filter(m => !m.read && same(m.to, profile.name));
+  box.hidden = !mine.length;
+  if (mine.length) $('tab-games').scrollTop = 0;
+  box.innerHTML = '';
+  for (const m of mine) {
+    const d = document.createElement('div'); d.className = 'mail';
+    d.innerHTML = `<b>Post von Klotzwelt</b><p>${esc(m.text)}</p><button class="btn go">OK</button>`;
+    d.querySelector('button').onclick = () => { m.read = true; saveAdmin(); renderGames(); };
+    box.appendChild(d);
   }
 }
 
@@ -1914,6 +2018,7 @@ function showMenu() {
   showTab(currentTab);
 }
 function enterPlay(m) {
+  if (isBanned(m, profile.name)) { renderGames(); return; }
   mode = m;
   document.body.className = m;
   tryOn = null; rebuildAvatar();
@@ -1941,7 +2046,7 @@ $('playObby').onclick = () => enterPlay('obby');
 $('playBuild').onclick = () => enterPlay('build');
 $('menuBtn').onclick = showMenu;
 $('winMenuBtn').onclick = showMenu;
-$('againBtn').onclick = () => enterPlay('obby');
+$('againBtn').onclick = () => { if (isBanned('obby', profile.name)) return showMenu(); enterPlay('obby'); };
 const soundLabel = () => { $('soundBtn').textContent = soundOn ? 'Ton an' : 'Ton aus'; $('soundBtn').setAttribute('aria-pressed', String(soundOn)); };
 $('soundBtn').onclick = () => { soundOn = !soundOn; store.set('klotzwelt-ton', soundOn); soundLabel(); };
 soundLabel();

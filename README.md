@@ -14,7 +14,8 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 - **Baukasten**: Klötze in 12 Farben setzen und entfernen. Dein Bau wird gespeichert.
 - **Als App auf dem iPhone**: Web-App mit eigenem Symbol und Vollbild, die auch offline läuft.
 
-- **Admins**: Wer zuerst einen Erfinder-Code festlegt, ist der **Erfinder**. Erfinder und Admins können weitere Admins mit eigenem Code hinzufügen, entfernen kann sie nur der Erfinder. Admin-Kräfte: **Fliegen** (F), **Bann-Hammer** (H) und **Bauen im Parcours** (B). Admins haben ein goldenes Namensschild, und ihre Namen sind für andere gesperrt.
+- **Admins**: Wer zuerst einen Erfinder-Code festlegt, ist der **Erfinder**. Erfinder und Admins können weitere Admins mit eigenem Code hinzufügen, entfernen kann sie nur der Erfinder. Admin-Kräfte: **Fliegen** (F), **Bann-Hammer** (H, Treffer per Klick oder G bzw. „Hau!“) und **Bauen im Parcours** (B).
+- **Bann pro Spiel**: Ein Bann sperrt den Spieler nur aus dem einen Spiel, nicht sein ganzes Konto. In der Bannliste holt „Wieder reinholen“ ihn zurück, und er bekommt eine Nachricht im Klotzwelt-Postfach. Admins haben ein goldenes Namensschild, und ihre Namen sind für andere gesperrt.
 - **Testspieler (Bots)** laufen in den Spielen herum, damit man den Bann-Hammer ausprobieren kann. Gebannte Bots kommen erst wieder, wenn ein Admin sie entbannt.
 
 Profil, Münzen, Bauten und Admin-Liste werden im Browser auf dem jeweiligen Gerät gespeichert. Die Codes werden nur als Hash gespeichert. Ohne Server ist dieser Schutz aber für die Familie gedacht und nicht gegen Leute, die sich mit Browser-Technik auskennen. Mit Etappe 2 kommt die Admin-Liste auf den Server.
