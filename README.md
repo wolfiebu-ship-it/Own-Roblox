@@ -6,7 +6,7 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 
 - **Runde Comic-Figuren** mit weichen Kanten und Kontur.
 - **Avatar-Editor**: Name (mit Filter gegen Beleidigungen und unanständige Namen), Körperfarben (Kopf, Torso, Arme, Beine einzeln oder alles auf einmal) und 9 Plätze, die man gleichzeitig tragen kann: Haare, Hut, Gesicht, Brille & Co., Hals, Oberteil, Hose/Rock, Schuhe, Rücken.
-- **Shop**: 85 Sachen in 9 Kategorien. Vor dem Kauf kannst du alles anprobieren. Behalten kannst du nur, was du mit genug Münzen kaufst. Bezahlt wird mit Spielgeld, nicht mit echtem Geld.
+- **Shop**: 82 Sachen in 9 Kategorien. Vor dem Kauf kannst du alles anprobieren. Behalten kannst du nur, was du mit genug Münzen kaufst. Bezahlt wird mit Spielgeld, nicht mit echtem Geld.
 - **Spiele-Karten mit Vorschaubild**.
 - **Münzen verdienen**: Im Himmelsparcours bringt jede Münze 5, das Ziel 25. Zum Start gibt es 150 Münzen.
 - **Himmelsparcours**: Inselsprünge, Lava, bewegliche Plattformen und Wendelturm, mit Checkpoints, Stoppuhr und Bestzeit.
