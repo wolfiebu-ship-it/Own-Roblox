@@ -111,6 +111,8 @@ input { -webkit-user-select: text; user-select: text; }
 #toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.8); font-family: var(--display); font-size: 44px; color: var(--paper); -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
+#banPanel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+#banPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
 #win { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 24px; width: min(340px, calc(100% - 32px)); box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 12px; }
 #win h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; color: var(--gold); -webkit-text-stroke: 1.5px var(--ink); text-shadow: 3px 3px 0 var(--ink); }
 #win dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; text-align: left; font-variant-numeric: tabular-nums; }
@@ -233,6 +235,13 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 </div>
 
 <div id="toast"></div>
+
+<div id="banPanel" class="panel" hidden role="dialog" aria-labelledby="banTitle">
+  <h2 id="banTitle">Gebannte</h2>
+  <p class="small" id="banInfo"></p>
+  <ul class="adminList" id="banList"></ul>
+  <button class="btn" id="banClose">Schließen</button>
+</div>
 
 <div id="win" class="panel" hidden>
   <h2>Geschafft!</h2>
@@ -1464,16 +1473,20 @@ function botLook(name) {
   const skin = Math.floor(rnd() * 6);
   return { name, body: { head: skin, torso: skin, arms: skin, legs: skin }, wear: { face: pick('face'), hair: pick('hair', 0.85), shirt: pick('shirt'), pants: pick('pants'), shoes: pick('shoes'), hat: pick('hat', 0.4), acc: pick('acc', 0.3), neck: pick('neck', 0.3), back: pick('back', 0.3) } };
 }
+let botSpots = [];
+function addBot(name, spot) {
+  const g = makeAvatar(botLook(name));
+  g.position.set(spot.x + (Math.random() - 0.5) * spot.r, spot.top, spot.z + (Math.random() - 0.5) * spot.r);
+  world.add(g);
+  bots.push({ g, name, spot, target: null, wait: Math.random() * 2, facing: Math.random() * 6, walk: 0 });
+}
 function spawnBots(spots, game) {
+  botSpots = spots;
   let i = 0;
   for (const name of BOT_NAMES) {
     if (i >= spots.length) break;
     if (isBanned(game, name)) continue;
-    const spot = spots[i++];
-    const g = makeAvatar(botLook(name));
-    g.position.set(spot.x + (Math.random() - 0.5) * spot.r, spot.top, spot.z + (Math.random() - 0.5) * spot.r);
-    world.add(g);
-    bots.push({ g, name, spot, target: null, wait: Math.random() * 2, facing: Math.random() * 6, walk: 0 });
+    addBot(name, spots[i++]);
   }
 }
 function updateBots(dt) {
@@ -1545,7 +1558,7 @@ function hammerAction(cx, cy) {
   explode(botLook(bot.name), bot.g.position.clone(), bot.facing, bot.g.userData, new V3());
   world.remove(bot.g); bots.splice(bots.indexOf(bot), 1);
   banFrom(game, bot.name);
-  oof(); toast(bot.name + ' gebannt!');
+  oof(); toast(bot.name + ' gebannt!'); renderAdminBar();
 }
 function updateDebris(dt) {
   for (let i = debris.length - 1; i >= 0; i--) if ((debris[i].life -= dt) <= 0) { world.remove(debris[i].o); debris.splice(i, 1); }
@@ -1592,6 +1605,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyF') togglePower('fly');
     if (e.code === 'KeyH') togglePower('hammer');
     if (e.code === 'KeyG' && powers.hammer) hammerAction();
+    if (e.code === 'KeyL') { if ($('banPanel').hidden) openBanPanel(); else $('banPanel').hidden = true; }
     if (e.code === 'KeyB' && mode === 'obby') togglePower('build');
   }
   if (canBuild()) {
@@ -1929,7 +1943,38 @@ function renderAdminBar() {
     b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
     bar.appendChild(b);
   }
+  const g = currentGame(), n = adminData.bans[g].length;
+  const lb = document.createElement('button'); lb.className = 'btn';
+  lb.textContent = 'Gebannte (' + n + ')' + (isTouch ? '' : ' (L)');
+  lb.onclick = openBanPanel;
+  bar.appendChild(lb);
 }
+// Im Spiel: Bannliste nur für das Spiel, in dem man gerade ist
+const currentGame = () => mode === 'build' ? 'build' : 'obby';
+function openBanPanel() {
+  if (!isAdmin()) return;
+  const g = currentGame(), list = adminData.bans[g];
+  $('banTitle').textContent = 'Gebannt aus ' + GAMES[g];
+  $('banInfo').textContent = list.length ? 'Wer zurückgeholt wird, darf sofort wieder mitspielen und bekommt eine Nachricht ins Postfach.' : 'Aus diesem Spiel ist niemand gebannt.';
+  const ul = $('banList'); ul.innerHTML = '';
+  list.forEach((b, i) => {
+    const li = document.createElement('li');
+    const nm = document.createElement('span'); nm.textContent = b.name; li.appendChild(nm);
+    const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = 'Wieder reinholen';
+    btn.onclick = () => {
+      const name = unbanFrom(g, i);
+      if (!name) return;
+      const bot = BOT_NAMES.find(x => same(x, name));
+      if (bot && botSpots.length && !bots.some(x => same(x.name, bot))) { addBot(bot, botSpots[0]); confetti(bots[bots.length - 1].g.position.clone().add(new V3(0, 2, 0))); }
+      beep('check'); toast(name + ' ist zurück!');
+      openBanPanel(); renderAdminBar();
+    };
+    li.appendChild(btn); ul.appendChild(li);
+  });
+  ul.hidden = !list.length;
+  $('banPanel').hidden = false;
+}
+$('banClose').onclick = () => { $('banPanel').hidden = true; };
 
 // ---------- Spiele-Tab: Sperren und Postfach ----------
 function renderGames() {
@@ -2009,7 +2054,7 @@ function showMenu() {
   mode = 'menu';
   document.body.className = '';
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
-  renderAdminBar(); syncHammer();
+  renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
   ghost.visible = false;
   buildStage();
   P.pos.copy(P.spawn); P.vel.set(0, 0, 0); P.facing = 0;
@@ -2036,10 +2081,10 @@ function enterPlay(m) {
     buildToolbar();
     $('hint').textContent = isTouch ? 'Tippen setzt einen Klotz · Werkzeug unten wechseln · Ziehen dreht die Kamera' : 'Klick setzt · Rechtsklick oder Shift+Klick entfernt · 1–0 Farbe · R Werkzeug';
   }
-  if (isAdmin() && !isTouch) $('hint').textContent += ' · F Fliegen · H Hammer' + (m === 'obby' ? ' · B Bauen' : '');
+  if (isAdmin() && !isTouch) $('hint').textContent += ' · F Fliegen · H Hammer · L Gebannte' + (m === 'obby' ? ' · B Bauen' : '');
   $('toolbar').hidden = !canBuild();
   if (m === 'obby' && canBuild()) buildToolbar();
-  renderAdminBar(); syncHammer();
+  renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
   renderStats();
 }
 $('playObby').onclick = () => enterPlay('obby');
