@@ -54,8 +54,8 @@ input { -webkit-user-select: text; user-select: text; }
 .wallet { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 5px 14px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); font-variant-numeric: tabular-nums; display: flex; gap: 8px; align-items: center; font-size: 18px; }
 .wallet b { font-family: var(--display); font-weight: 400; font-size: 22px; }
 #sheet { position: fixed; top: max(76px, calc(env(safe-area-inset-top, 0px) + 64px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); width: 440px; max-width: calc(100% - 32px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
-#tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px; border-bottom: 3px solid var(--ink); background: var(--soft); }
-#tabs button { border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 8px 4px; font-family: var(--display); font-size: 18px; }
+#tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; border-bottom: 3px solid var(--ink); background: var(--soft); }
+#tabs button { border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 8px 2px; font-family: var(--display); font-size: 16px; }
 #tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .tab { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; min-height: 0; }
 .tab h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; }
@@ -93,7 +93,7 @@ input { -webkit-user-select: text; user-select: text; }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .sw { width: 34px; height: 34px; border-radius: 8px; border: 3px solid var(--ink); padding: 0; }
 .sw[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
-#name { border: 3px solid var(--ink); border-radius: 10px; padding: 8px 10px; font: inherit; font-weight: 800; background: var(--paper); color: var(--ink); width: 100%; box-sizing: border-box; }
+#name, .field { border: 3px solid var(--ink); border-radius: 10px; padding: 8px 10px; font: inherit; font-weight: 800; background: var(--paper); color: var(--ink); width: 100%; box-sizing: border-box; }
 
 /* HUD */
 #hud { position: fixed; inset: 0; pointer-events: none; }
@@ -125,6 +125,16 @@ input { -webkit-user-select: text; user-select: text; }
 body.build #stick { bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 120px)); }
 body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) + 130px)); }
 
+#adminBar { position: absolute; top: max(66px, calc(env(safe-area-inset-top, 0px) + 56px)); right: max(14px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 28px); }
+#adminBar .btn { padding: 5px 10px; font-size: 14px; background: #ffe9a8; }
+#adminBar .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+#downBtn { position: absolute; right: max(120px, calc(env(safe-area-inset-right, 0px) + 116px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 70px; height: 70px; border-radius: 50%; font-family: var(--display); font-size: 15px; touch-action: none; }
+body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) + 130px)); }
+.adminList { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.adminList li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--soft); font-weight: 800; min-width: 0; overflow-wrap: anywhere; }
+.adminList .btn { padding: 3px 10px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); flex-shrink: 0; }
+.badge { display: inline-block; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-weight: 800; }
+.powers { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 @media (max-width: 720px) {
   .brand { font-size: 28px; }
   #sheet { top: auto; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); bottom: max(10px, env(safe-area-inset-bottom, 0px)); width: auto; max-width: none; height: 56%; }
@@ -149,6 +159,7 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
       <button role="tab" data-tab="games" aria-selected="true">Spiele</button>
       <button role="tab" data-tab="avatar" aria-selected="false">Avatar</button>
       <button role="tab" data-tab="shop" aria-selected="false">Shop</button>
+      <button role="tab" data-tab="admin" aria-selected="false">Admin</button>
     </div>
 
     <div class="tab" id="tab-games">
@@ -193,6 +204,7 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
         <button class="btn primary" id="buyBtn">Kaufen</button>
       </div>
     </div>
+    <div class="tab" id="tab-admin" hidden></div>
   </section>
 </div>
 
@@ -206,6 +218,8 @@ body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="hint"></div>
   <div id="stick" hidden><div id="knob"></div></div>
   <button class="btn primary" id="jumpBtn" hidden>Sprung</button>
+  <button class="btn" id="downBtn" hidden>Runter</button>
+  <div id="adminBar" hidden></div>
 </div>
 
 <div id="toast"></div>
@@ -367,6 +381,7 @@ function beep(kind) {
       check: [[523, 'triangle', 0.08], [659, 'triangle', 0.08], [784, 'triangle', 0.16]],
       place: [[180, 'square', 0.04]],
       remove: [[120, 'square', 0.05]],
+      bonk: [[180, 'square', 0.05], [90, 'square', 0.12]],
       buy: [[660, 'triangle', 0.08], [880, 'triangle', 0.08], [1320, 'triangle', 0.2]],
       equip: [[520, 'triangle', 0.06]],
       win: [[523, 'triangle', 0.1], [659, 'triangle', 0.1], [784, 'triangle', 0.1], [1046, 'triangle', 0.3]]
@@ -536,6 +551,40 @@ const profile = (() => {
   return np;
 })();
 function saveProfile() { store.set('klotzwelt-profil', profile); $('coinCount').textContent = profile.coins; }
+
+// ---------- Admins ----------
+// Hinweis: Ohne Server liegt alles nur auf diesem Gerät. Der Code-Schutz ist für die Familie gedacht, nicht gegen Profis.
+const adminData = (() => {
+  const a = store.get('klotzwelt-admin', {}) || {};
+  return { creatorName: a.creatorName || null, creatorHash: a.creatorHash || null, admins: Array.isArray(a.admins) ? a.admins : [], bans: Array.isArray(a.bans) ? a.bans : [] };
+})();
+function saveAdmin() { store.set('klotzwelt-admin', adminData); }
+const sess = {
+  get() { try { return JSON.parse(sessionStorage.getItem('klotzwelt-sitzung')) || null; } catch (e) { return null; } },
+  set(v) { try { if (v && v.role) sessionStorage.setItem('klotzwelt-sitzung', JSON.stringify(v)); else sessionStorage.removeItem('klotzwelt-sitzung'); } catch (e) {} }
+};
+let session = sess.get() || { role: null, name: null };
+if (session.role === 'admin' && !adminData.admins.some(a => a.name === session.name)) session = { role: null, name: null };
+if (session.role === 'creator' && adminData.creatorName !== session.name) session = { role: null, name: null };
+const isAdmin = () => !!session.role;
+const powers = { fly: false, hammer: false, build: false };
+let swing = 0;
+const same = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+function reservedBy(name) {
+  if (adminData.creatorName && same(adminData.creatorName, name)) return 'creator';
+  if (adminData.admins.some(a => same(a.name, name))) return 'admin';
+  return null;
+}
+async function hashCode(code) {
+  const txt = 'klotzwelt:' + code;
+  try {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    let h = 5381; for (const ch of txt) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+    return 'd' + h.toString(16);
+  }
+}
 
 // ---------- Texturen für Gesicht, Shirt, Hose ----------
 const texCache = new Map();
@@ -880,7 +929,7 @@ function makeAvatar(lk, opts = {}) {
   if (lk.wear.hat && ITEM[lk.wear.hat]) { const hg = buildHat(ITEM[lk.wear.hat]); if (hair) hg.position.y += 0.07; g.add(hg); }
   let back = null;
   if (lk.wear.back && ITEM[lk.wear.back]) { back = buildBack(ITEM[lk.wear.back]); g.add(back); }
-  if (opts.tag !== false) g.add(nameTag(lk.name || 'Klotzi'));
+  if (opts.tag !== false) g.add(nameTag(lk.name || 'Klotzi', lk.badge));
   g.userData = { legL, legR, armL, armR, back };
   return g;
 }
@@ -944,14 +993,15 @@ function buildShoe(item, add, piv) {
   if (item.shoe === 'boot') { add(roundedBox(0.44, 0.36, 0.48, 0.09), c, 0, -0.64, 0.03, piv); add(roundedBox(0.46, 0.07, 0.5, 0.03), sole, 0, -0.8, 0.03, piv); }
   else { add(roundedBox(0.43, 0.16, 0.52, 0.07), c, 0, -0.73, 0.05, piv); add(roundedBox(0.45, 0.06, 0.54, 0.03), sole, 0, -0.8, 0.05, piv); }
 }
-function nameTag(text) {
+function nameTag(text, badge) {
+  if (badge) text = '★ ' + text;
   const c = document.createElement('canvas'); c.width = 256; c.height = 64;
   const g = c.getContext('2d');
   g.font = '800 34px Nunito, system-ui, sans-serif';
   const w = Math.min(240, g.measureText(text).width + 28);
-  g.fillStyle = 'rgba(29,42,68,0.75)';
+  g.fillStyle = badge ? 'rgba(255,200,61,0.95)' : 'rgba(29,42,68,0.75)';
   rrect(g, 128 - w / 2, 8, w, 48, 14);
-  g.fillStyle = '#fffdf6'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 33);
+  g.fillStyle = badge ? '#1d2a44' : '#fffdf6'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 33);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
   sp.scale.set(2.4, 0.6, 1); sp.position.y = 2.85;
   return sp;
@@ -960,14 +1010,16 @@ function nameTag(text) {
 // Anprobieren im Shop
 let tryOn = null;
 function currentLook() {
-  const lk = { name: profile.name, body: profile.body, wear: Object.assign({}, profile.wear) };
+  const lk = { name: profile.name, body: profile.body, wear: Object.assign({}, profile.wear), badge: session.role };
   if (tryOn) lk.wear[tryOn.slot] = tryOn.id;
   return lk;
 }
 let avatar = makeAvatar(currentLook()); scene.add(avatar);
 function rebuildAvatar() {
   const p = avatar.position.clone(), r = avatar.rotation.y;
-  scene.remove(avatar); avatar = makeAvatar(currentLook()); avatar.position.copy(p); avatar.rotation.y = r; scene.add(avatar);
+  const vis = avatar.visible;
+  scene.remove(avatar); avatar = makeAvatar(currentLook()); avatar.position.copy(p); avatar.rotation.y = r; avatar.visible = vis; scene.add(avatar);
+  syncHammer();
 }
 
 // ---------- Vorschaubilder für Shop und Inventar ----------
@@ -1010,7 +1062,7 @@ function clearWorld() {
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   solids = []; coins = []; movers = []; pads = []; particles = [];
-  spinners = []; fades = []; discs = []; bouncers = []; debris = []; dead = 0;
+  spinners = []; fades = []; discs = []; bouncers = []; debris = []; dead = 0; bots = []; blocks = new Map();
   if (avatar) avatar.visible = true;
 }
 function updateBox(s) {
@@ -1191,6 +1243,10 @@ function buildObby() {
   const gx = last.x + Math.sin(last.a) * 5, gz = last.z + Math.cos(last.a) * 5;
   addCyl(gx, last.top, gz, 3, 1, 0xffd23f);
   addPad(gx, last.top, gz, 'goal', 5);
+  blockKey = EDIT_KEY;
+  const edits = store.get(EDIT_KEY, []);
+  if (Array.isArray(edits)) for (const [x, y, z, c] of edits) placeBlock(x, y, z, c, true);
+  spawnBots([{ x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: 0, top: 0, r: 6 }, { x: 0, z: -38, top: 3, r: 3 }, { x: 0, z: -72, top: 3, r: 2.6 }]);
   for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.785; addCyl(gx + Math.sin(a) * 2.5, last.top + 1.6, gz + Math.cos(a) * 2.5, 0.25, 1.6, 0xffc83d, 'solid', { rock: false }); }
   obbyStages = 5;
 }
@@ -1209,7 +1265,8 @@ function buildStage() {
 // ---------- Baukasten ----------
 const PALETTE = [0xe2453c, 0xff8a2b, 0xffd23f, 0x3fb55e, 0x23824a, 0x3b7de0, 0x6fd0f0, 0x8b5cd6, 0xf4f4f0, 0x8a8f99, 0x8b5a2b, 0x2a2d34];
 const PALETTE_NAMES = ['Rot', 'Orange', 'Gelb', 'Grün', 'Dunkelgrün', 'Blau', 'Hellblau', 'Lila', 'Weiß', 'Grau', 'Braun', 'Schwarz'];
-const SAVE_KEY = 'klotzwelt-bau';
+const SAVE_KEY = 'klotzwelt-bau', EDIT_KEY = 'klotzwelt-edits-obby';
+let blockKey = SAVE_KEY;
 let blocks = new Map(), ground = null, buildColor = 0, tool = 'place';
 const HALF = 32;
 function sampleBuild() {
@@ -1235,12 +1292,14 @@ function buildSandbox() {
   ground = addBox(0, -0.5, 0, HALF * 2, 1, HALF * 2, 0x5cb85c);
   const saved = store.get(SAVE_KEY, null);
   for (const [x, y, z, c] of (Array.isArray(saved) ? saved : sampleBuild())) placeBlock(x, y, z, c, true);
+  blockKey = SAVE_KEY;
+  spawnBots([{ x: 7, z: 10, top: 0, r: 5 }, { x: -7, z: 12, top: 0, r: 4 }, { x: 0, z: 15, top: 0, r: 4 }]);
   setSpawn(0.5, 0, 10);
 }
 const keyOf = (x, y, z) => x + ',' + y + ',' + z;
 function placeBlock(x, y, z, c, silent) {
   const k = keyOf(x, y, z);
-  if (blocks.has(k) || y < 0 || y > 60 || Math.abs(x + 0.5) > HALF || Math.abs(z + 0.5) > HALF) return false;
+  if (blocks.has(k) || y > 80 || y < -20 || (blockKey === SAVE_KEY && (y < 0 || Math.abs(x + 0.5) > HALF || Math.abs(z + 0.5) > HALF))) return false;
   const s = addBox(x + 0.5, y + 0.5, z + 0.5, 1, 1, 1, PALETTE[c]);
   s.cell = [x, y, z, c];
   blocks.set(k, s);
@@ -1253,7 +1312,8 @@ function removeBlock(s) {
   blocks.delete(keyOf(s.cell[0], s.cell[1], s.cell[2]));
   saveBuild();
 }
-function saveBuild() { store.set(SAVE_KEY, [...blocks.values()].map(s => s.cell)); }
+function saveBuild() { store.set(blockKey, [...blocks.values()].map(s => s.cell)); }
+const canBuild = () => mode === 'build' || (mode === 'obby' && isAdmin() && powers.build);
 
 const ghost = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
 ghost.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.04, 1.04, 1.04)), new THREE.LineBasicMaterial({ color: 0x1d2a44 })));
@@ -1264,7 +1324,7 @@ function pickTarget(clientX, clientY) {
   ndc.set(clientX / innerWidth * 2 - 1, -(clientY / innerHeight) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   raycaster.far = 60;
-  const meshes = [ground.mesh, ...[...blocks.values()].map(s => s.mesh)];
+  const meshes = solids.filter(s => !s.off).map(s => s.mesh);
   const hit = raycaster.intersectObjects(meshes, false)[0];
   if (!hit) return null;
   const s = hit.object.userData.solid;
@@ -1338,28 +1398,105 @@ function respawn(silent) {
   P.pos.copy(P.spawn); P.vel.set(0, 0, 0); P.facing = Math.PI; P.ground = null;
   cam.yaw = 0; camTarget.copy(P.pos).add(new V3(0, 1.6, 0));
 }
-// Tod: Figur zerfällt in ihre Teile, die durch die Gegend fliegen; danach Neustart am Checkpoint
-function die() {
-  if (dead > 0 || mode === 'win' || mode === 'menu') return;
-  dead = 1.8; game.deaths++; oof(); toast('Uff!');
-  avatar.visible = false;
-  const parts = makeAvatar(currentLook(), { tag: false });
-  parts.position.copy(P.pos); parts.rotation.y = P.facing;
-  const u = avatar.userData, pu = parts.userData;
-  for (const k of ['legL', 'legR', 'armL', 'armR']) pu[k].rotation.copy(u[k].rotation);
+// Zerfallen: Avatar in seine Teile zerlegen, die durch die Gegend fliegen
+function explode(look, pos, facing, pose, vel) {
+  const parts = makeAvatar(look, { tag: false });
+  parts.position.copy(pos); parts.rotation.y = facing;
+  for (const k of ['legL', 'legR', 'armL', 'armR']) if (pose && pose[k]) parts.userData[k].rotation.copy(pose[k].rotation);
   parts.updateMatrixWorld(true);
   const box = new THREE.Box3(), c = new V3();
   for (const ch of [...parts.children]) {
     box.setFromObject(ch); if (box.isEmpty()) continue; box.getCenter(c);
     const holder = new THREE.Group(); holder.position.copy(c); world.add(holder); holder.updateMatrixWorld(true); holder.attach(ch);
-    const out = new V3(c.x - P.pos.x, 0, c.z - P.pos.z);
+    const out = new V3(c.x - pos.x, 0, c.z - pos.z);
     if (out.lengthSq() < 1e-4) out.set(Math.random() - 0.5, 0, Math.random() - 0.5);
     out.normalize();
     const sp = 3 + Math.random() * 4;
-    debris.push({ o: holder, v: new V3(out.x * sp + P.vel.x * 0.4, 5 + Math.random() * 5, out.z * sp + P.vel.z * 0.4), w: new V3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12) });
+    debris.push({ o: holder, life: 1.75, v: new V3(out.x * sp + vel.x * 0.4, 5 + Math.random() * 5, out.z * sp + vel.z * 0.4), w: new V3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12) });
   }
 }
+// Tod: Figur zerfällt, danach Neustart am Checkpoint
+function die() {
+  if (dead > 0 || mode === 'win' || mode === 'menu') return;
+  dead = 1.8; game.deaths++; oof(); toast('Uff!');
+  avatar.visible = false;
+  explode(currentLook(), P.pos, P.facing, avatar.userData, P.vel);
+}
+
+// Testspieler (Bots), bis es echte Mitspieler gibt
+const BOT_NAMES = ['Blocki', 'Pixelpaul', 'Lina_Lila', 'Turbo_Tom', 'Sternchen', 'Kekskruemel', 'Huepfmaus', 'Brummbaer'];
+let bots = [];
+function botLook(name) {
+  let sd = 7; for (const ch of name) sd = (sd * 31 + ch.charCodeAt(0)) % 233280;
+  const rnd = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
+  const pick = (slot, chance = 1) => { const list = ITEMS.filter(it => it.slot === slot); const r = rnd(); return r < chance ? list[Math.floor(rnd() * list.length)].id : null; };
+  const skin = Math.floor(rnd() * 6);
+  return { name, body: { head: skin, torso: skin, arms: skin, legs: skin }, wear: { face: pick('face'), hair: pick('hair', 0.85), shirt: pick('shirt'), pants: pick('pants'), shoes: pick('shoes'), hat: pick('hat', 0.4), acc: pick('acc', 0.3), neck: pick('neck', 0.3), back: pick('back', 0.3) } };
+}
+function spawnBots(spots) {
+  let i = 0;
+  for (const name of BOT_NAMES) {
+    if (i >= spots.length) break;
+    if (adminData.bans.some(b => same(b, name))) continue;
+    const spot = spots[i++];
+    const g = makeAvatar(botLook(name));
+    g.position.set(spot.x + (Math.random() - 0.5) * spot.r, spot.top, spot.z + (Math.random() - 0.5) * spot.r);
+    world.add(g);
+    bots.push({ g, name, spot, target: null, wait: Math.random() * 2, facing: Math.random() * 6, walk: 0 });
+  }
+}
+function updateBots(dt) {
+  for (const b of bots) {
+    const p = b.g.position, u = b.g.userData;
+    let moving = false;
+    if (b.target) {
+      const dx = b.target.x - p.x, dz = b.target.z - p.z, d = Math.hypot(dx, dz);
+      if (d > 0.3) { p.x += dx / d * 3 * dt; p.z += dz / d * 3 * dt; b.facing = Math.atan2(dx, dz); b.walk += dt * 8; moving = true; }
+      else b.target = null;
+    } else if ((b.wait -= dt) <= 0) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * (b.spot.r - 0.8);
+      b.target = { x: b.spot.x + Math.cos(a) * r, z: b.spot.z + Math.sin(a) * r }; b.wait = 0.5 + Math.random() * 2.5;
+    }
+    b.g.rotation.y = b.facing;
+    const sw = moving ? Math.sin(b.walk) * 0.7 : 0;
+    u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw; u.armR.rotation.x = sw;
+  }
+}
+// Bann-Hammer
+function hammerMesh() {
+  const g = new THREE.Group();
+  const add = (geo, m, x, y, z) => {
+    const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = true;
+    const [w, h, d] = geo.userData.dims; const o = new THREE.Mesh(geo, outlineMat); o.scale.set((w + 0.045) / w, (h + 0.045) / h, (d + 0.045) / d); me.add(o);
+    g.add(me); return me;
+  };
+  add(roundedBox(0.1, 0.1, 0.9, 0.04), tc(0x8b5a2b), 0, -0.72, 0.4);
+  add(roundedBox(0.34, 0.62, 0.34, 0.1), tc(0xe2453c), 0, -0.72, 0.88);
+  for (const dy of [-0.2, 0.2]) add(roundedBox(0.37, 0.07, 0.37, 0.03), tc(0xffc83d), 0, -0.72 + dy, 0.88);
+  return g;
+}
+function syncHammer() {
+  const u = avatar.userData;
+  const want = isAdmin() && powers.hammer && (mode === 'obby' || mode === 'build');
+  if (want && !u.hammer) { u.hammer = hammerMesh(); u.armR.add(u.hammer); }
+  else if (!want && u.hammer) { u.armR.remove(u.hammer); u.hammer = null; }
+}
+function hammerAction(cx, cy) {
+  swing = 0.3; beep('bonk');
+  ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera); raycaster.far = 60;
+  const hits = raycaster.intersectObjects(bots.map(b => b.g), true);
+  if (!hits.length) return;
+  const bot = bots.find(b => { for (let x = hits[0].object; x; x = x.parent) if (x === b.g) return true; return false; });
+  if (!bot) return;
+  if (bot.g.position.distanceTo(P.pos) > 12) { toast('Zu weit weg!'); return; }
+  explode(botLook(bot.name), bot.g.position.clone(), bot.facing, bot.g.userData, new V3());
+  world.remove(bot.g); bots.splice(bots.indexOf(bot), 1);
+  if (!adminData.bans.some(b => same(b, bot.name))) adminData.bans.push(bot.name);
+  saveAdmin(); oof(); toast('Gebannt!');
+}
 function updateDebris(dt) {
+  for (let i = debris.length - 1; i >= 0; i--) if ((debris[i].life -= dt) <= 0) { world.remove(debris[i].o); debris.splice(i, 1); }
   for (const d of debris) {
     d.v.y -= 30 * dt;
     const p = d.o.position;
@@ -1399,7 +1536,12 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Space') { jumpPressed = true; e.preventDefault(); }
   if (e.code.startsWith('Arrow')) e.preventDefault();
-  if (mode === 'build') {
+  if (isAdmin() && (mode === 'obby' || mode === 'build')) {
+    if (e.code === 'KeyF') togglePower('fly');
+    if (e.code === 'KeyH') togglePower('hammer');
+    if (e.code === 'KeyB' && mode === 'obby') togglePower('build');
+  }
+  if (canBuild()) {
     const n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Digit5: 4, Digit6: 5, Digit7: 6, Digit8: 7, Digit9: 8, Digit0: 9, Minus: 10, Equal: 11 }[e.code];
     if (n !== undefined) setColor(n);
     if (e.code === 'KeyR') setTool(tool === 'place' ? 'remove' : 'place');
@@ -1431,7 +1573,9 @@ cv.addEventListener('pointermove', e => {
 function endDrag(e) {
   const d = drags.get(e.pointerId);
   drags.delete(e.pointerId);
-  if (d && !d.moved && mode === 'build' && e.type === 'pointerup') buildAction(e.clientX, e.clientY, d.button === 2 || e.shiftKey);
+  if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
+  if (isAdmin() && powers.hammer) { hammerAction(e.clientX, e.clientY); return; }
+  if (canBuild()) buildAction(e.clientX, e.clientY, d.button === 2 || e.shiftKey);
 }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
@@ -1451,7 +1595,12 @@ function moveStick(e) {
   joy.x = dx / max; joy.y = dy / max;
   knob.style.transform = `translate(${dx}px, ${dy}px)`;
 }
-$('jumpBtn').addEventListener('pointerdown', e => { e.preventDefault(); jumpPressed = true; });
+$('jumpBtn').addEventListener('pointerdown', e => { e.preventDefault(); jumpPressed = true; keys.TouchUp = true; });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  $('jumpBtn').addEventListener(ev, () => { keys.TouchUp = false; });
+  $('downBtn').addEventListener(ev, () => { keys.TouchDown = false; });
+}
+$('downBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchDown = true; });
 
 // ======================================================================
 // Startseite: Tabs, Avatar-Editor, Shop
@@ -1460,10 +1609,11 @@ let currentTab = 'games', menuZoom = 0, menuZoomCur = 0;
 function showTab(t) {
   currentTab = t;
   for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b.dataset.tab === t));
-  for (const id of ['games', 'avatar', 'shop']) $('tab-' + id).hidden = id !== t;
+  for (const id of ['games', 'avatar', 'shop', 'admin']) $('tab-' + id).hidden = id !== t;
   if (t !== 'shop' && tryOn) { tryOn = null; rebuildAvatar(); }
   if (t === 'avatar') renderAvatarTab();
   if (t === 'shop') renderShop();
+  if (t === 'admin') renderAdminTab();
   menuZoom = t === 'games' ? 0 : 1;
 }
 for (const b of $('tabs').children) b.onclick = () => showTab(b.dataset.tab);
@@ -1498,6 +1648,8 @@ function renderAvatarTab() {
   $('avatarBody').hidden = avatarCat !== 'body';
   if (avatarCat === 'body') {
     $('name').value = profile.name;
+    $('name').disabled = isAdmin();
+    if (isAdmin()) showNameMsg('Als Admin heißt du wie dein Admin-Konto. Zum Ändern erst abmelden.', false);
     chipRow($('bodyParts'), PARTS, bodyPart, p => { bodyPart = p; renderAvatarTab(); });
     const sw = $('bodySwatches'); sw.innerHTML = '';
     const cur = bodyPart === 'all' ? profile.body.head : profile.body[bodyPart];
@@ -1527,7 +1679,7 @@ function showNameMsg(text, bad) { const m = $('nameMsg'); m.textContent = text; 
 $('name').addEventListener('input', () => { const v = $('name').value; const pr = v.trim().length >= 3 ? nameProblem(v) : ''; showNameMsg(pr || NAME_HELP, !!pr); });
 $('name').addEventListener('change', () => {
   const v = $('name').value.trim();
-  const pr = nameProblem(v);
+  const pr = nameProblem(v) || (reservedBy(v) ? 'Dieser Name gehört einem Admin.' : '');
   if (pr) { showNameMsg(pr, true); $('name').value = profile.name; return; }
   profile.name = v; saveProfile(); rebuildAvatar(); showNameMsg('Name gespeichert.', false); beep('equip');
 });
@@ -1569,16 +1721,146 @@ $('buyBtn').onclick = () => {
   saveProfile(); rebuildAvatar(); renderShop();
 };
 
+// ---------- Admin-Bereich ----------
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+let resetArmed = false;
+function setSession(role, name) {
+  session = { role, name }; sess.set(session);
+  if (!role) { powers.fly = powers.hammer = powers.build = false; }
+  else { profile.name = name; saveProfile(); }
+  rebuildAvatar(); renderAdminTab();
+}
+function renderAdminTab() {
+  const el = $('tab-admin');
+  let h = '<h2>Admin</h2>';
+  if (!adminData.creatorHash) {
+    h += `<p class="small">Bist du der Erfinder von Klotzwelt? Lege einmalig deinen geheimen Erfinder-Code fest. Danach können nur noch du und deine Admins andere zu Admins machen.</p>
+      <form id="fCreator" class="sect">
+        <div class="label">Dein Name</div><div><span class="badge">${esc(profile.name)}</span></div>
+        <label class="label" for="cCode">Erfinder-Code (mindestens 4 Zeichen)</label><input id="cCode" class="field" type="password" autocomplete="new-password">
+        <label class="label" for="cCode2">Code wiederholen</label><input id="cCode2" class="field" type="password" autocomplete="new-password">
+        <p class="small err" id="aMsg"></p>
+        <button class="btn primary" type="submit">Erfinder werden</button>
+      </form>`;
+  } else if (!isAdmin()) {
+    h += `<p class="small">Hier melden sich der Erfinder und die Admins an. Admins können fliegen, in allen Spielen bauen und haben den Bann-Hammer.</p>
+      <form id="fLogin" class="sect">
+        <label class="label" for="lName">Name</label><input id="lName" class="field" autocomplete="username" value="${esc(profile.name)}">
+        <label class="label" for="lCode">Code</label><input id="lCode" class="field" type="password" autocomplete="current-password">
+        <p class="small err" id="aMsg"></p>
+        <button class="btn primary" type="submit">Anmelden</button>
+      </form>`;
+  } else {
+    const creator = session.role === 'creator';
+    h += `<p><span class="badge">★ ${creator ? 'Erfinder' : 'Admin'}: ${esc(session.name)}</span></p>
+      <div class="label">Deine Kräfte im Spiel</div>
+      <ul class="powers">
+        <li><b>Fliegen</b> (Taste F): Leertaste hoch, Shift runter. Beim Fliegen kann dir nichts passieren.</li>
+        <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken, um ihn zu bannen.</li>
+        <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen. Bleibt gespeichert.</li>
+      </ul>
+      <p class="small">Am Handy erscheinen die Knöpfe oben rechts im Spiel.</p>
+      <div class="label">Admin hinzufügen</div>
+      <form id="fAdd" class="sect">
+        <input id="nName" class="field" placeholder="Name" autocomplete="off" aria-label="Name des neuen Admins">
+        <input id="nCode" class="field" type="password" placeholder="Code für diesen Admin (mind. 4 Zeichen)" autocomplete="new-password" aria-label="Code des neuen Admins">
+        <p class="small err" id="aMsg"></p>
+        <button class="btn go" type="submit">Hinzufügen</button>
+      </form>
+      <div class="label">Admins</div>
+      <ul class="adminList">
+        <li>★ ${esc(adminData.creatorName)} <span class="small">Erfinder</span></li>
+        ${adminData.admins.map((a, i) => `<li>${esc(a.name)} ${creator ? `<button class="btn" data-remove="${i}">Entfernen</button>` : '<span class="small">Admin</span>'}</li>`).join('')}
+      </ul>
+      ${creator ? '' : '<p class="small">Nur der Erfinder kann Admins wieder entfernen.</p>'}
+      <div class="label">Gebannte Spieler</div>
+      ${adminData.bans.length ? `<ul class="adminList">${adminData.bans.map((b, i) => `<li>${esc(b)} <button class="btn" data-unban="${i}">Entbannen</button></li>`).join('')}</ul>` : '<p class="small">Noch niemand gebannt.</p>'}
+      <p class="small">Bis es Mehrspieler gibt, laufen Testspieler (Bots) herum, damit du den Bann-Hammer ausprobieren kannst.</p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn" id="resetEdits">Parcours-Bauten löschen</button>
+        <button class="btn" id="logout">Abmelden</button>
+      </div>`;
+  }
+  el.innerHTML = h;
+  const msg = t => { const m = $('aMsg'); if (m) m.textContent = t; };
+  const fC = $('fCreator');
+  if (fC) fC.onsubmit = async e => {
+    e.preventDefault();
+    const c1 = $('cCode').value, c2 = $('cCode2').value;
+    if (nameProblem(profile.name)) return msg('Gib dir zuerst im Avatar-Tab einen gültigen Namen.');
+    if (c1.length < 4) return msg('Der Code braucht mindestens 4 Zeichen.');
+    if (c1 !== c2) return msg('Die beiden Codes sind nicht gleich.');
+    adminData.creatorName = profile.name; adminData.creatorHash = await hashCode(c1); saveAdmin();
+    toast('Du bist der Erfinder!'); beep('win'); setSession('creator', profile.name);
+  };
+  const fL = $('fLogin');
+  if (fL) fL.onsubmit = async e => {
+    e.preventDefault();
+    const n = $('lName').value.trim(), hsh = await hashCode($('lCode').value);
+    if (adminData.creatorName && same(n, adminData.creatorName) && hsh === adminData.creatorHash) { toast('Willkommen, Erfinder!'); return setSession('creator', adminData.creatorName); }
+    const a = adminData.admins.find(x => same(x.name, n) && x.hash === hsh);
+    if (a) { toast('Willkommen, Admin!'); return setSession('admin', a.name); }
+    msg('Name oder Code stimmt nicht.');
+  };
+  const fA = $('fAdd');
+  if (fA) fA.onsubmit = async e => {
+    e.preventDefault();
+    const n = $('nName').value.trim(), c = $('nCode').value;
+    const pr = nameProblem(n);
+    if (pr) return msg(pr);
+    if (reservedBy(n)) return msg('Diesen Namen gibt es schon als Admin.');
+    if (c.length < 4) return msg('Der Code braucht mindestens 4 Zeichen.');
+    adminData.admins.push({ name: n, hash: await hashCode(c), by: session.name }); saveAdmin();
+    toast('Admin hinzugefügt!'); beep('buy'); renderAdminTab();
+  };
+  el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => { if (session.role !== 'creator') return; adminData.admins.splice(+b.dataset.remove, 1); saveAdmin(); renderAdminTab(); });
+  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => { adminData.bans.splice(+b.dataset.unban, 1); saveAdmin(); toast('Entbannt!'); renderAdminTab(); });
+  const rs = $('resetEdits');
+  if (rs) rs.onclick = () => {
+    if (!resetArmed) { resetArmed = true; rs.textContent = 'Wirklich löschen?'; setTimeout(() => { resetArmed = false; if (rs.isConnected) rs.textContent = 'Parcours-Bauten löschen'; }, 2500); return; }
+    resetArmed = false; store.set(EDIT_KEY, []); toast('Gelöscht!'); renderAdminTab();
+  };
+  const lo = $('logout');
+  if (lo) lo.onclick = () => { setSession(null, null); toast('Abgemeldet'); };
+}
+function togglePower(k) {
+  if (!isAdmin()) return;
+  powers[k] = !powers[k];
+  const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
+  toast(names[k] + (powers[k] ? ' an' : ' aus'));
+  if (k === 'fly' && !powers.fly) P.vel.y = 0;
+  if (k === 'hammer') syncHammer();
+  if (k === 'build') { $('toolbar').hidden = !canBuild(); if (canBuild()) buildToolbar(); else ghost.visible = false; }
+  beep('equip'); renderAdminBar();
+}
+function renderAdminBar() {
+  const bar = $('adminBar');
+  bar.hidden = !isAdmin() || mode === 'menu';
+  $('downBtn').hidden = !(isTouch && isAdmin() && powers.fly && mode !== 'menu');
+  $('jumpBtn').textContent = isAdmin() && powers.fly ? 'Hoch' : 'Sprung';
+  if (bar.hidden) return;
+  const items = [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
+  if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
+  bar.innerHTML = '';
+  for (const [k, label, key] of items) {
+    const b = document.createElement('button'); b.className = 'btn';
+    b.textContent = label + (isTouch ? '' : ' (' + key + ')');
+    b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
+    bar.appendChild(b);
+  }
+}
+
 // ---------- HUD ----------
 const game = { coins: 0, total: 0, time: 0, running: false, deaths: 0, stage: 0, earned: 0 };
 let toastTimer = 0;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1100); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
 function renderStats() {
+  const adm = isAdmin() ? `<span class="pill">★ <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
-    $('stats').innerHTML = `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
+    $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'build') {
-    $('stats').innerHTML = `<span class="pill">Klötze <b>${blocks.size}</b></span><span class="pill">Farbe <b>${PALETTE_NAMES[buildColor]}</b></span>`;
+    $('stats').innerHTML = adm + `<span class="pill">Klötze <b>${blocks.size}</b></span><span class="pill">Farbe <b>${PALETTE_NAMES[buildColor]}</b></span>`;
   }
 }
 let clearArmed = false;
@@ -1623,6 +1905,7 @@ function showMenu() {
   mode = 'menu';
   document.body.className = '';
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
+  renderAdminBar(); syncHammer();
   ghost.visible = false;
   buildStage();
   P.pos.copy(P.spawn); P.vel.set(0, 0, 0); P.facing = 0;
@@ -1635,7 +1918,6 @@ function enterPlay(m) {
   document.body.className = m;
   tryOn = null; rebuildAvatar();
   $('home').hidden = true; $('hud').hidden = false; $('win').hidden = true;
-  $('toolbar').hidden = m !== 'build';
   $('stick').hidden = $('jumpBtn').hidden = !isTouch;
   applyViewOffset();
   cam.pitch = 0.38; cam.dist = m === 'build' ? 14 : 11;
@@ -1649,6 +1931,10 @@ function enterPlay(m) {
     buildToolbar();
     $('hint').textContent = isTouch ? 'Tippen setzt einen Klotz · Werkzeug unten wechseln · Ziehen dreht die Kamera' : 'Klick setzt · Rechtsklick oder Shift+Klick entfernt · 1–0 Farbe · R Werkzeug';
   }
+  if (isAdmin() && !isTouch) $('hint').textContent += ' · F Fliegen · H Hammer' + (m === 'obby' ? ' · B Bauen' : '');
+  $('toolbar').hidden = !canBuild();
+  if (m === 'obby' && canBuild()) buildToolbar();
+  renderAdminBar(); syncHammer();
   renderStats();
 }
 $('playObby').onclick = () => enterPlay('obby');
@@ -1703,6 +1989,8 @@ function animateAvatar(dt) {
   u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
   u.armL.rotation.x = P.onGround ? -sw : -2.6; u.armR.rotation.x = P.onGround ? sw : -2.6;
   if (u.back) u.back.traverse(c => { if (c.userData.flame) c.scale.y = 0.7 + Math.random() * 0.6 + (P.onGround ? 0 : 0.8); });
+  if (isAdmin() && powers.fly && mode !== 'menu') { u.armL.rotation.x = u.armR.rotation.x = -2.9; u.legL.rotation.x = 0.15; u.legR.rotation.x = -0.1; }
+  if (u.hammer) { if (swing > 0) swing = Math.max(0, swing - dt); u.armR.rotation.x = swing > 0 ? -2.8 + (1 - swing / 0.3) * 2.4 : -1.3; }
   avatar.position.copy(P.pos); avatar.rotation.y = P.facing;
 }
 function updatePlayer(dt) {
@@ -1723,9 +2011,11 @@ function updatePlayer(dt) {
   let mx = fx * f + rx * r, mz = fz * f + rz * r;
   const ml = Math.hypot(mx, mz);
   if (ml > 1) { mx /= ml; mz /= ml; }
-  const accel = P.onGround ? 18 : 7;
-  P.vel.x += (mx * SPEED - P.vel.x) * Math.min(1, accel * dt);
-  P.vel.z += (mz * SPEED - P.vel.z) * Math.min(1, accel * dt);
+  const flying = isAdmin() && powers.fly, spd = flying ? 16 : SPEED;
+  const accel = P.onGround || flying ? 18 : 7;
+  P.vel.x += (mx * spd - P.vel.x) * Math.min(1, accel * dt);
+  P.vel.z += (mz * spd - P.vel.z) * Math.min(1, accel * dt);
+  const flyVY = (((keys.Space || keys.TouchUp) ? 1 : 0) - ((keys.ShiftLeft || keys.ShiftRight || keys.KeyC || keys.TouchDown) ? 1 : 0)) * 10;
   if (ml > 0.1) {
     let d = Math.atan2(mx, mz) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d));
     P.facing += d * Math.min(1, 14 * dt);
@@ -1733,24 +2023,24 @@ function updatePlayer(dt) {
   }
   if (jumpPressed) { P.jumpBuf = 0.15; jumpPressed = false; }
   P.jumpBuf -= dt; P.coyote = P.onGround ? 0.1 : P.coyote - dt;
-  if (active && P.jumpBuf > 0 && P.coyote > 0) {
+  if (active && !flying && P.jumpBuf > 0 && P.coyote > 0) {
     P.vel.y = JUMP; P.jumpBuf = 0; P.coyote = 0; beep('jump');
     if (mode === 'obby' && !game.running && game.time === 0) game.running = true;
   }
   // Schwerkraft pro Teilschritt, damit die Figur auch im Stehen den Boden spürt (sonst kein Sprung)
   const steps = 2, sdt = dt / steps;
   for (let i = 0; i < steps; i++) {
-    P.vel.y = Math.max(-45, P.vel.y - GRAV * sdt);
+    P.vel.y = flying ? flyVY : Math.max(-45, P.vel.y - GRAV * sdt);
     moveAxis('x', P.vel.x * sdt);
     moveAxis('z', P.vel.z * sdt);
     P.onGround = false;
     moveAxis('y', P.vel.y * sdt);
     if (!P.onGround) P.ground = null;
   }
-  if (P.onGround && P.ground && P.ground.kind === 'bounce') {
+  if (!flying && P.onGround && P.ground && P.ground.kind === 'bounce') {
     P.vel.y = 24; P.ground.squish = 0.25; P.onGround = false; P.ground = null; P.coyote = 0; boing();
   }
-  if (active) {
+  if (active && !flying) {
     const pb = playerBox().clone().expandByScalar(0.05);
     if (mode === 'obby' && solids.some(s => s.kind === 'lava' && overlaps(pb, s.box))) die();
     else if (P.pos.y < -25) die();
@@ -1798,6 +2088,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; tAll += dt;
   updateMovers();
   updateParts(dt);
+  updateBots(dt);
   if (mode === 'menu') {
     P.vel.set(0, 0, 0); P.onGround = true;
     animateAvatar(dt);
@@ -1819,7 +2110,8 @@ function frame(now) {
   updateDebris(dt);
   placeCamera();
   sun.position.set(P.pos.x + 25, P.pos.y + 50, P.pos.z + 18); sun.target.position.copy(P.pos);
-  if (mode === 'build' && lastMouse && !drags.size) updateGhost(pickTarget(lastMouse.x, lastMouse.y));
+  if (canBuild() && !(isAdmin() && powers.hammer) && lastMouse && !drags.size) updateGhost(pickTarget(lastMouse.x, lastMouse.y));
+  else if (!canBuild() || (isAdmin() && powers.hammer)) ghost.visible = false;
   if ((statTimer += dt) > 0.1) { statTimer = 0; renderStats(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
