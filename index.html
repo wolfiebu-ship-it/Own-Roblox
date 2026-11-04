@@ -284,7 +284,7 @@ function mat(color) {
   return matCache.get(color);
 }
 const plainCache = new Map();
-function pm(color) { if (!plainCache.has(color)) plainCache.set(color, new THREE.MeshLambertMaterial({ color })); return plainCache.get(color); }
+function pm(color) { if (!plainCache.has(color)) plainCache.set(color, new THREE.MeshToonMaterial({ color, gradientMap: gradMap })); return plainCache.get(color); }
 const lavaMat = new THREE.MeshLambertMaterial({ color: 0xff5a1f, emissive: 0xff2a00, emissiveIntensity: 0.6, map: TEX });
 const padMat = new THREE.MeshLambertMaterial({ color: 0x3fdc7a, emissive: 0x1a8a40, emissiveIntensity: 0.4 });
 const padDoneMat = new THREE.MeshLambertMaterial({ color: 0x9be8b8, emissive: 0x2bb673, emissiveIntensity: 0.8 });
@@ -608,42 +608,91 @@ function buildBack(item) {
   return g;
 }
 
-// ---------- Avatar bauen ----------
+// ---------- Avatar bauen (runde Comic-Figur) ----------
+// Abgerundete Box: jede Ecke wird zur Kugel mit Radius r, Seitenflächen bleiben flach
+const rbCache = new Map();
+function roundedBox(w, h, d, r, seg = 8) {
+  const key = [w, h, d, r, seg].join('|');
+  if (rbCache.has(key)) return rbCache.get(key);
+  const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg);
+  const pos = g.attributes.position, nor = g.attributes.normal;
+  const ix = w / 2 - r, iy = h / 2 - r, iz = d / 2 - r;
+  const v = new V3(), c = new V3(), n = new V3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    c.set(Math.max(-ix, Math.min(ix, v.x)), Math.max(-iy, Math.min(iy, v.y)), Math.max(-iz, Math.min(iz, v.z)));
+    n.subVectors(v, c).normalize();
+    pos.setXYZ(i, c.x + n.x * r, c.y + n.y * r, c.z + n.z * r);
+    nor.setXYZ(i, n.x, n.y, n.z);
+  }
+  g.userData.dims = [w, h, d];
+  rbCache.set(key, g);
+  return g;
+}
+const gradMap = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([105, 165, 215]), 3, 1, THREE.RedFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+  return t;
+})();
+const toonCache = new Map();
+function toon(key, opts) { if (!toonCache.has(key)) toonCache.set(key, new THREE.MeshToonMaterial(Object.assign({ gradientMap: gradMap }, opts))); return toonCache.get(key); }
+const tc = c => toon('c' + c, { color: c });
+const tt = (key, tex) => toon('t' + key, { map: tex });
+const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1d2a44, side: THREE.BackSide });
+function splitTex(key, top, bottom, ratio) {
+  return canvasTex('split-' + key, 64, (g, n) => {
+    const t = Math.round(n * ratio);
+    if (typeof top === 'number') { g.fillStyle = hex(top); g.fillRect(0, 0, n, t); }
+    else g.drawImage(top, 0, 0, top.width, top.height * ratio, 0, 0, n, t);
+    g.fillStyle = hex(bottom); g.fillRect(0, t, n, n - t);
+  });
+}
+function headTex(face, skin) {
+  return canvasTex('head-' + face + '-' + skin, 128, (g, n) => {
+    g.fillStyle = hex(skin); g.fillRect(0, 0, n, n);
+    g.drawImage(faceTex(face).image, 6, 10, n - 12, n - 12);
+  });
+}
 function makeAvatar(lk, opts = {}) {
   const g = new THREE.Group();
-  const bc = k => pm(BODY_COLORS[lk.body[k]] ?? BODY_COLORS[0]);
+  const col = k => BODY_COLORS[lk.body[k]] ?? BODY_COLORS[0];
   const shirt = lk.wear.shirt ? ITEM[lk.wear.shirt] : null;
   const pants = lk.wear.pants ? ITEM[lk.wear.pants] : null;
-  const box = (w, h, d, m) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.castShadow = true; return me; };
-  // Torso: Box-Seiten +x, -x, +y, -y, +z (vorne), -z (hinten)
-  let torsoMat = bc('torso');
+  const OL = 0.045;
+  const add = (geo, m, x, y, z, parent = g) => {
+    const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = true; parent.add(me);
+    const [w, h, d] = geo.userData.dims;
+    const o = new THREE.Mesh(geo, outlineMat); o.scale.set((w + OL) / w, (h + OL) / h, (d + OL) / d); me.add(o);
+    return me;
+  };
+  // Box-Seiten: +x, -x, +y, -y, +z (vorne), -z (hinten)
+  let torsoMat = tc(col('torso'));
   if (shirt) {
-    const plainSide = pm(shirt.shirt.base);
-    const side = shirt.shirt.pattern === 'stripes' || shirt.shirt.pattern === 'flames' || shirt.shirt.pattern === 'jersey' ? texMat(shirt.id + 'side', shirtTex(shirt, 'side')) : plainSide;
-    torsoMat = [side, side, plainSide, plainSide, texMat(shirt.id + 'front', shirtTex(shirt, 'front')), texMat(shirt.id + 'back', shirtTex(shirt, 'back'))];
+    const plain = tc(shirt.shirt.base);
+    const side = ['stripes', 'flames', 'jersey'].includes(shirt.shirt.pattern) ? tt(shirt.id + 'side', shirtTex(shirt, 'side')) : plain;
+    torsoMat = [side, side, plain, plain, tt(shirt.id + 'front', shirtTex(shirt, 'front')), tt(shirt.id + 'back', shirtTex(shirt, 'back'))];
   }
-  const torso = box(0.8, 0.8, 0.4, torsoMat); torso.position.y = 1.2; g.add(torso);
-  if (pants) { const belt = box(0.81, 0.1, 0.41, pm(pants.pants.base)); belt.position.y = 0.85; g.add(belt); }
-  const head = box(0.52, 0.52, 0.52, bc('head')); head.position.y = HEAD_Y; g.add(head);
-  const neck = box(0.3, 0.08, 0.3, bc('head')); neck.position.y = 1.62; g.add(neck);
-  const face = ITEM[lk.wear.face] || ITEM['f-smile'];
-  const fp = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshLambertMaterial({ map: faceTex(face.face), transparent: true }));
-  fp.position.set(0, HEAD_Y, 0.262); g.add(fp);
-  const limb = (x, y, parts) => {
+  add(roundedBox(0.84, 0.8, 0.44, 0.13), torsoMat, 0, 1.2, 0);
+  const skin = col('head');
+  const sm = tc(skin);
+  add(roundedBox(0.6, 0.56, 0.56, 0.22), [sm, sm, sm, sm, tt('head' + lk.wear.face + skin, headTex((ITEM[lk.wear.face] || ITEM['f-smile']).face, skin)), sm], 0, HEAD_Y, 0);
+  const limb = (x, y, m, w) => {
     const piv = new THREE.Group(); piv.position.set(x, y, 0);
-    let off = 0;
-    for (const [h, m] of parts) { const me = box(0.4, h, 0.4, m); me.position.y = -off - h / 2; off += h; piv.add(me); }
+    add(roundedBox(w, 0.8, 0.4, 0.15), m, 0, -0.4, 0, piv);
     g.add(piv); return piv;
   };
-  const sleeve = shirt ? pm(shirt.shirt.base) : bc('arms');
-  const arm = [[0.34, sleeve], [0.46, bc('arms')]];
-  const armL = limb(-0.6, 1.6, arm), armR = limb(0.6, 1.6, arm);
-  let legParts;
+  const armC = col('arms');
+  let armM = tc(armC);
+  if (shirt) { const T = tt('arm' + shirt.shirt.base + '-' + armC, splitTex(shirt.shirt.base + '-' + armC, shirt.shirt.base, armC, 0.42)); armM = [T, T, tc(shirt.shirt.base), tc(armC), T, T]; }
+  const armL = limb(-0.62, 1.6, armM, 0.38), armR = limb(0.62, 1.6, armM, 0.38);
+  const legC = col('legs');
+  let legM = tc(legC);
   if (pants) {
-    const pmat = texMat('p' + pants.id, pantsTex(pants));
-    legParts = pants.pants.pattern === 'shorts' ? [[0.36, pmat], [0.44, bc('legs')]] : [[0.4, pmat], [0.4, pmat]];
-  } else legParts = [[0.4, bc('legs')], [0.4, bc('legs')]];
-  const legL = limb(-0.2, 0.8, legParts), legR = limb(0.2, 0.8, legParts);
+    const ptex = pantsTex(pants);
+    if (pants.pants.pattern === 'shorts') { const S = tt('short' + pants.id + legC, splitTex(pants.id + '-' + legC, ptex.image, legC, 0.45)); legM = [S, S, tt('pl' + pants.id, ptex), tc(legC), S, S]; }
+    else legM = tt('pl' + pants.id, ptex);
+  }
+  const legL = limb(-0.21, 0.82, legM, 0.4), legR = limb(0.21, 0.82, legM, 0.4);
   if (lk.wear.hat && ITEM[lk.wear.hat]) g.add(buildHat(ITEM[lk.wear.hat]));
   let back = null;
   if (lk.wear.back && ITEM[lk.wear.back]) { back = buildBack(ITEM[lk.wear.back]); g.add(back); }
