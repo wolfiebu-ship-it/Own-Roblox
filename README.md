@@ -5,6 +5,10 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 ## Was es gibt (Etappe 1)
 
 - **Runde Comic-Figuren** mit weichen Kanten und Kontur.
+- **Körperform**: Größe, Körperbau (schmal bis kräftig) und Kopfgröße per Regler.
+- **Suche** im Shop und bei den eigenen Sachen, zum Beispiel nach „Hut“, „rot“ oder „Brille“.
+- **Zoom wie bei großen Blockspielen**: Mausrad, zwei Finger oder +/−. Ganz hineingezoomt siehst du alles aus der eigenen Sicht.
+- **Geräte-Auswahl beim ersten Start** (Handy, iPad/Tablet, PC): Knöpfe und Joystick passen sich an. Auf Touch-Geräten erscheint der Joystick dort, wo der Daumen links auf den Bildschirm tippt.
 - **Avatar-Editor**: Name (mit Filter gegen Beleidigungen und unanständige Namen), Körperfarben (Kopf, Torso, Arme, Beine einzeln oder alles auf einmal) und 9 Plätze, die man gleichzeitig tragen kann: Haare, Hut, Gesicht, Brille & Co., Hals, Oberteil, Hose/Rock, Schuhe, Rücken.
 - **Shop**: 82 Sachen in 9 Kategorien. Vor dem Kauf kannst du alles anprobieren. Behalten kannst du nur, was du mit genug Münzen kaufst. Bezahlt wird mit Spielgeld, nicht mit echtem Geld.
 - **Spiele-Karten mit Vorschaubild**.

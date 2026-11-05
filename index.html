@@ -126,6 +126,35 @@ input { -webkit-user-select: text; user-select: text; }
 #stick { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 60px)); width: 120px; height: 120px; border-radius: 50%; background: rgba(255,253,246,.35); border: 3px solid rgba(29,42,68,.6); touch-action: none; }
 #knob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); }
 #jumpBtn { position: absolute; right: max(24px, env(safe-area-inset-right, 0px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 84px; height: 84px; border-radius: 50%; font-family: var(--display); font-size: 18px; touch-action: none; }
+#stickZone { position: absolute; left: 0; bottom: 0; width: 45%; height: 62%; touch-action: none; }
+#stick { pointer-events: none; }
+#zoomBtns { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
+#zoomBtns .btn { width: 46px; height: 46px; padding: 0; border-radius: 50%; font-family: var(--display); font-size: 24px; line-height: 1; }
+html[data-device="tablet"] #stick { width: 170px; height: 170px; }
+html[data-device="tablet"] #knob { width: 70px; height: 70px; margin: -35px; }
+html[data-device="tablet"] #jumpBtn { width: 120px; height: 120px; font-size: 22px; }
+html[data-device="tablet"] #downBtn { width: 96px; height: 96px; right: max(160px, calc(env(safe-area-inset-right, 0px) + 156px)); }
+html[data-device="tablet"] #hitBtn { width: 110px; height: 110px; bottom: max(220px, calc(env(safe-area-inset-bottom, 0px) + 210px)); }
+html[data-device="tablet"] #zoomBtns .btn { width: 58px; height: 58px; font-size: 28px; }
+html[data-device="tablet"] #toolbar .sw { width: 40px; height: 40px; }
+html[data-device="tablet"] #hud .btn { padding: 10px 16px; }
+.topright2 { display: flex; gap: 8px; align-items: center; }
+#devicePick { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto; padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; z-index: 20; }
+#devicePick h2 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; }
+.devs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.dev { border: 3px solid var(--ink); border-radius: 14px; background: var(--soft); padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); }
+.dev[aria-pressed="true"] { background: #ffe1d4; outline: 3px solid var(--accent); outline-offset: 1px; }
+.dev .ico { border: 3px solid var(--ink); border-radius: 7px; background: var(--paper); }
+.dev .phone { width: 26px; height: 44px; }
+.dev .tablet { width: 46px; height: 58px; }
+.dev .pc { width: 60px; height: 38px; border-radius: 4px; box-shadow: 0 9px 0 -5px var(--ink); }
+.dev small { font-weight: 600; color: var(--muted); font-size: 12px; text-align: center; }
+.shape { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; }
+.shape label { font-weight: 800; }
+.shape input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.shape .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+#avatarBody .btn { align-self: flex-start; }
+@media (max-width: 420px) { .devs { grid-template-columns: 1fr; } .dev { flex-direction: row; justify-content: flex-start; padding: 10px 14px; } .dev small { text-align: left; } }
 body.build #stick { bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 120px)); }
 body.build #jumpBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) + 130px)); }
 
@@ -164,7 +193,10 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 <div id="home">
   <div id="topbar">
     <div class="brand">Klotzwelt</div>
-    <div class="wallet" title="Deine Münzen"><i class="coin"></i><b id="coinCount">0</b></div>
+    <div class="topright2">
+      <button class="btn" id="deviceBtn" aria-label="Gerät wählen">Gerät</button>
+      <div class="wallet" title="Deine Münzen"><i class="coin"></i><b id="coinCount">0</b></div>
+    </div>
   </div>
   <section id="sheet" class="panel">
     <div id="tabs" role="tablist">
@@ -205,6 +237,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     </div>
 
     <div class="tab" id="tab-avatar" hidden>
+      <input id="avatarSearch" class="field" type="search" placeholder="Deine Sachen durchsuchen" aria-label="Deine Sachen durchsuchen" autocomplete="off">
       <div class="chips" id="avatarCats"></div>
       <div id="avatarBody" class="sect" hidden>
         <div class="label">Name</div>
@@ -213,6 +246,13 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
         <div class="label">Körperfarbe</div>
         <div class="parts" id="bodyParts"></div>
         <div class="swatches" id="bodySwatches"></div>
+        <div class="label">Körperform</div>
+        <div class="shape">
+          <label for="shHeight">Größe</label><div><input type="range" id="shHeight" min="0.85" max="1.2" step="0.01"><div class="ends"><span>klein</span><span>groß</span></div></div>
+          <label for="shWidth">Körperbau</label><div><input type="range" id="shWidth" min="0.85" max="1.35" step="0.01"><div class="ends"><span>schmal</span><span>kräftig</span></div></div>
+          <label for="shHead">Kopf</label><div><input type="range" id="shHead" min="0.85" max="1.3" step="0.01"><div class="ends"><span>klein</span><span>groß</span></div></div>
+        </div>
+        <button class="btn" id="shReset" type="button">Form zurücksetzen</button>
       </div>
       <div class="grid" id="avatarGrid"></div>
       <p class="small" id="avatarHint"></p>
@@ -220,6 +260,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 
     <div class="tab" id="tab-shop" hidden>
       <div id="shopScroll">
+        <input id="shopSearch" class="field" type="search" placeholder="Shop durchsuchen, z. B. Hut, rot, Brille" aria-label="Shop durchsuchen" autocomplete="off">
         <div class="chips" id="shopCats"></div>
         <p class="small">Tippe auf eine Sache, um sie anzuprobieren. Behalten kannst du sie erst, wenn du sie mit genug Münzen kaufst.</p>
         <div class="grid" id="shopGrid"></div>
@@ -234,7 +275,9 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 </div>
 
 <div id="hud" hidden>
+  <div id="stickZone" hidden></div>
   <div id="stats"></div>
+  <div id="zoomBtns"><button class="btn" id="zoomIn" aria-label="Näher ran">+</button><button class="btn" id="zoomOut" aria-label="Weiter weg">−</button></div>
   <div id="topright">
     <button class="btn" id="soundBtn" aria-pressed="true">Ton an</button>
     <button class="btn" id="menuBtn">Zurück</button>
@@ -257,6 +300,16 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <button class="btn" id="banClose">Schließen</button>
 </div>
 
+<div id="devicePick" class="panel" hidden role="dialog" aria-labelledby="devTitle">
+  <h2 id="devTitle">Worauf spielst du?</h2>
+  <p class="small">Danach passen sich Joystick, Knöpfe und Steuerung an dein Gerät an. Ändern kannst du es jederzeit oben über den Knopf mit deinem Gerät.</p>
+  <div class="devs">
+    <button class="dev" data-dev="phone"><span class="ico phone"></span>Handy<small>Joystick und Knöpfe für kleine Bildschirme</small></button>
+    <button class="dev" data-dev="tablet"><span class="ico tablet"></span>iPad / Tablet<small>Größere Knöpfe, mehr Platz</small></button>
+    <button class="dev" data-dev="pc"><span class="ico pc"></span>PC / Laptop<small>Tastatur und Maus</small></button>
+  </div>
+</div>
+
 <div id="win" class="panel" hidden>
   <h2 id="winTitle">Geschafft!</h2>
   <dl id="winList"></dl>
@@ -276,7 +329,10 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
-const isTouch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+const autoTouch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+let device = store.get('klotzwelt-geraet', null);
+if (!['phone', 'tablet', 'pc'].includes(device)) device = null;
+let isTouch = device ? device !== 'pc' : autoTouch;
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------- Renderer & Szene ----------
@@ -569,6 +625,7 @@ function nameProblem(name) {
 const DEFAULT_PROFILE = {
   name: 'Klotzi', coins: 150,
   body: { head: 0, torso: 0, arms: 0, legs: 0 },
+  shape: { height: 1, width: 1, head: 1 },
   wear: { face: 'f-smile', hair: 'hr-short-brown', shirt: 's-blue', pants: 'p-dark', shoes: 'sh-white', hat: null, acc: null, neck: null, back: null },
   owned: ITEMS.filter(i => i.price === 0).map(i => i.id)
 };
@@ -588,6 +645,8 @@ const profile = (() => {
   for (const id of DEFAULT_PROFILE.owned) if (!np.owned.includes(id)) np.owned.push(id);
   for (const k in np.wear) if (np.wear[k] && (!ITEM[np.wear[k]] || !np.owned.includes(np.wear[k]))) np.wear[k] = DEFAULT_PROFILE.wear[k];
   np.coins = Math.max(0, Number(np.coins) || 0);
+  const cl = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 1)), shp = p.shape || {};
+  np.shape = { height: cl(shp.height, 0.85, 1.2), width: cl(shp.width, 0.85, 1.35), head: cl(shp.head, 0.85, 1.3) };
   if (nameProblem(np.name)) np.name = 'Klotzi';
   return np;
 })();
@@ -963,7 +1022,7 @@ function makeAvatar(lk, opts = {}) {
   add(roundedBox(0.84, 0.8, 0.44, 0.13), torsoMat, 0, 1.2, 0);
   const skin = col('head');
   const sm = tc(skin);
-  add(roundedBox(0.6, 0.56, 0.56, 0.22), [sm, sm, sm, sm, tt('head' + lk.wear.face + skin, headTex((ITEM[lk.wear.face] || ITEM['f-smile']).face, skin)), sm], 0, HEAD_Y, 0);
+  const headMesh = add(roundedBox(0.6, 0.56, 0.56, 0.22), [sm, sm, sm, sm, tt('head' + lk.wear.face + skin, headTex((ITEM[lk.wear.face] || ITEM['f-smile']).face, skin)), sm], 0, HEAD_Y, 0);
   const limb = (x, y, m, w) => {
     const piv = new THREE.Group(); piv.position.set(x, y, 0);
     add(roundedBox(w, 0.8, 0.4, 0.15), m, 0, -0.4, 0, piv);
@@ -985,13 +1044,25 @@ function makeAvatar(lk, opts = {}) {
   const shoe = lk.wear.shoes && ITEM[lk.wear.shoes];
   if (shoe) for (const piv of [legL, legR]) buildShoe(shoe, add, piv);
   const hair = lk.wear.hair && ITEM[lk.wear.hair];
+  const n0 = g.children.length;
   if (hair) buildHair(hair, add);
   if (lk.wear.acc && ITEM[lk.wear.acc]) buildAcc(ITEM[lk.wear.acc], add);
+  const headParts = [headMesh, ...g.children.slice(n0)];
   if (lk.wear.neck && ITEM[lk.wear.neck]) buildNeck(ITEM[lk.wear.neck], add);
-  if (lk.wear.hat && ITEM[lk.wear.hat]) { const hg = buildHat(ITEM[lk.wear.hat]); if (hair) hg.position.y += 0.07; g.add(hg); }
+  if (lk.wear.hat && ITEM[lk.wear.hat]) { const hg = buildHat(ITEM[lk.wear.hat]); if (hair) hg.position.y += 0.07; g.add(hg); headParts.push(hg); }
   let back = null;
   if (lk.wear.back && ITEM[lk.wear.back]) { back = buildBack(ITEM[lk.wear.back]); g.add(back); }
-  if (opts.tag !== false) g.add(nameTag(lk.name || 'Klotzi', lk.badge));
+  // Körperform: Größe und Körperbau strecken den Körper, der Kopf wird getrennt skaliert
+  const sh = lk.shape || {}, SH = sh.height || 1, SW = sh.width || 1, SD = (1 + SW) / 2, HS = sh.head || 1;
+  const headG = new THREE.Group(); headG.position.y = 1.6; g.add(headG);
+  for (const o of headParts) { o.position.y -= 1.6; headG.add(o); }
+  g.scale.set(SW, SH, SD);
+  headG.scale.set(HS / SW, HS / SH, HS / SD);
+  if (opts.tag !== false) {
+    const t = nameTag(lk.name || 'Klotzi', lk.badge);
+    t.position.y = (1.6 * SH + 1.25 * HS) / SH; t.scale.set(2.4 / SW, 0.6 / SH, 1);
+    g.add(t);
+  }
   g.userData = { legL, legR, armL, armR, back };
   return g;
 }
@@ -1072,7 +1143,7 @@ function nameTag(text, badge) {
 // Anprobieren im Shop
 let tryOn = null;
 function currentLook() {
-  const lk = { name: profile.name, body: profile.body, wear: Object.assign({}, profile.wear), badge: session.role };
+  const lk = { name: profile.name, body: profile.body, wear: Object.assign({}, profile.wear), badge: session.role, shape: profile.shape };
   if (tryOn) lk.wear[tryOn.slot] = tryOn.id;
   return lk;
 }
@@ -1495,7 +1566,7 @@ function botLook(name) {
   const rnd = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
   const pick = (slot, chance = 1) => { const list = ITEMS.filter(it => it.slot === slot); const r = rnd(); return r < chance ? list[Math.floor(rnd() * list.length)].id : null; };
   const skin = Math.floor(rnd() * 6);
-  return { name, body: { head: skin, torso: skin, arms: skin, legs: skin }, wear: { face: pick('face'), hair: pick('hair', 0.85), shirt: pick('shirt'), pants: pick('pants'), shoes: pick('shoes'), hat: pick('hat', 0.4), acc: pick('acc', 0.3), neck: pick('neck', 0.3), back: pick('back', 0.3) } };
+  return { name, body: { head: skin, torso: skin, arms: skin, legs: skin }, wear: { face: pick('face'), hair: pick('hair', 0.85), shirt: pick('shirt'), pants: pick('pants'), shoes: pick('shoes'), hat: pick('hat', 0.4), acc: pick('acc', 0.3), neck: pick('neck', 0.3), back: pick('back', 0.3) }, shape: { height: 0.9 + rnd() * 0.25, width: 0.9 + rnd() * 0.35, head: 0.95 + rnd() * 0.2 } };
 }
 let botSpots = [];
 function addBot(name, spot) {
@@ -1620,8 +1691,22 @@ function placeCamera() {
       if (solids.some(sd => !sd.off && x > sd.box.min.x - 0.25 && x < sd.box.max.x + 0.25 && y > sd.box.min.y - 0.25 && y < sd.box.max.y + 0.25 && z > sd.box.min.z - 0.25 && z < sd.box.max.z + 0.25)) { dist = Math.max(1.2, t - 0.3); break; }
     }
   }
+  if (firstPerson()) {
+    // Eigene Sicht: Kamera im Kopf, Blick in die Richtung, in die man schaut
+    const eye = (profile.shape.height || 1) * 0.3;
+    camera.position.set(camTarget.x, camTarget.y + eye, camTarget.z);
+    camera.lookAt(camTarget.x - dx, camTarget.y + eye - dy, camTarget.z - dz);
+    return;
+  }
   camera.position.set(camTarget.x + dx * dist, camTarget.y + dy * dist, camTarget.z + dz * dist);
   camera.lookAt(camTarget);
+}
+const firstPerson = () => mode !== 'menu' && cam.dist < 0.5;
+function zoomBy(f) {
+  if (mode === 'menu') return;
+  if (cam.dist < 0.5) { if (f > 1) { cam.dist = 2.2; cam.pitch = Math.max(0.1, cam.pitch); } return; }
+  cam.dist = Math.min(32, cam.dist * f);
+  if (cam.dist < 1.8) { cam.dist = 0; toast('Eigene Sicht'); }
 }
 // ---------- Eingabe ----------
 const keys = {};
@@ -1664,33 +1749,57 @@ cv.addEventListener('pointermove', e => {
   if (!d) return;
   const dx = e.clientX - d.x, dy = e.clientY - d.y;
   d.x = e.clientX; d.y = e.clientY;
+  if (drags.size >= 2 && mode !== 'menu') {
+    // Zwei Finger: zusammen = weiter weg, auseinander = näher ran
+    for (const o of drags.values()) o.moved = true;
+    const [a, b2] = [...drags.values()], pd = Math.hypot(a.x - b2.x, a.y - b2.y);
+    if (pinchLast && pd > 0) zoomBy(pinchLast / pd);
+    pinchLast = pd;
+    return;
+  }
   if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) d.moved = true;
   if (!d.moved) return;
   if (mode === 'menu') { P.facing += dx * 0.012; menuSpin = 3; return; }
   cam.yaw -= dx * 0.006;
-  cam.pitch = Math.max(-0.15, Math.min(1.35, cam.pitch + dy * 0.005));
+  cam.pitch = Math.max(firstPerson() ? -1.3 : -0.15, Math.min(1.35, cam.pitch + dy * 0.005));
 });
+let pinchLast = 0;
 function endDrag(e) {
   const d = drags.get(e.pointerId);
   drags.delete(e.pointerId);
+  if (drags.size < 2) pinchLast = 0;
   if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
   if (isAdmin() && powers.hammer) { hammerAction(e.clientX, e.clientY); return; }
   if (canBuild()) buildAction(e.clientX, e.clientY, d.button === 2 || e.shiftKey);
 }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
-cv.addEventListener('wheel', e => { e.preventDefault(); if (mode !== 'menu') cam.dist = Math.max(4, Math.min(32, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(1 + Math.sign(e.deltaY) * 0.12); }, { passive: false });
+$('zoomIn').onclick = () => zoomBy(0.72);
+$('zoomOut').onclick = () => zoomBy(1.4);
 
 const stick = $('stick'), knob = $('knob');
 let stickId = null;
-stick.addEventListener('pointerdown', e => { stickId = e.pointerId; stick.setPointerCapture(e.pointerId); moveStick(e); });
-stick.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
-const endStick = e => { if (e.pointerId !== stickId) return; stickId = null; joy.x = joy.y = 0; knob.style.transform = ''; };
-stick.addEventListener('pointerup', endStick); stick.addEventListener('pointercancel', endStick);
+// Der Joystick erscheint dort, wo der Daumen die linke Bildschirmhälfte berührt
+const zone = $('stickZone');
+zone.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  stickId = e.pointerId; zone.setPointerCapture(e.pointerId);
+  const w = stick.offsetWidth;
+  stick.style.left = (e.clientX - w / 2) + 'px'; stick.style.top = (e.clientY - w / 2) + 'px'; stick.style.bottom = 'auto';
+  moveStick(e);
+});
+zone.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
+const endStick = e => {
+  if (e.pointerId !== stickId) return;
+  stickId = null; joy.x = joy.y = 0; knob.style.transform = '';
+  stick.style.left = stick.style.top = stick.style.bottom = '';
+};
+zone.addEventListener('pointerup', endStick); zone.addEventListener('pointercancel', endStick);
 function moveStick(e) {
   const r = stick.getBoundingClientRect();
   let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-  const l = Math.hypot(dx, dy), max = 45;
+  const l = Math.hypot(dx, dy), max = r.width * 0.38;
   if (l > max) { dx *= max / l; dy *= max / l; }
   joy.x = dx / max; joy.y = dy / max;
   knob.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -1745,11 +1854,20 @@ let avatarCat = 'body', bodyPart = 'all';
 const PARTS = [['all', 'Alles'], ['head', 'Kopf'], ['torso', 'Torso'], ['arms', 'Arme'], ['legs', 'Beine']];
 function equip(slot, id) { profile.wear[slot] = id; saveProfile(); rebuildAvatar(); renderAvatarTab(); beep('equip'); }
 function renderAvatarTab() {
-  chipRow($('avatarCats'), [['body', 'Körper'], ...SLOTS], avatarCat, c => { avatarCat = c; renderAvatarTab(); });
+  const q = $('avatarSearch').value.trim().toLowerCase();
+  chipRow($('avatarCats'), [['body', 'Körper'], ...SLOTS], q ? null : avatarCat, c => { $('avatarSearch').value = ''; avatarCat = c; renderAvatarTab(); });
   const grid = $('avatarGrid'); grid.innerHTML = '';
+  if (q) {
+    $('avatarBody').hidden = true;
+    const found = ITEMS.filter(i => profile.owned.includes(i.id) && matchItem(i, q));
+    for (const it of found) { const b = itemCard(it, profile.wear[it.slot] === it.id); b.onclick = () => equip(it.slot, it.id); grid.appendChild(b); }
+    $('avatarHint').textContent = found.length ? found.length + ' passende Sachen von dir.' : 'Davon hast du noch nichts. Schau im Shop!';
+    return;
+  }
   $('avatarBody').hidden = avatarCat !== 'body';
   if (avatarCat === 'body') {
     $('name').value = profile.name;
+    $('shHeight').value = profile.shape.height; $('shWidth').value = profile.shape.width; $('shHead').value = profile.shape.head;
     $('name').disabled = isAdmin();
     if (isAdmin()) showNameMsg('Als Admin heißt du wie dein Admin-Konto. Zum Ändern erst abmelden.', false);
     chipRow($('bodyParts'), PARTS, bodyPart, p => { bodyPart = p; renderAvatarTab(); });
@@ -1788,10 +1906,15 @@ $('name').addEventListener('change', () => {
 
 // Shop
 let shopCat = 'hat', shopSel = null;
+const SLOT_WORDS = { hat: 'hüte hut mütze kappe', hair: 'haare frisur', face: 'gesicht gesichter', acc: 'brille brillen bart nase', neck: 'hals schal kette', shirt: 'oberteil oberteile shirt pulli hemd', pants: 'hose hosen rock röcke', shoes: 'schuhe schuh sneaker', back: 'rücken flügel' };
+const matchItem = (i, q) => (i.name + ' ' + SLOT_WORDS[i.slot]).toLowerCase().includes(q);
 function renderShop() {
-  chipRow($('shopCats'), SLOTS, shopCat, c => { shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
+  const q = $('shopSearch').value.trim().toLowerCase();
+  chipRow($('shopCats'), SLOTS, q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
   const grid = $('shopGrid'); grid.innerHTML = '';
-  for (const it of ITEMS.filter(i => i.slot === shopCat)) {
+  const list = q ? ITEMS.filter(i => matchItem(i, q)) : ITEMS.filter(i => i.slot === shopCat);
+  if (!list.length) grid.innerHTML = '<p class="small">Nichts gefunden. Versuch ein anderes Wort, zum Beispiel „Hut“, „rot“ oder „Brille“.</p>';
+  for (const it of list) {
     const own = profile.owned.includes(it.id);
     const price = own ? '<span class="pr own">Im Besitz</span>' : it.price === 0 ? '<span class="pr">Gratis</span>' : `<span class="pr"><i class="coin"></i> ${it.price}</span>`;
     const b = itemCard(it, shopSel === it.id, price);
@@ -2092,7 +2215,7 @@ function buildRace() {
   });
   race = { car, bots, pads: padsR, count: 3.5, time: 0, done: false };
   P.pos.copy(car.pos); P.vel.set(0, 0, 0);
-  cam.yaw = car.h + Math.PI; camTarget.copy(car.pos).add(new V3(0, 1.4, 0));
+  cam.yaw = car.h + Math.PI; cam.pitch = 0.3; cam.dist = 9; camTarget.copy(car.pos).add(new V3(0, 1.4, 0));
   placeCars();
 }
 function placeCars() {
@@ -2155,7 +2278,6 @@ function updateRace(dt) {
   P.pos.copy(c.pos);
   let dy = (c.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size) cam.yaw += dy * Math.min(1, 4 * dt);
-  cam.pitch = 0.3; cam.dist = 9;
   camTarget.lerp(tmpV.set(c.pos.x, 1.4, c.pos.z), 1 - Math.exp(-dt * 10));
 }
 const racePlace = () => 1 + race.bots.filter(b => b.prog > race.car.prog).length;
@@ -2422,13 +2544,13 @@ function enterPlay(m) {
   document.body.className = m;
   tryOn = null; rebuildAvatar();
   $('home').hidden = true; $('hud').hidden = false; $('win').hidden = true;
-  $('stick').hidden = $('jumpBtn').hidden = !isTouch;
+  $('stick').hidden = $('stickZone').hidden = $('jumpBtn').hidden = !isTouch;
   applyViewOffset();
   cam.pitch = 0.38; cam.dist = m === 'build' ? 14 : 11;
   if (m === 'obby') {
     buildObby();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
-    $('hint').textContent = isTouch ? 'Joystick laufen · Sprung-Taste · Bildschirm ziehen dreht die Kamera' : 'WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera · Esc zurück';
+    $('hint').textContent = isTouch ? 'Links tippen: Joystick · Sprung-Taste · rechts ziehen: Kamera · zwei Finger oder +/−: Zoom' : 'WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera · Mausrad: Zoom bis zur eigenen Sicht · Esc zurück';
     toast('Los geht’s!');
   } else if (m === 'race') {
     buildRace();
@@ -2624,6 +2746,8 @@ function frame(now) {
   if (playingGame() === 'obby') updateObby(dt);
   updateParticles(dt);
   updateDebris(dt);
+  if (firstPerson()) P.facing = cam.yaw + Math.PI;
+  if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson();
   placeCamera();
   sun.position.set(P.pos.x + 25, P.pos.y + 50, P.pos.z + 18); sun.target.position.copy(P.pos);
   if (canBuild() && !(isAdmin() && powers.hammer) && lastMouse && !drags.size) updateGhost(pickTarget(lastMouse.x, lastMouse.y));
@@ -2632,6 +2756,40 @@ function frame(now) {
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+// Suche und Körperform
+$('shopSearch').addEventListener('input', () => { shopSel = null; renderShop(); });
+$('avatarSearch').addEventListener('input', () => renderAvatarTab());
+for (const [k, id] of [['height', 'shHeight'], ['width', 'shWidth'], ['head', 'shHead']]) {
+  $(id).addEventListener('input', () => { profile.shape[k] = +$(id).value; rebuildAvatar(); saveProfile(); });
+}
+$('shReset').onclick = () => { profile.shape = { height: 1, width: 1, head: 1 }; saveProfile(); rebuildAvatar(); renderAvatarTab(); beep('equip'); };
+
+// Geräte-Auswahl: Handy, iPad oder PC
+const DEVICE_NAMES = { phone: 'Handy', tablet: 'iPad', pc: 'PC' };
+function suggestDevice() { if (!autoTouch) return 'pc'; return Math.min(screen.width, screen.height) >= 700 ? 'tablet' : 'phone'; }
+function applyDevice() {
+  if (device) isTouch = device !== 'pc';
+  document.documentElement.dataset.device = device || (isTouch ? 'phone' : 'pc');
+  $('deviceBtn').textContent = device ? DEVICE_NAMES[device] : 'Gerät';
+  if (mode !== 'menu') {
+    $('stick').hidden = $('stickZone').hidden = !isTouch;
+    $('jumpBtn').hidden = !isTouch || playingGame() === 'race';
+    renderAdminBar();
+  }
+}
+function openDevicePick() {
+  const cur = device || suggestDevice();
+  document.querySelectorAll('.dev').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dev === cur)));
+  $('devicePick').hidden = false;
+}
+document.querySelectorAll('.dev').forEach(b => b.onclick = () => {
+  device = b.dataset.dev; store.set('klotzwelt-geraet', device);
+  applyDevice(); $('devicePick').hidden = true; toast(DEVICE_NAMES[device]); beep('equip');
+});
+$('deviceBtn').onclick = openDevicePick;
+applyDevice();
+if (!device) openDevicePick();
+
 // Vorschaubilder für die Spiele-Karten
 function previewShot(setup, pos, look) {
   try {
