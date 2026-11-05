@@ -1249,12 +1249,13 @@ function makeAvatar(lk, opts = {}) {
   for (const o of headParts) { o.position.y -= 1.6; headG.add(o); }
   g.scale.set(SW, SH, SD);
   headG.scale.set(HS / SW, HS / SH, HS / SD);
+  let tag = null;
   if (opts.tag !== false) {
-    const t = nameTag(lk.name || 'Klotzi', lk.badge);
-    t.position.y = (1.6 * SH + 1.25 * HS) / SH; t.scale.set(2.4 / SW, 0.6 / SH, 1);
-    g.add(t);
+    tag = nameTag(lk.name || 'Klotzi', lk.badge);
+    tag.position.y = (1.6 * SH + 1.25 * HS) / SH; tag.scale.set(2.4 / SW, 0.6 / SH, 1);
+    g.add(tag);
   }
-  g.userData = { legL, legR, armL, armR, back };
+  g.userData = { legL, legR, armL, armR, back, tag };
   return g;
 }
 // Haare, Brillen, Halsschmuck und Schuhe bekommen ebenfalls die Comic-Kontur
@@ -3960,6 +3961,7 @@ function frame(now) {
   updateMovers();
   updateParts(dt);
   updateBots(dt);
+  if (avatar.userData.tag) avatar.userData.tag.visible = mode !== 'menu';
   if (mode === 'menu') {
     P.vel.set(0, 0, 0); P.onGround = true;
     animateAvatar(dt);
@@ -3969,7 +3971,7 @@ function frame(now) {
     if ((menuSpin -= dt) < 0) P.facing += (Math.sin(tAll * 0.5) * 0.35 - P.facing) * Math.min(1, dt * 2);
     menuZoomCur += (menuZoom - menuZoomCur) * Math.min(1, dt * 6);
     const narrow = innerWidth <= 720;
-    cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 6.2 : 5.1) - menuZoomCur * (narrow ? 0.6 : 1.4);
+    cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 6.8 : 5.9) - menuZoomCur * (narrow ? 0.6 : 1.4);
     camTarget.set(P.pos.x, P.pos.y + (narrow ? 1.45 : 1.25), P.pos.z);
     for (const c of world.children) if (c.userData.cloud) c.position.x += dt * 0.6;
   } else if (isRace(playingGame())) {
