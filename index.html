@@ -56,6 +56,9 @@ input { -webkit-user-select: text; user-select: text; }
 #sheet { position: fixed; top: max(76px, calc(env(safe-area-inset-top, 0px) + 64px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); width: 440px; max-width: calc(100% - 32px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
 #tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px; border-bottom: 3px solid var(--ink); background: var(--soft); }
 #tabs button { border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 8px 2px; font-family: var(--display); font-size: 15px; position: relative; }
+.tick { width: 1.05em; height: 1.05em; vertical-align: -0.17em; flex-shrink: 0; }
+.who { display: flex; align-items: center; gap: 6px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 3px 12px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); max-width: 46vw; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.brandbox { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 #tabs .dot { position: absolute; top: -8px; right: -6px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: var(--paper); font: 800 12px/20px var(--body); border: 2px solid var(--ink); }
 #tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .tab { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; min-height: 0; }
@@ -114,7 +117,7 @@ input { -webkit-user-select: text; user-select: text; }
 #toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.8); font-family: var(--display); font-size: 44px; color: var(--paper); -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-#banPanel, #fsHelp, #pausePanel, #settingsPanel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+#banPanel, #fsHelp, #pausePanel, #settingsPanel, #vehPanel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
 #fsHelp { z-index: 27; }
 #pausePanel { z-index: 24; }
 #pausePanel .btn { width: 100%; padding: 12px; font-size: 17px; }
@@ -126,7 +129,15 @@ input { -webkit-user-select: text; user-select: text; }
 .seg3 button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 html.stick-fixed #stick { opacity: 1; }
 #fsHelp p { margin: 0; }
-#banPanel h2, #fsHelp h2, #pausePanel h2, #settingsPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
+#vehPanel { z-index: 26; width: min(480px, calc(100% - 32px)); }
+.vehs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.veh { border: 3px solid var(--ink); border-radius: 12px; background: var(--soft); padding: 8px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.veh[aria-pressed="true"] { background: #ffe1d4; outline: 3px solid var(--accent); outline-offset: 1px; }
+.veh b { font-family: var(--display); font-weight: 400; font-size: 17px; }
+.veh .bar { height: 8px; border-radius: 4px; background: var(--muted); opacity: .25; position: relative; }
+.veh .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); opacity: 1; }
+#wheelieBtn { position: absolute; right: max(120px, calc(env(safe-area-inset-right, 0px) + 116px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 76px; height: 76px; border-radius: 50%; font-family: var(--display); font-size: 15px; touch-action: none; }
+#banPanel h2, #fsHelp h2, #pausePanel h2, #settingsPanel h2, #vehPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
 #win { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 24px; width: min(340px, calc(100% - 32px)); box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 12px; }
 #win h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; color: var(--gold); -webkit-text-stroke: 1.5px var(--ink); text-shadow: 3px 3px 0 var(--ink); }
 #win dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; text-align: left; font-variant-numeric: tabular-nums; }
@@ -243,7 +254,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 
 <div id="home">
   <div id="topbar">
-    <div class="brand">Klotzwelt</div>
+    <div class="brandbox"><div class="brand">Klotzwelt</div><div class="who" id="who" hidden></div></div>
     <div class="topright2">
       <button class="btn" id="fsBtn" type="button">Vollbild</button>
       <button class="btn" id="deviceBtn" aria-label="Gerät wählen">Gerät</button>
@@ -280,6 +291,12 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
         <h3>Klotz-Rennen</h3>
         <p>Fahr 3 Runden gegen die Testfahrer. Gelbe Pfeile geben Turbo, auf der Wiese wirst du langsam. Platz 1 bringt dir <i class="coin"></i> 30.</p>
         <button class="btn primary" id="playRace">Fahren</button>
+      </div>
+      <div class="game race">
+        <img class="preview" id="prevMoto" alt="Vorschau: Turbo-Rennen" hidden>
+        <h3>Turbo-Rennen</h3>
+        <p>Motorrad, E-Roller und richtig schnelle Sportwagen: Driften, Wheelies ziehen und Rennen gegen die Testfahrer.</p>
+        <button class="btn primary" id="playMoto">Fahren</button>
       </div>
       <div class="game horror">
         <img class="preview" id="prevHorror" alt="Vorschau: Gruselvilla" hidden>
@@ -345,6 +362,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="stick" hidden><div id="knob"></div></div>
   <button class="btn primary" id="jumpBtn" hidden>Sprung</button>
   <button class="btn" id="driftBtn" hidden>Drift</button>
+  <button class="btn" id="wheelieBtn" hidden>Wheelie</button>
   <button class="btn" id="downBtn" hidden>Runter</button>
   <button class="btn" id="hitBtn" hidden>Hau!</button>
   <div id="adminBar" hidden></div>
@@ -377,6 +395,12 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     <button class="dev" data-dev="tablet"><span class="ico tablet"></span>iPad / Tablet<small>Größere Knöpfe, mehr Platz</small></button>
     <button class="dev" data-dev="pc"><span class="ico pc"></span>PC / Laptop<small>Tastatur und Maus</small></button>
   </div>
+</div>
+
+<div id="vehPanel" class="panel" hidden role="dialog" aria-labelledby="vehTitle">
+  <h2 id="vehTitle">Fahrzeug wählen</h2>
+  <div class="vehs" id="vehList"></div>
+  <div class="row"><button class="btn" id="vehCancel" type="button">Abbrechen</button><button class="btn primary" id="vehGo" type="button">Los!</button></div>
 </div>
 
 <div id="pausePanel" class="panel" hidden role="dialog" aria-labelledby="pauseTitle">
@@ -759,9 +783,10 @@ const adminData = (() => {
 })();
 function saveAdmin() { store.set('klotzwelt-admin', adminData); }
 // Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
-const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', horror: 'Gruselvilla' };
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', moto: 'Turbo-Rennen', horror: 'Gruselvilla' };
+const isRace = m => m === 'race' || m === 'moto';
 function normBans(b) {
-  const out = { obby: [], build: [], race: [], horror: [] };
+  const out = { obby: [], build: [], race: [], moto: [], horror: [] };
   if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
@@ -1231,14 +1256,20 @@ function buildShoe(item, add, piv) {
   else { add(roundedBox(0.43, 0.16, 0.52, 0.07), c, 0, -0.73, 0.05, piv); add(roundedBox(0.45, 0.06, 0.54, 0.03), sole, 0, -0.8, 0.05, piv); }
 }
 function nameTag(text, badge) {
-  if (badge) text = '★ ' + text;
   const c = document.createElement('canvas'); c.width = 256; c.height = 64;
   const g = c.getContext('2d');
   g.font = '800 34px Nunito, system-ui, sans-serif';
-  const w = Math.min(240, g.measureText(text).width + 28);
-  g.fillStyle = badge ? 'rgba(255,200,61,0.95)' : 'rgba(29,42,68,0.75)';
+  const w = Math.min(240, g.measureText(text).width + 28 + (badge ? 38 : 0));
+  g.fillStyle = 'rgba(29,42,68,0.75)';
   rrect(g, 128 - w / 2, 8, w, 48, 14);
-  g.fillStyle = badge ? '#1d2a44' : '#fffdf6'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 33);
+  g.fillStyle = '#fffdf6'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128 + (badge ? 19 : 0), 33);
+  if (badge) {
+    // Blauer Haken für Admins und den Erfinder
+    const cx = 128 - w / 2 + 26;
+    g.fillStyle = '#1d9bf0'; g.beginPath(); g.arc(cx, 32, 15, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 4.5; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(cx - 7, 33); g.lineTo(cx - 2, 38); g.lineTo(cx + 8, 26); g.stroke();
+  }
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
   sp.scale.set(2.4, 0.6, 1); sp.position.y = 2.85;
   return sp;
@@ -1254,6 +1285,7 @@ function currentLook() {
 let avatar = makeAvatar(currentLook()); scene.add(avatar);
 function rebuildAvatar() {
   const p = avatar.position.clone(), r = avatar.rotation.y;
+  renderWho();
   const vis = avatar.visible;
   scene.remove(avatar); avatar = makeAvatar(currentLook()); avatar.position.copy(p); avatar.rotation.y = r; avatar.visible = vis; scene.add(avatar);
   syncHammer();
@@ -1821,7 +1853,7 @@ addEventListener('keydown', e => {
   if (mode === 'menu') return;
   keys[e.code] = true;
   if (e.code === 'Space') { jumpPressed = true; e.preventDefault(); }
-  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && mode !== 'race') setShiftLock(!shiftLock);
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !isRace(mode)) setShiftLock(!shiftLock);
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isAdmin() && mode !== 'menu' && mode !== 'win') {
     if (e.code === 'KeyF') togglePower('fly');
@@ -1883,7 +1915,7 @@ cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(1 + Math.sign(e.d
 // Shift-Lock wie bei großen Blockspielen: Figur schaut immer in Kamerarichtung, Maus dreht ohne Klicken
 let shiftLock = false;
 function setShiftLock(on) {
-  shiftLock = !!on && mode !== 'menu' && mode !== 'race';
+  shiftLock = !!on && mode !== 'menu' && !isRace(mode);
   $('slBtn').setAttribute('aria-pressed', String(shiftLock));
   $('crosshair').hidden = !shiftLock || isTouch;
   try {
@@ -2079,6 +2111,8 @@ $('buyBtn').onclick = () => {
 };
 
 // ---------- Admin-Bereich ----------
+const TICK = '<svg class="tick" viewBox="0 0 20 20" role="img" aria-label="Admin"><circle cx="10" cy="10" r="10" fill="#1d9bf0"/><path d="M5.5 10.5l3 3 6-7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function renderWho() { const w = $('who'); if (!w) return; const on = typeof NET !== 'undefined' && NET && NET.me; w.hidden = !on; if (on) w.innerHTML = (isAdmin() ? TICK : '') + '<span>' + esc(NET.me.name) + '</span>'; }
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let resetArmed = false;
 function renderAdminIfOpen() { if (currentTab === 'admin' && mode === 'menu') renderAdminTab(); }
@@ -2101,7 +2135,7 @@ function renderAdminTab() {
   }
   const A = NET.admin || { admins: [], bans: {} }, creator = session.role === 'creator';
   const gameOpts = Object.entries(GAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-  h += `<p><span class="badge">★ ${creator ? 'Erfinder' : 'Admin'}: ${esc(session.name)}</span></p>
+  h += `<p class="row" style="justify-content:flex-start;gap:6px">${TICK}<b>${esc(session.name)}</b><span class="small">${creator ? 'Erfinder' : 'Admin'}</span></p>
     <div class="label">Deine Kräfte im Spiel</div>
     <ul class="powers">
       <li><b>Fliegen</b> (Taste F): Leertaste hoch, C runter. Beim Fliegen kann dir nichts passieren.</li>
@@ -2113,7 +2147,7 @@ function renderAdminTab() {
     <div class="label">Admin hinzufügen</div>
     <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Hinzufügen</button></form>
     <div class="label">Admins</div>
-    <ul class="adminList">${A.admins.map(a => `<li>${a.role === 'creator' ? '★ ' : ''}${esc(a.name)} ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Entfernen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
+    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Entfernen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
     ${creator ? '' : '<p class="small">Admins entfernen kann nur der Erfinder.</p>'}
     <div class="label">Spieler aus einem Spiel bannen</div>
     <form id="fBan" class="sect">
@@ -2136,7 +2170,7 @@ function renderAdminTab() {
   if (!NET.admin) netSend({ t: 'adminList' });
 }
 function togglePower(k) {
-  if (!isAdmin() || (mode === 'race' && k !== 'build')) return;
+  if (!isAdmin() || (isRace(mode) && k !== 'build')) return;
   powers[k] = !powers[k];
   const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
   toast(names[k] + (powers[k] ? ' an' : ' aus'));
@@ -2152,7 +2186,7 @@ function renderAdminBar() {
   $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
   $('jumpBtn').textContent = isAdmin() && powers.fly ? 'Hoch' : 'Sprung';
   if (bar.hidden) return;
-  const items = mode === 'race' ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
+  const items = isRace(mode) ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
   for (const [k, label, key] of items) {
@@ -2248,6 +2282,59 @@ function makeCar(color, driverLook) {
   if (driverLook) { const d = makeAvatar(driverLook); d.position.set(0, 0.05, -0.35); seatPose(d); g.add(d); g.userData.driver = d; }
   return g;
 }
+// Fahrzeuge (Fantasie-Marken). Der Hyperwagen ist nur für Admins.
+const VEHICLES = [
+  { id: 'kart', name: 'Kart', brand: 'Klotzwelt', type: 'kart', max: 28, acc: 17, turn: 1.9, color: 0xff6b3d },
+  { id: 'scooter', name: 'E-Roller', brand: 'Voltaro Zip', type: 'scooter', max: 24, acc: 21, turn: 2.3, color: 0x6fd0f0 },
+  { id: 'bike', name: 'Motorrad', brand: 'Falkner Blitz 600', type: 'bike', max: 36, acc: 22, turn: 2.1, color: 0xe2453c },
+  { id: 'sport', name: 'Sportwagen', brand: 'Turbix GT', type: 'car', max: 40, acc: 18, turn: 1.8, color: 0xffd23f },
+  { id: 'super', name: 'Supersportwagen', brand: 'Aurion Vento', type: 'car', max: 46, acc: 21, turn: 1.75, color: 0x8b5cd6, spoiler: true },
+  { id: 'hyper', name: 'Hyperwagen', brand: 'Klotzwelt X1', type: 'car', max: 58, acc: 28, turn: 1.85, color: 0x1d2a44, spoiler: true, admin: true }
+];
+function riderPose(a, type) {
+  const u = a.userData;
+  if (type === 'scooter') { u.legL.rotation.x = u.legR.rotation.x = 0; u.armL.rotation.x = u.armR.rotation.x = -1.2; }
+  else if (type === 'bike') { u.legL.rotation.x = u.legR.rotation.x = -1.1; u.armL.rotation.x = u.armR.rotation.x = -1.4; }
+  else seatPose(a);
+}
+// Baut ein Fahrzeug mit Fahrer. Alles hängt an einem Drehpunkt an der Hinterachse, damit Wheelies gehen.
+function makeVehicle(v, color, driverLook) {
+  if (v.type === 'kart') { const k = makeCar(color, driverLook); k.userData.tilt = null; return k; }
+  const root = new THREE.Group(), wheels = [];
+  const rearZ = v.type === 'car' ? -1.4 : v.type === 'bike' ? -0.85 : -0.6, wr = v.type === 'car' ? 0.48 : v.type === 'bike' ? 0.45 : 0.25;
+  const tilt = new THREE.Group(); tilt.position.set(0, wr, rearZ); root.add(tilt);
+  const body = new THREE.Group(); body.position.set(0, -wr, -rearZ); tilt.add(body);
+  const wheel = (x, z, r, w) => { const wg = new THREE.Group(); wg.position.set(x, r, z); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 18), tc(0x1d2a44)); m.rotation.z = Math.PI / 2; m.castShadow = true; wg.add(m); const hub = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, r * 1.1, 0.12), tc(0xc8d0dc)); wg.add(hub); body.add(wg); wheels.push(wg); };
+  let seat;
+  if (v.type === 'car') {
+    olAdd(body, roundedBox(2.1, 0.55, 4.3, 0.25), tc(color), 0, 0.62, 0);
+    olAdd(body, roundedBox(1.9, 0.3, 1.6, 0.14), tc(color), 0, 0.98, 1.2);
+    olAdd(body, roundedBox(1.7, 0.45, 0.08, 0.03), toon('glass', { color: 0xbfe6ff, transparent: true, opacity: 0.55 }), 0, 1.25, 0.45);
+    for (const sx of [-0.65, 0.65]) olAdd(body, roundedBox(0.4, 0.14, 0.06, 0.04), toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.8 }), sx, 0.72, 2.15);
+    if (v.spoiler) { olAdd(body, roundedBox(2.1, 0.1, 0.55, 0.04), tc(0x2a2d34), 0, 1.35, -1.9); for (const sx of [-0.7, 0.7]) olAdd(body, roundedBox(0.1, 0.45, 0.1, 0.03), tc(0x2a2d34), sx, 1.1, -1.9); }
+    for (const [x, z] of [[-1.05, 1.4], [1.05, 1.4], [-1.05, -1.4], [1.05, -1.4]]) wheel(x, z, wr, 0.4);
+    seat = [0, 0.25, -0.35];
+  } else if (v.type === 'bike') {
+    olAdd(body, roundedBox(0.36, 0.45, 1.8, 0.15), tc(color), 0, 0.78, 0);
+    olAdd(body, roundedBox(0.55, 0.38, 0.75, 0.16), tc(color), 0, 1.05, 0.3);
+    olAdd(body, roundedBox(0.42, 0.14, 0.8, 0.06), tc(0x2a2d34), 0, 1.06, -0.4);
+    olAdd(body, roundedBox(0.12, 0.85, 0.12, 0.04), tc(0xc8d0dc), 0, 0.85, 0.82).rotation.x = -0.35;
+    olAdd(body, roundedBox(0.95, 0.08, 0.08, 0.03), tc(0x2a2d34), 0, 1.3, 0.7);
+    olAdd(body, roundedBox(0.3, 0.2, 0.08, 0.05), toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.8 }), 0, 1.1, 1.0);
+    wheel(0, 0.85, wr, 0.22); wheel(0, -0.85, wr, 0.24);
+    seat = [0, 0.42, -0.4];
+  } else {
+    olAdd(body, roundedBox(0.42, 0.1, 1.3, 0.04), tc(color), 0, 0.3, 0);
+    olAdd(body, roundedBox(0.08, 1.15, 0.08, 0.03), tc(0xc8d0dc), 0, 0.9, 0.6).rotation.x = -0.15;
+    olAdd(body, roundedBox(0.75, 0.07, 0.07, 0.03), tc(0x2a2d34), 0, 1.45, 0.68);
+    wheel(0, 0.6, wr, 0.14); wheel(0, -0.6, wr, 0.14);
+    seat = [0, 0.36, -0.15];
+  }
+  if (driverLook) { const d = makeAvatar(driverLook); d.position.set(...seat); riderPose(d, v.type); body.add(d); root.userData.driver = d; }
+  root.userData.wheels = wheels; root.userData.tilt = tilt; root.userData.type = v.type;
+  return root;
+}
+let chosenVehicle = (() => { const id = store.get('klotzwelt-fahrzeug', 'bike'); return VEHICLES.find(v => v.id === id && !v.admin) || VEHICLES[2]; })();
 function seatPose(a) {
   const u = a.userData;
   u.legL.rotation.x = u.legR.rotation.x = -1.5;
@@ -2265,7 +2352,7 @@ function ribbon(from, to, y, color, everyOther) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
   const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color, gradientMap: gradMap, side: THREE.DoubleSide })); m.receiveShadow = true; world.add(m); return m;
 }
-function buildRace() {
+function buildRace(game = 'race', veh = VEHICLES[0]) {
   clearWorld();
   addClouds(5);
   addBox(0, -0.5, -40, 420, 1, 300, 0x5cb85c);
@@ -2314,14 +2401,15 @@ function buildRace() {
   const tb = trackAt(12, -(ROAD_W + 6)), th0 = trackHeadingAt(12);
   for (let k = 0; k < 4; k++) { const sx = Math.cos(th0) * -k * 3, sz = -Math.sin(th0) * -k * 3; const b = olAdd(world, roundedBox(26, 1 + k, 3, 0.2), tc([0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e][k]), tb.x + sx, (1 + k) / 2, tb.z + sz); b.rotation.y = th0; }
   // Autos in der Startaufstellung
-  const car = { s: TRACK_N - 6, pos: trackAt(TRACK_N - 6, -2.6), h: trackHeadingAt(TRACK_N - 6), speed: 0, boost: 0, prog: -6 / TRACK_N, lap: 0 };
+  const car = { s: TRACK_N - 6, pos: trackAt(TRACK_N - 6, -2.6), h: trackHeadingAt(TRACK_N - 6), speed: 0, boost: 0, prog: -6 / TRACK_N, lap: 0, veh, wheelie: 0, wTime: 0 };
   car.idx = TRACK_N - 6;
-  car.mesh = makeCar(0xff6b3d, null); world.add(car.mesh);
+  car.mesh = makeVehicle(veh, veh.color, Object.assign(currentLook(), { name: profile.name })); world.add(car.mesh);
   const bots = [];
-  BOT_NAMES.filter(n => !isBanned('race', n)).slice(0, 3).forEach((n, i) => {
+  const botVeh = veh.admin ? VEHICLES[4] : veh, botMax = Math.min(botVeh.max, 46);
+  BOT_NAMES.filter(n => !isBanned(game, n)).slice(0, 3).forEach((n, i) => {
     const s0 = TRACK_N - (i === 0 ? 6 : 14), lane = i === 1 ? -2.6 : 2.6;
-    const b = { name: n, s: s0, lane, lane0: lane, speed: 24 + i * 0.8, ph: i * 2, prog: (s0 - TRACK_N) / TRACK_N, pos: new V3(), h: 0 };
-    b.mesh = makeCar([0x3b7de0, 0x3fb55e, 0x8b5cd6][i], botLook(n)); world.add(b.mesh); bots.push(b);
+    const b = { name: n, s: s0, lane, lane0: lane, speed: botMax * (0.86 + i * 0.03), ph: i * 2, prog: (s0 - TRACK_N) / TRACK_N, pos: new V3(), h: 0 };
+    b.mesh = makeVehicle(botVeh, [0x3b7de0, 0x3fb55e, 0x8b5cd6][i], botLook(n)); world.add(b.mesh); bots.push(b);
   });
   race = { car, bots, pads: padsR, count: 3.5, time: 0, done: false };
   P.pos.copy(car.pos); P.vel.set(0, 0, 0);
@@ -2330,19 +2418,18 @@ function buildRace() {
 }
 function placeCars() {
   const c = race.car;
-  c.mesh.position.copy(c.pos); c.mesh.rotation.y = c.h;
-  for (const w of c.mesh.userData.wheels) w.children[0].rotation.x += 0;
-  avatar.position.set(c.pos.x - Math.sin(c.h) * 0.35, 0.05, c.pos.z - Math.cos(c.h) * 0.35); avatar.rotation.y = c.h; seatPose(avatar);
+  c.mesh.position.copy(c.pos); c.mesh.rotation.y = c.h; c.mesh.rotation.z = c.lean || 0;
+  if (c.mesh.userData.tilt) c.mesh.userData.tilt.rotation.x = -(c.wheelie || 0) * 0.55;
   for (const b of race.bots) { b.pos.copy(trackAt(b.s, b.lane)); b.h = trackHeadingAt(b.s); b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h; }
 }
 function updateRace(dt) {
   const R = race; if (!R) return;
   const c = R.car;
-  if (mode === 'race' && R.count > 0) {
+  if (isRace(mode) && R.count > 0) {
     const before = Math.ceil(R.count); R.count -= dt; const after = Math.ceil(R.count);
     if (after !== before) { if (after > 0) { toast(String(after)); beep('equip'); } else { toast('Los!'); beep('check'); } }
   }
-  const ctrl = mode === 'race' && R.count <= 0 && !R.done;
+  const ctrl = isRace(mode) && R.count <= 0 && !R.done;
   let gas = 0, steer = 0;
   if (ctrl) {
     gas = Math.max(-1, Math.min(1, (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y));
@@ -2356,15 +2443,28 @@ function updateRace(dt) {
     if (c.charge > 0.5) { c.boost = Math.min(1.5, 0.4 + c.charge * 0.5); boing(); toast(c.charge > 1.2 ? 'Super-Turbo!' : 'Mini-Turbo!'); }
     c.charge = 0;
   }
-  let max = 28;
-  if (c.boost > 0) { c.boost -= dt; max = 38; }
-  if (gas > 0) c.speed += (c.speed < 0 ? 30 : 17) * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 30 : 20) * gas * dt;
+  const V = c.veh || VEHICLES[0];
+  let max = V.max;
+  if (c.boost > 0) { c.boost -= dt; max = V.max + 10; }
+  // Wheelie: auf Motorrad und E-Roller mit E (oder dem Wheelie-Knopf). Zu lange = umkippen!
+  const canW = V.type === 'bike' || V.type === 'scooter';
+  if (canW && ctrl && (keys.KeyE || keys.TouchWheelie) && c.speed > 10 && !c.drifting) {
+    c.wheelie = Math.min(1, c.wheelie + dt * 2.5); c.wTime += dt;
+    if (c.wTime > 5) { c.speed *= 0.3; c.wheelie = 0; c.wTime = 0; toast('Umgekippt!'); beep('bonk'); }
+  } else {
+    if (c.wTime > 1.2) { toast('Wheelie ' + c.wTime.toFixed(1) + ' s!'); if (c.wTime > 2.5) earn(2); }
+    c.wheelie = Math.max(0, c.wheelie - dt * 3); c.wTime = 0;
+  }
+  if (c.wheelie > 0.6) max += 4;
+  if (gas > 0) c.speed += (c.speed < 0 ? 30 : V.acc) * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 30 : 20) * gas * dt;
   c.speed -= c.speed * (c.drifting ? 0.65 : 0.5) * dt;
   if (c.speed > max) c.speed += (max - c.speed) * Math.min(1, 3 * dt);
   if (c.speed < -12) c.speed = -12;
   const grip = Math.max(-1, Math.min(1, c.speed / 8));
-  if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * 1.9 * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
-  else c.h -= steer * 1.9 * dt * grip;
+  const TR = V.turn * (c.wheelie > 0.6 ? 0.6 : 1);
+  if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * TR * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
+  else c.h -= steer * TR * dt * grip;
+  c.lean = canW ? (c.lean || 0) + ((steer * 0.35 * Math.min(1, c.speed / 15)) - (c.lean || 0)) * Math.min(1, dt * 6) : 0;
   // Die Fahrtrichtung folgt der Nase des Karts: beim Driften langsam, sonst schnell
   if (c.vdir === undefined) c.vdir = c.h;
   let dv = c.h - c.vdir; dv = Math.atan2(Math.sin(dv), Math.cos(dv));
@@ -2403,7 +2503,7 @@ function updateRace(dt) {
   if (R.count <= 0 && !R.done) { c.prog += di / TRACK_N; R.time += dt; game.time = R.time; }
   const lap = Math.floor(c.prog);
   if (lap > c.lap && lap < LAPS && !R.done) { c.lap = lap; toast('Runde ' + (lap + 1) + '/' + LAPS); beep('check'); }
-  if (!R.done && mode === 'race' && c.prog >= LAPS) finishRace();
+  if (!R.done && isRace(mode) && c.prog >= LAPS) finishRace();
   for (const b of R.bots) {
     if (R.count <= 0) {
       let sp = b.speed * (1 + Math.sin(tAll * 0.7 + b.ph) * 0.06);
@@ -2416,7 +2516,7 @@ function updateRace(dt) {
     for (const w of b.mesh.userData.wheels) w.rotation.x += (b.curSpeed || 0) * dt / 0.42;
   }
   for (const w of c.mesh.userData.wheels) w.rotation.x += c.speed * dt / 0.42;
-  c.mesh.userData.wheels[0].rotation.y = c.mesh.userData.wheels[1].rotation.y = -steer * 0.4;
+  if ((c.veh || VEHICLES[0]).type === 'kart' || (c.veh || {}).type === 'car') c.mesh.userData.wheels[0].rotation.y = c.mesh.userData.wheels[1].rotation.y = -steer * 0.4;
   placeCars();
   P.pos.copy(c.pos);
   let dy = (c.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
@@ -2446,8 +2546,8 @@ function finishRace() {
   const place = racePlace(), reward = [30, 20, 10, 5][place - 1] || 5;
   earn(reward);
   mode = 'win'; beep('win'); confetti(R.car.pos.clone().add(new V3(0, 2, 0)));
-  const best = store.get('klotzwelt-bestzeit-race', null), newBest = !best || R.time < best;
-  if (newBest) store.set('klotzwelt-bestzeit-race', R.time);
+  const bk = 'klotzwelt-bestzeit-' + lastGame + (lastGame === 'moto' ? '-' + R.car.veh.id : ''), best = store.get(bk, null), newBest = !best || R.time < best;
+  if (newBest) store.set(bk, R.time);
   showResult(place === 1 ? 'Platz 1!' : 'Platz ' + place, [['Platz', place + ' von ' + (R.bots.length + 1)], ['Zeit', fmt(R.time)], ['Münzen eingesammelt', game.coins], ['Verdient', '<i class="coin"></i> ' + game.earned], ['Bestzeit', newBest ? fmt(R.time) + ' (neu!)' : fmt(best)]]);
 }
 
@@ -2610,7 +2710,7 @@ function showResult(title, rows) {
 
 // ---------- Spiele-Tab: Sperren und Postfach ----------
 function renderGames() {
-  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playHorror', 'horror', 'Spielen']]) {
+  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playMoto', 'moto', 'Fahren'], ['playHorror', 'horror', 'Spielen']]) {
     const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name);
     btn.disabled = banned; btn.textContent = banned ? 'Gesperrt' : label;
     let note = card.querySelector('.lock');
@@ -2729,7 +2829,7 @@ function netSendState() {
   NET.lastSend = t;
   const r2 = v => Math.round(v * 100) / 100;
   const s = { x: r2(P.pos.x), y: r2(P.pos.y), z: r2(P.pos.z), f: r2(P.facing), m: Math.hypot(P.vel.x, P.vel.z) > 1 ? 1 : 0, a: P.onGround ? 0 : 1, d: dead > 0 ? 1 : 0 };
-  if (race && playingGame() === 'race') s.c = r2(race.car.h);
+  if (race && isRace(playingGame())) { s.c = r2(race.car.h); s.v = VEHICLES.indexOf(race.car.veh); s.w = r2(race.car.wheelie || 0); }
   netSend({ t: 'state', s });
 }
 // Andere Spieler in der eigenen Welt
@@ -2738,7 +2838,7 @@ function peerLook(pr) {
   for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back']) wear[k] = l.wear && ITEM[l.wear[k]] ? l.wear[k] : null;
   if (!wear.face) wear.face = 'f-smile';
   const sh = l.shape || {}, cl = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 1));
-  return { name: pr.name, body: Object.assign({ head: 0, torso: 0, arms: 0, legs: 0 }, l.body || {}), wear, shape: { height: cl(sh.height, 0.85, 1.2), width: cl(sh.width, 0.85, 1.35), head: cl(sh.head, 0.85, 1.3) } };
+  return { name: pr.name, badge: l.role || null, body: Object.assign({ head: 0, torso: 0, arms: 0, legs: 0 }, l.body || {}), wear, shape: { height: cl(sh.height, 0.85, 1.2), width: cl(sh.width, 0.85, 1.35), head: cl(sh.head, 0.85, 1.3) } };
 }
 function buildPeerMesh(pr) {
   if (pr.g && pr.g.parent) pr.g.parent.remove(pr.g);
@@ -2770,10 +2870,12 @@ function updatePeers(dt) {
     pr.pos.x += (st.x - pr.pos.x) * k; pr.pos.y += (st.y - pr.pos.y) * k; pr.pos.z += (st.z - pr.pos.z) * k;
     let df = st.f - pr.facing; df = Math.atan2(Math.sin(df), Math.cos(df)); pr.facing += df * k;
     const u = pr.g.userData;
-    if (st.c !== undefined && playingGame() === 'race') {
-      if (!pr.car) { pr.car = makeCar(0x6fd0f0, null); world.add(pr.car); }
+    if (st.c !== undefined && isRace(playingGame())) {
+      const vi = VEHICLES[st.v] ? st.v : 0;
+      if (!pr.car || pr.carV !== vi) { if (pr.car) world.remove(pr.car); pr.car = makeVehicle(VEHICLES[vi], 0x6fd0f0, peerLook(pr)); pr.carV = vi; world.add(pr.car); }
       pr.car.position.set(pr.pos.x, 0, pr.pos.z); pr.car.rotation.y = st.c;
-      pr.g.position.set(pr.pos.x - Math.sin(st.c) * 0.35, 0.05, pr.pos.z - Math.cos(st.c) * 0.35); pr.g.rotation.y = st.c; seatPose(pr.g);
+      if (pr.car.userData.tilt) pr.car.userData.tilt.rotation.x = -(st.w || 0) * 0.55;
+      pr.g.visible = false; continue;
     } else {
       if (pr.car) { world.remove(pr.car); pr.car = null; }
       pr.g.position.copy(pr.pos); pr.g.rotation.y = pr.facing;
@@ -2854,7 +2956,7 @@ function renderFriendsTab() {
     if (f.game) acts.push(`<button class="btn primary" data-join="${esc(f.name)}">Mitspielen</button>`);
     if (party && leader && !inParty) acts.push(`<button class="btn" data-inv="${esc(f.name)}">Einladen</button>`);
     acts.push(`<button class="btn" data-rem="${esc(f.name)}" aria-label="${esc(f.name)} entfernen">Entfernen</button>`);
-    return `<div class="friend"><span class="on ${f.online ? 'yes' : ''}" title="${f.online ? 'online' : 'offline'}"></span><b>${esc(f.name)}</b><span class="where">${f.online ? (f.game ? 'spielt ' + esc(GAMES[f.game] || f.game) : 'online') : 'offline'}</span><span class="acts">${acts.join('')}</span></div>`;
+    return `<div class="friend"><span class="on ${f.online ? 'yes' : ''}" title="${f.online ? 'online' : 'offline'}"></span><b>${f.role ? TICK + ' ' : ''}${esc(f.name)}</b><span class="where">${f.online ? (f.game ? 'spielt ' + esc(GAMES[f.game] || f.game) : 'online') : 'offline'}</span><span class="acts">${acts.join('')}</span></div>`;
   }).join('')}</div>` : '<p class="small">Noch keine Freunde. Gib oben den Benutzernamen deines Freundes ein.</p>';
   h += '<div class="row" style="justify-content:flex-start"><button class="btn" id="aOut">Abmelden</button></div>';
   el.innerHTML = h;
@@ -2887,10 +2989,10 @@ let toastTimer = 0;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1100); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
 function renderStats() {
-  const adm = isAdmin() ? `<span class="pill">★ <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
+  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
-  } else if (mode === 'race' && race) {
+  } else if (isRace(mode) && race) {
     $('stats').innerHTML = adm + `<span class="pill">Runde <b>${Math.min(LAPS, race.car.lap + 1)}/${LAPS}</b></span><span class="pill">Platz <b>${racePlace()}/${race.bots.length + 1}</b></span><span class="pill">Zeit <b>${fmt(race.time)}</b></span><span class="pill"><b>${Math.round(Math.abs(race.car.speed) * 4)}</b> km/h</span>`;
   } else if (mode === 'horror' && horror) {
     $('stats').innerHTML = adm + `<span class="pill">Schlüssel <b>${horror.keys}/3</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Erwischt <b>${game.deaths}</b></span>`;
@@ -2957,7 +3059,7 @@ function enterPlay(m) {
   tryOn = null; rebuildAvatar();
   $('home').hidden = true; $('hud').hidden = false; $('win').hidden = true;
   $('stick').hidden = $('stickZone').hidden = $('jumpBtn').hidden = !isTouch;
-  $('driftBtn').hidden = true;
+  $('driftBtn').hidden = true; $('wheelieBtn').hidden = true;
   applyViewOffset();
   cam.pitch = 0.38; cam.dist = m === 'build' ? 14 : 11;
   if (m === 'obby') {
@@ -2965,11 +3067,13 @@ function enterPlay(m) {
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
     $('hint').textContent = isTouch ? 'Links tippen: Joystick · Sprung-Taste · rechts ziehen: Kamera · zwei Finger oder +/−: Zoom' : 'WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera · Mausrad: Zoom bis zur eigenen Sicht · Esc zurück';
     toast('Los geht’s!');
-  } else if (m === 'race') {
-    buildRace();
+  } else if (isRace(m)) {
+    const veh = m === 'race' ? VEHICLES[0] : chosenVehicle;
+    buildRace(m, veh);
+    $('wheelieBtn').hidden = !isTouch || !(veh.type === 'bike' || veh.type === 'scooter');
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
     $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch;
-    $('hint').textContent = isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo · Esc zurück';
+    $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
   } else if (m === 'horror') {
     buildHorror();
@@ -2992,6 +3096,23 @@ function enterPlay(m) {
 $('playObby').onclick = () => enterPlay('obby');
 $('playBuild').onclick = () => enterPlay('build');
 $('playRace').onclick = () => enterPlay('race');
+function openVehPicker() {
+  const list = $('vehList'); list.innerHTML = '';
+  for (const v of VEHICLES) {
+    if (v.admin && !isAdmin()) continue;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'veh';
+    b.setAttribute('aria-pressed', String(v === chosenVehicle));
+    b.innerHTML = `<b>${v.admin ? TICK + ' ' : ''}${v.name}</b><span class="small">${v.brand}${v.admin ? ' · nur für Admins' : ''}</span><span class="small">Tempo</span><span class="bar"><i style="width:${Math.round(v.max / 58 * 100)}%"></i></span><span class="small">Beschleunigung</span><span class="bar"><i style="width:${Math.round(v.acc / 28 * 100)}%"></i></span>`;
+    b.onclick = () => { chosenVehicle = v; if (!v.admin) store.set('klotzwelt-fahrzeug', v.id); openVehPicker(); };
+    list.appendChild(b);
+  }
+  $('vehPanel').hidden = false;
+}
+$('playMoto').onclick = () => { if (isBanned('moto', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[2]; openVehPicker(); };
+$('vehCancel').onclick = () => { $('vehPanel').hidden = true; };
+$('vehGo').onclick = () => { $('vehPanel').hidden = true; enterPlay('moto'); };
+$('wheelieBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchWheelie = true; $('wheelieBtn').setPointerCapture(e.pointerId); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('wheelieBtn').addEventListener(ev, () => { keys.TouchWheelie = false; });
 $('playHorror').onclick = () => enterPlay('horror');
 // Pause statt direkt zurück in die Lobby
 let paused = false;
@@ -3166,7 +3287,7 @@ function frame(now) {
     cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 7 : 6.4) - menuZoomCur * (narrow ? 0.6 : 1.6);
     camTarget.set(P.pos.x, P.pos.y + (narrow ? 1.45 : 1.25), P.pos.z);
     for (const c of world.children) if (c.userData.cloud) c.position.x += dt * 0.6;
-  } else if (playingGame() === 'race') {
+  } else if (isRace(playingGame())) {
     updateRace(dt);
   } else {
     updatePlayer(dt);
@@ -3179,8 +3300,9 @@ function frame(now) {
   updateDebris(dt);
   updatePeers(dt);
   netSendState();
-  if ((firstPerson() || shiftLock) && mode !== 'menu' && playingGame() !== 'race' && dead <= 0) P.facing = cam.yaw + Math.PI;
-  if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson();
+  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && dead <= 0) P.facing = cam.yaw + Math.PI;
+  if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson() && !isRace(playingGame());
+  if (race && race.car.mesh.userData.driver) race.car.mesh.userData.driver.visible = !firstPerson();
   placeCamera();
   sun.position.set(P.pos.x + 25, P.pos.y + 50, P.pos.z + 18); sun.target.position.copy(P.pos);
   if (canBuild() && !(isAdmin() && powers.hammer) && lastMouse && !drags.size) updateGhost(pickTarget(lastMouse.x, lastMouse.y));
@@ -3206,8 +3328,8 @@ function applyDevice() {
 
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
-    $('jumpBtn').hidden = !isTouch || playingGame() === 'race';
-    $('driftBtn').hidden = !isTouch || playingGame() !== 'race';
+    $('jumpBtn').hidden = !isTouch || isRace(playingGame());
+    $('driftBtn').hidden = !isTouch || !isRace(playingGame());
     renderAdminBar();
   }
 }
@@ -3319,6 +3441,7 @@ function previewShot(setup, pos, look) {
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
 setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
+setPreview('prevMoto', previewShot(() => { buildRace('moto', VEHICLES[4]); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x + t.x * 7 + t.z * 4, 3.5, c.pos.z + t.z * 7 - t.x * 4]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevRace', previewShot(() => { buildRace(); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevHorror', previewShot(() => { buildHorror(); updateHorror(0); }, [-8, 20, -4], [-14, 0, -18]));
 setPreview('prevBuild', previewShot(() => { buildSandbox(); P.pos.set(2.5, 0, 6.5); P.facing = Math.PI * 1.1; }, [11, 8, 15], [1, 1.5, -1]));

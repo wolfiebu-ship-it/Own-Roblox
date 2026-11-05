@@ -11,7 +11,7 @@ const db = require('./db');
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.join(__dirname, '..');
 const FILES = { '/index.html': 'text/html; charset=utf-8', '/sw.js': 'text/javascript; charset=utf-8', '/manifest.webmanifest': 'application/manifest+json', '/icon-192.png': 'image/png', '/icon-512.png': 'image/png', '/apple-touch-icon.png': 'image/png' };
-const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', horror: 'Gruselvilla' };
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', moto: 'Turbo-Rennen', horror: 'Gruselvilla' };
 const ROOM_MAX = 10;
 const TOKEN_DAYS = 30;
 // Der Erfinder-Code steht NICHT im Code, sondern als Umgebungsvariable CREATOR_CODE bei Render.
@@ -86,7 +86,7 @@ function meOf(u) {
   const usr = D().users[u];
   return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
-const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, body: p.body, wear: p.wear, shape: p.shape }; };
+const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, body: p.body, wear: p.wear, shape: p.shape }; };
 
 // ---------- Freunde & Gruppen ----------
 function partyInfo(p) { return { id: p.id, leader: D().users[p.leader].name, members: [...p.members].map(m => D().users[m].name) }; }
@@ -94,7 +94,7 @@ function socialOf(u) {
   const usr = D().users[u], c = online.get(u);
   const friends = usr.friends.filter(f => D().users[f]).map(f => {
     const oc = online.get(f);
-    return { name: D().users[f].name, online: !!oc, game: oc && oc.room ? oc.room.game : null, room: oc && oc.room ? oc.room.key : null };
+    return { name: D().users[f].name, role: D().users[f].role || null, online: !!oc, game: oc && oc.room ? oc.room.game : null, room: oc && oc.room ? oc.room.key : null };
   }).sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
   const requests = usr.requests.filter(r => D().users[r]).map(r => D().users[r].name);
   const invites = [...parties.values()].filter(p => p.invited.has(u)).map(p => ({ id: p.id, from: D().users[p.leader].name }));
@@ -330,7 +330,7 @@ function handle(c, m) {
     case 'state': {
       if (!c.room || !m.s || typeof m.s !== 'object') return;
       const s = m.s, st = { x: num(s.x, -500, 500, 0), y: num(s.y, -100, 200, 0), z: num(s.z, -500, 500, 0), f: num(s.f, -50, 50, 0), m: s.m ? 1 : 0, a: s.a ? 1 : 0, d: s.d ? 1 : 0 };
-      if (s.c !== undefined && s.c !== null) st.c = num(s.c, -1e4, 1e4, 0);
+      if (s.c !== undefined && s.c !== null) { st.c = num(s.c, -1e4, 1e4, 0); st.v = Math.round(num(s.v, 0, 9, 0)); st.w = num(s.w, 0, 1, 0); }
       c.state = st; return;
     }
   }
