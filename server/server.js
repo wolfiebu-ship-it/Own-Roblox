@@ -16,6 +16,33 @@ const ROOM_MAX = 10;
 const TOKEN_DAYS = 30;
 // Der Erfinder-Code steht NICHT im Code, sondern als Umgebungsvariable CREATOR_CODE bei Render.
 const CREATOR_CODE = String(process.env.CREATOR_CODE || '').trim();
+// Private Website: Ist SITE_CODE gesetzt, kommt nur rein, wer diesen Zugangscode kennt.
+const SITE_CODE = String(process.env.SITE_CODE || '').trim();
+const ACCESS_TOKEN = SITE_CODE ? crypto.createHmac('sha256', SITE_CODE).update('klotzwelt-zugang').digest('hex') : '';
+const OPEN_FILES = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png']);
+function hasAccess(req) {
+  if (!SITE_CODE) return true;
+  const m = /(?:^|;\s*)kz_zugang=([a-f0-9]{64})/.exec(req.headers.cookie || '');
+  return !!m && crypto.timingSafeEqual(Buffer.from(m[1]), Buffer.from(ACCESS_TOKEN));
+}
+const gateTries = new Map();
+function gatePage(res, error) {
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+  res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Klotzwelt</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#8fd0f5">
+<style>
+:root{--sky:#8fd0f5;--ink:#1d2a44;--paper:#fffdf6;--accent:#ff6b3d;--bad:#c8362b;color-scheme:light}
+html,body{height:100%;margin:0}body{background:var(--sky);color:var(--ink);font:600 16px system-ui,-apple-system,'Segoe UI',sans-serif;display:grid;place-items:center;padding:16px;box-sizing:border-box}
+form{background:var(--paper);border:3px solid var(--ink);border-radius:16px;box-shadow:5px 5px 0 var(--ink);padding:24px;width:min(360px,100%);box-sizing:border-box;display:flex;flex-direction:column;gap:12px}
+h1{margin:0;font:900 34px/1 'Arial Black',Impact,sans-serif;color:var(--accent);-webkit-text-stroke:1.5px var(--ink)}
+p{margin:0;color:#5a6a88;font-size:14px}input{border:3px solid var(--ink);border-radius:10px;padding:10px;font:inherit;font-weight:800}
+button{border:3px solid var(--ink);border-radius:10px;background:var(--accent);color:var(--paper);padding:10px;font:inherit;font-weight:800;box-shadow:3px 3px 0 var(--ink);cursor:pointer}
+.err{color:var(--bad);font-weight:800}
+</style></head><body>
+<form method="post" action="/zugang"><h1>Klotzwelt</h1><p>Diese Klotzwelt ist privat. Gib den Zugangscode ein, den du von den Erfindern bekommen hast.</p>
+<label for="code">Zugangscode</label><input id="code" name="code" type="password" autocomplete="off" autofocus>
+${error ? '<p class="err">' + error + '</p>' : ''}<button type="submit">Reinkommen</button></form></body></html>`);
+}
 
 // ---------- Webseite ----------
 const server = http.createServer((req, res) => {
@@ -23,6 +50,25 @@ const server = http.createServer((req, res) => {
   try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch (e) { res.writeHead(400); return res.end(); }
   if (p === '/') p = '/index.html';
   if (p === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
+  if (SITE_CODE && p === '/zugang' && req.method === 'POST') {
+    let body = '';
+    req.on('data', ch => { body += ch; if (body.length > 2000) req.destroy(); });
+    req.on('end', () => {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      const list = (gateTries.get(ip) || []).filter(t => Date.now() - t < 600e3); gateTries.set(ip, list);
+      if (list.length >= 10) return gatePage(res, 'Zu viele Versuche. Warte 10 Minuten.');
+      const code = String(new URLSearchParams(body).get('code') || '').trim(), a = Buffer.from(code), b = Buffer.from(SITE_CODE);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) { list.push(Date.now()); return gatePage(res, 'Der Zugangscode stimmt nicht.'); }
+      const secure = /^localhost|^127\./.test(req.headers.host || '') ? '' : '; Secure';
+      res.writeHead(303, { location: '/', 'set-cookie': 'kz_zugang=' + ACCESS_TOKEN + '; Path=/; Max-Age=15552000; HttpOnly; SameSite=Lax' + secure });
+      res.end();
+    });
+    return;
+  }
+  if (SITE_CODE && !OPEN_FILES.has(p) && !hasAccess(req)) {
+    if (p === '/' || p === '/index.html') return gatePage(res, '');
+    res.writeHead(401, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('Privat');
+  }
   if (!FILES[p]) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('Nicht gefunden'); }
   fs.readFile(path.join(ROOT, p), (err, buf) => {
     if (err) { res.writeHead(404); return res.end(); }
@@ -337,7 +383,7 @@ function handle(c, m) {
 }
 
 // ---------- Verbindungen ----------
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 32 * 1024 });
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 32 * 1024, verifyClient: info => hasAccess(info.req) });
 wss.on('connection', (ws, req) => {
   const c = { ws, id: nextId++, user: null, room: null, state: null, party: null, count: 0, alive: true, ip: String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim() };
   clients.add(c);

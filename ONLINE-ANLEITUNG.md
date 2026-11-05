@@ -81,6 +81,20 @@ Jetzt startet Klotzwelt wie eine App.
 
   Dann `http://localhost:3000` im Browser öffnen.
 
+## Website privat machen (Zugangscode)
+
+Wenn bei Render die Umgebungsvariable `SITE_CODE` gesetzt ist, sieht jeder, der die Adresse öffnet, zuerst nur eine Seite mit „Diese Klotzwelt ist privat“. Erst mit dem richtigen Zugangscode kommt man rein. Das Gerät merkt sich den Code danach 6 Monate.
+
+1. Bei Render deinen Service öffnen → **Environment** → **Add Environment Variable**
+2. Key: `SITE_CODE`, Value: dein Zugangscode (ein Wort oder eine Zahl, die du deinen Freunden gibst)
+3. **Save Changes**
+
+Wer den Code ändert, sperrt alle aus, bis sie den neuen Code eingeben. Ohne `SITE_CODE` ist die Website wieder für alle offen.
+
+## Erfinder-Code
+
+Die Umgebungsvariable `CREATOR_CODE` legt den geheimen Code fest, mit dem ein angemeldetes Konto im Tab **Admin** zum Erfinder wird. Der Code steht nicht im Programm.
+
 ## Sicherheit
 
 - Passwörter werden nur verschlüsselt (scrypt mit Salt) gespeichert.
