@@ -308,8 +308,10 @@ function handle(c, m) {
     case 'claimCreator': {
       if (tooMany(codeTries, c.user, 5, 600e3)) return err(c, 'Zu viele Versuche. Warte 10 Minuten.');
       codeTries.get(c.user).push(now());
-      const code = String(m.code || '').trim(), a = Buffer.from(code), b = Buffer.from(CREATOR_CODE);
-      if (!CREATOR_CODE || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return err(c, 'Der Code stimmt nicht.');
+      if (!CREATOR_CODE) return err(c, 'Auf dem Server ist noch kein Erfinder-Code eingestellt (CREATOR_CODE bei Render).');
+      // Groß- und Kleinschreibung egal, weil Handy-Tastaturen oft den ersten Buchstaben groß machen
+      const a = Buffer.from(String(m.code || '').trim().toLowerCase()), b = Buffer.from(CREATOR_CODE.toLowerCase());
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return err(c, 'Der Code stimmt nicht.');
       users[c.user].role = 'creator'; db.save();
       send(c, { t: 'me', me: meOf(c.user) }); send(c, adminData());
       return notice(c, 'Du bist jetzt Erfinder!');
