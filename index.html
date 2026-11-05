@@ -2406,7 +2406,8 @@ function buildRace(game = 'race', veh = VEHICLES[0]) {
   ribbon(-0.2, 0.2, 0.035, 0xf4f4f0, 6);
   // Start- und Ziellinie
   const st = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W * 2, 1.8), new THREE.MeshToonMaterial({ gradientMap: gradMap, map: stripeTex('checker', '#1d2a44', '#fffdf6', 8) }));
-  st.rotation.set(-Math.PI / 2, 0, -trackHeadingAt(3)); st.position.copy(trackAt(3, 0)); st.position.y = 0.045; world.add(st);
+  const stg = new THREE.Group(); stg.position.copy(trackAt(3, 0)); stg.position.y = 0.045; stg.rotation.y = trackHeadingAt(3); world.add(stg);
+  st.rotation.x = -Math.PI / 2; stg.add(st);
   // Banden an beiden Seiten
   const bandGeo = roundedBox(0.7, 0.9, 1.5, 0.15), bandMat = new THREE.MeshToonMaterial({ gradientMap: gradMap });
   const step = Math.max(1, Math.round(1.5 / TRACK.seg)), count = Math.ceil(TRACK_N / step);
@@ -2414,7 +2415,7 @@ function buildRace(game = 'race', veh = VEHICLES[0]) {
     const im = new THREE.InstancedMesh(bandGeo, bandMat, count), dummy = new THREE.Object3D(), col = new THREE.Color();
     for (let k = 0; k < count; k++) {
       const i = k * step;
-      dummy.position.copy(trackAt(i, side * (ROAD_W + 1.5))); dummy.position.y = 0.45; dummy.rotation.set(0, trackHeadingAt(i), 0); dummy.updateMatrix();
+      dummy.position.copy(trackAt(i, side * (ROAD_W + 0.45))); dummy.position.y = 0.45; dummy.rotation.set(0, trackHeadingAt(i), 0); dummy.updateMatrix();
       im.setMatrixAt(k, dummy.matrix); im.setColorAt(k, col.set(k % 2 ? 0xf4f4f0 : 0xe2453c));
     }
     im.castShadow = true; world.add(im);
@@ -2441,8 +2442,15 @@ function buildRace(game = 'race', veh = VEHICLES[0]) {
     olAdd(tr, gd(new THREE.SphereGeometry(1.6, 14, 10), 3.2), tc(made % 3 ? 0x3fb55e : 0x23824a), 0, 3, 0);
     world.add(tr); made++;
   }
-  const tb = trackAt(12, -(ROAD_W + 6)), th0 = trackHeadingAt(12);
-  for (let k = 0; k < 4; k++) { const sx = Math.cos(th0) * -k * 3, sz = -Math.sin(th0) * -k * 3; const b = olAdd(world, roundedBox(26, 1 + k, 3, 0.2), tc([0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e][k]), tb.x + sx, (1 + k) / 2, tb.z + sz); b.rotation.y = th0; }
+  // Tribüne: weit hinter der Bande, saubere Stufen ohne Überlappung, mit Dach und Zuschauern
+  const stand = new THREE.Group(), sp = trackAt(40, -(ROAD_W + 5)); stand.position.set(sp.x, 0, sp.z); stand.rotation.y = trackHeadingAt(40); world.add(stand);
+  const rowCols = [0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e, 0x8b5cd6];
+  for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7 * (k + 1), 32), tc(rowCols[k])); m.position.set(-1 - 2 * k, 0.35 * (k + 1), 0); m.castShadow = m.receiveShadow = true; stand.add(m); }
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 6, 32), tc(0x8a8f99)); back.position.set(-10.2, 3, 0); back.castShadow = true; stand.add(back);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.3, 33), tc(0xf4f4f0)); roof.position.set(-5.2, 6.2, 0); roof.castShadow = true; stand.add(roof);
+  for (const z of [-15.5, 15.5]) { const pole = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.3), tc(0x8a8f99)); pole.position.set(-0.4, 3, z); stand.add(pole); }
+  let fs = 3; const frnd = () => (fs = (fs * 9301 + 49297) % 233280) / 233280;
+  for (let k = 0; k < 5; k++) for (let j = 0; j < 12; j++) { if (frnd() < 0.35) continue; const fan = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.5), tc([0xff6b3d, 0x6fd0f0, 0xff6fae, 0xf4f4f0, 0x2a2d34][Math.floor(frnd() * 5)])); fan.position.set(-1 - 2 * k, 0.7 * (k + 1) + 0.45, -14 + j * 2.5 + frnd()); stand.add(fan); }
   // Autos in der Startaufstellung
   const car = { s: TRACK_N - 6, pos: trackAt(TRACK_N - 6, -2.6), h: trackHeadingAt(TRACK_N - 6), speed: 0, boost: 0, prog: -6 / TRACK_N, lap: 0, veh, wheelie: 0, wTime: 0 };
   car.idx = TRACK_N - 6;
@@ -2569,7 +2577,7 @@ function updateRace(dt) {
 function keepOnTrack(o) {
   const idx = nearestIdx(o.pos, o.idx || 0);
   const p = TRACK.pts[idx], n = TRACK.nrm[idx], t = TRACK.tan[idx];
-  const lat = (o.pos.x - p.x) * n.x + (o.pos.z - p.z) * n.z, lim = ROAD_W - 1.1;
+  const lat = (o.pos.x - p.x) * n.x + (o.pos.z - p.z) * n.z, lim = ROAD_W - 1.0;
   if (Math.abs(lat) <= lim) return;
   const side = Math.sign(lat);
   o.pos.x -= n.x * (Math.abs(lat) - lim + 0.5) * side; o.pos.z -= n.z * (Math.abs(lat) - lim + 0.5) * side;
