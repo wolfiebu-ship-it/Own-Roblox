@@ -530,7 +530,7 @@ let mode = 'menu';
 function applyViewOffset() {
   const w = innerWidth, h = innerHeight;
   if (mode === 'menu') {
-    if (w > 720) { const pw = Math.min(440, w - 32) + 16; camera.setViewOffset(w, h, pw / 2, 0, w, h); }
+    if (w > 720) { const pw = Math.min(440, w - 32) + 16; camera.setViewOffset(w, h, pw / 2, -h * (h < 600 ? 0.14 : 0.08), w, h); }
     else camera.setViewOffset(w, h, 0, h * 0.27, w, h);
   } else camera.clearViewOffset();
   camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -4039,7 +4039,10 @@ function previewShot(setup, pos, look) {
     thumbR.render(scene, thumbCam);
     return thumbR.domElement.toDataURL('image/jpeg', 0.85);
   } catch (e) { return ''; }
-  finally { if (thumbR) { thumbR.setSize(160, 160); thumbCam.aspect = 1; thumbCam.fov = 35; thumbCam.updateProjectionMatrix(); } }
+  finally {
+    // Handschuhe oder Waffen aus der Vorschau wieder ausziehen
+    try { if (fight || arena) rebuildAvatar(); } catch (e) {}
+    if (thumbR) { thumbR.setSize(160, 160); thumbCam.aspect = 1; thumbCam.fov = 35; thumbCam.updateProjectionMatrix(); } }
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
 setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
