@@ -214,7 +214,7 @@ function tooMany(map, key, limit, ms) {
 // ---------- Nachrichten ----------
 function handle(c, m) {
   const users = D().users;
-  if (m.t !== 'state') { c.count = (c.count || 0) + 1; if (c.count > 40) return err(c, 'Zu viele Anfragen, bitte kurz warten.'); }
+  if (m.t !== 'state' && m.t !== 'shot' && m.t !== 'hit') { c.count = (c.count || 0) + 1; if (c.count > 40) return err(c, 'Zu viele Anfragen, bitte kurz warten.'); }
   if (!c.user && !['register', 'login', 'resume'].includes(m.t)) return;
   switch (m.t) {
     case 'register': {
@@ -383,7 +383,28 @@ function handle(c, m) {
       if (!c.room || !m.s || typeof m.s !== 'object') return;
       const s = m.s, st = { x: num(s.x, -500, 500, 0), y: num(s.y, -100, 200, 0), z: num(s.z, -500, 500, 0), f: num(s.f, -50, 50, 0), m: s.m ? 1 : 0, a: s.a ? 1 : 0, d: s.d ? 1 : 0 };
       if (s.c !== undefined && s.c !== null) { st.c = num(s.c, -1e4, 1e4, 0); st.v = Math.round(num(s.v, 0, 9, 0)); st.w = num(s.w, 0, 1, 0); }
+      if (s.p) st.p = Math.round(num(s.p, 0, 9, 0));
       c.state = st; return;
+    }
+    // Kämpfen gegen andere Spieler im selben Raum (Box-Ring, Blaster-Arena)
+    case 'hit': case 'ko': case 'shot': {
+      const r = c.room;
+      if (!r || !['fight', 'blaster'].includes(r.game)) return;
+      const name = D().users[c.user].name;
+      if (m.t === 'shot') {
+        const v = a => Array.isArray(a) && a.length === 3 ? a.map(x => num(x, -500, 500, 0)) : null, a = v(m.a), b = v(m.b);
+        if (!a || !b) return;
+        const t1 = now(); if (t1 - (c.lastShot || 0) < 50) return; c.lastShot = t1;
+        for (const o of r.players) if (o !== c) send(o, { t: 'shot', a, b, col: Math.round(num(m.col, 0, 0xffffff, 0xffffff)) });
+        return;
+      }
+      const target = [...r.players].find(o => o.id === Number(m.id) && o !== c);
+      if (!target) return;
+      if (m.t === 'hit') {
+        const t0 = now(); if (t0 - (c.lastHit || 0) < 60) return; c.lastHit = t0;
+        return send(target, { t: 'hit', from: name, id: c.id, dmg: Math.round(num(m.dmg, 1, 25, 5)), up: m.up ? 1 : 0 });
+      }
+      return send(target, { t: 'ko', from: name });
     }
   }
 }

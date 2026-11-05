@@ -674,6 +674,7 @@ const ITEMS = [
   { id: 's-stripes', slot: 'shirt', name: 'Ringelshirt', price: 60, shirt: { base: 0xf4f4f0, accent: 0xe2453c, pattern: 'stripes' } },
   { id: 's-star', slot: 'shirt', name: 'Sternenshirt', price: 100, shirt: { base: 0x1d2a44, accent: 0xffd23f, pattern: 'star' } },
   { id: 's-hoodie', slot: 'shirt', name: 'Kapuzenpulli', price: 120, shirt: { base: 0x8b5cd6, accent: 0x6a3fb0, pattern: 'hoodie' } },
+  { id: 's-blaugrana', slot: 'shirt', name: 'Blau-Rot-Trikot Nr. 19', price: 200, shirt: { base: 0x1b3f94, accent: 0xa50044, pattern: 'blaugrana' } },
   { id: 's-jersey', slot: 'shirt', name: 'Trikot Nr. 10', price: 150, shirt: { base: 0xffd23f, accent: 0x23824a, pattern: 'jersey' } },
   { id: 's-flames', slot: 'shirt', name: 'Flammenshirt', price: 180, shirt: { base: 0x121418, accent: 0xff6b3d, pattern: 'flames' } },
   { id: 's-suit', slot: 'shirt', name: 'Schicker Anzug', price: 250, shirt: { base: 0x121418, accent: 0xf4f4f0, pattern: 'suit' } },
@@ -961,6 +962,15 @@ function shirtTex(item, side) {
           g.fillText('10', side === 'front' ? 84 : 64, side === 'front' ? 48 : 68);
         }
         break;
+      case 'blaugrana':
+        // senkrechte Streifen in Blau und Dunkelrot, gelbe Nummer
+        g.fillStyle = ac; for (let x = 16; x < n; x += 32) g.fillRect(x, 0, 16, n);
+        g.fillStyle = '#ffd23f'; g.fillRect(0, 0, n, 6);
+        if (side !== 'side') {
+          g.font = '400 ' + (side === 'front' ? 44 : 70) + 'px "Lilita One", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.lineWidth = 6; g.strokeStyle = '#1d2a44'; g.strokeText('19', side === 'front' ? 86 : 64, side === 'front' ? 46 : 70); g.fillText('19', side === 'front' ? 86 : 64, side === 'front' ? 46 : 70);
+        }
+        break;
       case 'flames':
         for (const [col, h] of [[ac, 74], ['#ffd23f', 40]]) {
           g.fillStyle = col; g.beginPath(); g.moveTo(0, n);
@@ -1207,7 +1217,7 @@ function makeAvatar(lk, opts = {}) {
   let torsoMat = tc(col('torso'));
   if (shirt) {
     const plain = tc(shirt.shirt.base);
-    const side = ['stripes', 'flames', 'jersey'].includes(shirt.shirt.pattern) ? tt(shirt.id + 'side', shirtTex(shirt, 'side')) : plain;
+    const side = ['stripes', 'flames', 'jersey', 'blaugrana'].includes(shirt.shirt.pattern) ? tt(shirt.id + 'side', shirtTex(shirt, 'side')) : plain;
     torsoMat = [side, side, plain, plain, tt(shirt.id + 'front', shirtTex(shirt, 'front')), tt(shirt.id + 'back', shirtTex(shirt, 'back'))];
   }
   add(roundedBox(0.84, 0.8, 0.44, 0.13), torsoMat, 0, 1.2, 0);
@@ -2936,19 +2946,57 @@ function playerPunch(F, foe) {
   if (F.upper) toast('Aufwärtshaken!');
   if (foe.hp <= 0) { explode(foe.look, foe.pos.clone(), foe.facing, foe.g.userData, new V3(Math.sin(a) * 6, 0, Math.cos(a) * 6)); world.remove(foe.g); oof(); toast('K.O.!'); F.wins++; earn(10); F.between = 2.4; }
 }
+const ringPeers = () => NET.room ? [...NET.peers.values()].filter(pr => pr.init && pr.target && !pr.target.d) : [];
+function punchPeers(F, list) {
+  for (const pr of list) {
+    const d = Math.hypot(pr.pos.x - P.pos.x, pr.pos.z - P.pos.z);
+    if (d > 2.2 || angDiff(angTo(P.pos, pr.pos), P.facing) > 0.9) continue;
+    netSend({ t: 'hit', id: pr.id, dmg: Math.round((F.upper ? 16 : 7) + Math.random() * 4), up: F.upper });
+    hitFx(pr.pos.clone().add(new V3(0, 1.9, 0))); beep('land');
+    if (F.upper) toast('Aufwärtshaken!');
+    break;
+  }
+}
+// Ein anderer Spieler hat mich getroffen
+function gotHit(m) {
+  const pr = NET.peers.get(m.id), from = pr ? pr.pos : null;
+  if (fight && mode === 'fight' && dead <= 0) {
+    const F = fight; if (F.dodge > 0) return;
+    let dmg = F.blocking ? 1 : m.dmg; if (hasHelm(currentLook())) dmg *= 0.75;
+    F.php = Math.max(0, F.php - Math.round(dmg)); F.sinceHurt = 0;
+    if (!F.blocking) { F.recoil = 1; hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.9, 0))); F.pT = -1; beep('land'); if (from) { const a = angTo(from, P.pos), kb = m.up ? 9 : 5; P.vel.x += Math.sin(a) * kb; P.vel.z += Math.cos(a) * kb; } }
+    else beep('bonk');
+    if (F.php <= 0) { F.pvpLoss = (F.pvpLoss || 0) + 1; netSend({ t: 'ko', id: m.id }); feed(m.from + ' hat dich K.O. geschlagen!'); die(); }
+  } else if (arena && mode === 'blaster' && dead <= 0) {
+    const A = arena; A.php = Math.max(0, A.php - m.dmg); A.sinceHurt = 0; hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.4, 0)));
+    if (A.php <= 0) { netSend({ t: 'ko', id: m.id }); feed(m.from + ' hat dich erwischt!'); die(); }
+  }
+}
+function gotKo(m) {
+  if (fight && mode === 'fight') { fight.pvpWins = (fight.pvpWins || 0) + 1; toast('K.O.!'); earn(10); }
+  else if (arena && mode === 'blaster') { arena.kills++; earn(3); feed(m.from + ' erwischt! (' + arena.kills + '/' + ARENA_WIN + ')'); }
+}
 function updateFight(dt) {
   const F = fight; if (!F) return;
   const live = mode === 'fight' && dead <= 0;
   const foe = F.foe, myHelm = hasHelm(currentLook());
   if (F.between > 0) { F.between -= dt; if (F.between <= 0) { if (F.wins >= 2) return endFight(true); if (F.losses >= 2) return endFight(false); startNextRound(); return; } }
   if (dead <= 0 && F.php <= 0) F.php = 100;
-  const foeUp = foe.hp > 0 && F.between <= 0;
-  // immer zum Gegner schauen, Kamera hinter dem Spieler
-  if (live && foeUp) {
-    let d = angTo(P.pos, foe.pos) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 12);
-    let cd = (P.facing + Math.PI) - cam.yaw; cd = Math.atan2(Math.sin(cd), Math.cos(cd)); cam.yaw += cd * Math.min(1, dt * (drags.size ? 0.8 : 4));
+  // Freunde im Ring? Dann kämpft man gegen sie, der Computer-Gegner macht Pause.
+  const pvp = ringPeers();
+  F.pvp = pvp.length > 0;
+  foe.g.visible = !F.pvp && foe.hp > 0;
+  const foeUp = !F.pvp && foe.hp > 0 && F.between <= 0;
+  let tgt = foe.pos;
+  // nicht in Mitspielern stehen
+  for (const pr of pvp) { const dx = P.pos.x - pr.pos.x, dz = P.pos.z - pr.pos.z, d = Math.hypot(dx, dz); if (d < 1.25) { const k = d > 0.01 ? (1.25 - d) / d : 1; moveAxis('x', (d > 0.01 ? dx : 1) * k * 0.5); moveAxis('z', dz * k * 0.5); } }
+  if (F.pvp) { let bd = 1e9; for (const pr of pvp) { const d = Math.hypot(pr.pos.x - P.pos.x, pr.pos.z - P.pos.z); if (d < bd) { bd = d; tgt = pr.pos; } } }
+  // zum Gegner schauen, Kamera hinter dem Spieler
+  if (live && (foeUp || F.pvp)) {
+    let d = angTo(P.pos, tgt) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 5);
+    let cd = (P.facing + Math.PI) - cam.yaw; cd = Math.atan2(Math.sin(cd), Math.cos(cd)); cam.yaw += cd * Math.min(1, dt * (drags.size ? 0.6 : 2.5));
   }
-  const blocking = live && !!(keys.KeyK || keys.TouchWheelie) && F.pT < 0;
+  const blocking = live && !!(keys.KeyK || keys.TouchWheelie) && F.pT < 0; F.blocking = blocking;
   // Ausweichen mit Sprung-Taste: schneller Schritt, kurz unverwundbar
   if (F.dodge > 0 && live) { moveAxis('x', F.dvx * Math.min(dt, F.dodge)); moveAxis('z', F.dvz * Math.min(dt, F.dodge)); }
   F.dodge = Math.max(0, F.dodge - dt); F.dodgeCool = Math.max(0, F.dodgeCool - dt);
@@ -2963,7 +3011,7 @@ function updateFight(dt) {
   // Schlagen: Klick, J oder Schlag-Knopf. Der dritte Schlag in Folge wird ein Aufwärtshaken.
   const punchKey = !!(keys.KeyJ || keys.TouchDrift);
   F.comboT += dt;
-  if (live && foeUp && (fightPunchReq || (punchKey && !F.prevPunch)) && !blocking && (F.pT < 0 || F.pT > F.pDur * 0.75)) {
+  if (live && (foeUp || F.pvp) && (fightPunchReq || (punchKey && !F.prevPunch)) && !blocking && (F.pT < 0 || F.pT > F.pDur * 0.75)) {
     F.combo = F.comboT < 0.75 ? F.combo + 1 : 1; F.comboT = 0;
     F.upper = F.combo >= 3; if (F.upper) F.combo = 0;
     F.pArm = F.upper ? 1 : -F.pArm; F.pDur = F.upper ? UPPER_T : JAB_T; F.pT = 0; F.pHit = false; beep('whoosh');
@@ -2973,8 +3021,8 @@ function updateFight(dt) {
   if (F.pT >= 0) {
     F.pT += dt;
     // beim Schlagen einen kleinen Schritt nach vorne
-    if (live && foeUp && F.pT < F.pDur * 0.5) { const fd = Math.hypot(foe.pos.x - P.pos.x, foe.pos.z - P.pos.z); if (fd > 1.45 && fd < 3) { const a = angTo(P.pos, foe.pos); moveAxis('x', Math.sin(a) * 3.5 * dt); moveAxis('z', Math.cos(a) * 3.5 * dt); } }
-    if (!F.pHit && F.pT > F.pDur * 0.45) { F.pHit = true; if (foeUp) playerPunch(F, foe); }
+    if (live && (foeUp || F.pvp) && F.pT < F.pDur * 0.5) { const fd = Math.hypot(tgt.x - P.pos.x, tgt.z - P.pos.z); if (fd > 1.45 && fd < 3) { const a = angTo(P.pos, tgt); moveAxis('x', Math.sin(a) * 3.5 * dt); moveAxis('z', Math.cos(a) * 3.5 * dt); } }
+    if (!F.pHit && F.pT > F.pDur * 0.45) { F.pHit = true; if (F.pvp) punchPeers(F, pvp); else if (foeUp) playerPunch(F, foe); }
     if (F.pT > F.pDur) F.pT = -1;
   }
   F.recoil = Math.max(0, F.recoil - dt * 4); F.sinceHurt += dt;
@@ -2985,7 +3033,7 @@ function updateFight(dt) {
     avatar.position.copy(P.pos);
   }
   if (!foeUp) return;
-  // Gegner: anlaufen, umkreisen, ausholen (gut zu sehen), zuschlagen, blocken
+  // Computer-Gegner: anlaufen, umkreisen, ausholen (gut zu sehen), zuschlagen, blocken
   const dx = P.pos.x - foe.pos.x, dz = P.pos.z - foe.pos.z, dist = Math.hypot(dx, dz) || 0.001;
   foe.facing = Math.atan2(dx, dz); foe.recoil = Math.max(0, foe.recoil - dt * 3);
   foe.t -= dt; let moving = false;
@@ -3070,10 +3118,11 @@ function buildArena() {
 }
 function insideSolid(x, y, z, pad = 0) { for (const sd of solids) if (sd.box.min.x - pad < x && x < sd.box.max.x + pad && sd.box.min.y < y && y < sd.box.max.y && sd.box.min.z - pad < z && z < sd.box.max.z + pad) return sd; return null; }
 const shotGeo = new THREE.SphereGeometry(0.08, 8, 6);
-function shoot(from, dir, color, owner, dmg, speed) {
+function shoot(from, dir, color, owner, dmg, speed, quiet) {
   const m = new THREE.Mesh(shotGeo, new THREE.MeshBasicMaterial({ color }));
   m.position.copy(from); m.scale.set(1, 1, 5); m.lookAt(from.clone().add(dir)); world.add(m);
   arena.shots.push({ m, v: dir.clone().multiplyScalar(speed), owner, dmg, life: 1.6 });
+  if (owner === 'p' && !quiet && NET.room) netSend({ t: 'shot', a: [from.x, from.y, from.z].map(v => Math.round(v * 100) / 100), b: [dir.x, dir.y, dir.z].map(v => Math.round(v * 1000) / 1000), col: color });
   // Mündungsfeuer
   const f = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.9 }));
   f.position.copy(from); world.add(f); particles.push({ m: f, v: new V3(), life: 0.06, smoke: true });
@@ -3188,6 +3237,11 @@ function updateArena(dt) {
       gone = true; b.hp -= s2.dmg; b.hitT = 0.12; hitFx(p2.clone()); hitMarker(); beep('bonk');
       b.sees = true; b.facing = Math.atan2(P.pos.x - b.pos.x, P.pos.z - b.pos.z);
       if (b.hp <= 0) { explode(b.look, b.pos.clone(), b.facing, b.g.userData, s2.v.clone().setLength(5)); b.g.visible = false; b.dead = 4; A.kills++; earn(3); oof(); feed(b.name + ' erwischt! (' + A.kills + '/' + ARENA_WIN + ')'); }
+      break;
+    }
+    if (!gone && s2.owner === 'p') for (const pr of ringPeers()) {
+      if (!segHits(prev, p2, pr.pos)) continue;
+      gone = true; netSend({ t: 'hit', id: pr.id, dmg: s2.dmg }); hitFx(p2.clone()); hitMarker(); beep('bonk');
       break;
     }
     if (!gone && s2.owner === 'b' && live && segHits(prev, p2, P.pos)) {
@@ -3462,6 +3516,9 @@ function netHandle(m) {
     case 'playerJoin': addPeer(m); feed(m.name + ' ist ins Spiel gekommen'); break;
     case 'playerLeave': { const pr = NET.peers.get(m.id); if (pr) feed(pr.name + ' ist gegangen'); removePeer(m.id); break; }
     case 'states': for (const [id, st] of m.list) { const pr = NET.peers.get(id); if (pr) pr.target = st; } break;
+    case 'hit': gotHit(m); break;
+    case 'ko': gotKo(m); break;
+    case 'shot': if (arena && mode === 'blaster') shoot(new V3(...m.a), new V3(...m.b), m.col, 'v', 0, 70, true); break;
     case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
     case 'partyGo':
       if (isBanned(m.game, profile.name)) { feed('Du bist aus ' + GAMES[m.game] + ' gebannt.'); break; }
@@ -3483,6 +3540,8 @@ function netSendState() {
   NET.lastSend = t;
   const r2 = v => Math.round(v * 100) / 100;
   const s = { x: r2(P.pos.x), y: r2(P.pos.y), z: r2(P.pos.z), f: r2(P.facing), m: Math.hypot(P.vel.x, P.vel.z) > 1 ? 1 : 0, a: P.onGround ? 0 : 1, d: dead > 0 ? 1 : 0 };
+  if (fight && playingGame() === 'fight') s.p = fight.blocking ? 3 : fight.pT >= 0 ? (fight.upper ? 4 : fight.pArm < 0 ? 1 : 2) : 0;
+  if (arena && playingGame() === 'blaster') s.p = 5;
   if (race && isRace(playingGame())) { s.c = r2(race.car.h); s.v = VEHICLES.indexOf(race.car.veh); s.w = r2(race.car.wheelie || 0); }
   netSend({ t: 'state', s });
 }
@@ -3536,6 +3595,14 @@ function updatePeers(dt) {
       const sw = st.m ? Math.sin(pr.walk += dt * 9) * 0.7 : 0;
       u.legL.rotation.x = st.a ? 0.3 : sw; u.legR.rotation.x = st.a ? -0.3 : -sw;
       u.armL.rotation.x = st.a ? -2.6 : -sw; u.armR.rotation.x = st.a ? -2.6 : sw;
+      if (playingGame() === 'fight') {
+        if (!u.gloves) { addGloves(pr.g, 0x3fb55e); u.gloves = true; }
+        const p = st.p || 0;
+        boxPose(pr.g, pr.facing, { block: p === 3, arm: p === 1 ? -1 : 1, p: p === 1 || p === 2 || p === 4 ? 0.5 : -1, upper: p === 4, recoil: 0, wind: 0 });
+      } else if (playingGame() === 'blaster') {
+        if (!u.gun) { u.gun = makeWeapon('w-blaster'); u.armR.add(u.gun); }
+        u.armR.rotation.set(-1.57, 0, 0.06); u.armL.rotation.set(-1.4, 0, 0.55);
+      }
     }
     pr.g.visible = !st.d;
   }
@@ -3646,6 +3713,8 @@ function renderStats() {
   const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
+  } else if (mode === 'fight' && fight && fight.pvp) {
+    $('stats').innerHTML = adm + `<span class="pill">Du <span class="lp"><i style="width:${fight.php}%"></i></span></span><span class="pill">Gegen Freunde</span><span class="pill">K.O. <b>${fight.pvpWins || 0}</b> · eingesteckt <b>${fight.pvpLoss || 0}</b></span>`;
   } else if (mode === 'fight' && fight) {
     $('stats').innerHTML = adm + `<span class="pill">Du <span class="lp"><i style="width:${fight.php}%"></i></span></span><span class="pill">${esc(fight.foe.name)} <span class="lp foe"><i style="width:${Math.max(0, fight.foe.hp)}%"></i></span></span><span class="pill">Runde <b>${fight.round}</b> · <b>${fight.wins}:${fight.losses}</b></span>`;
   } else if (mode === 'blaster' && arena) {
