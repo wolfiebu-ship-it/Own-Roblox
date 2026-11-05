@@ -54,8 +54,9 @@ input { -webkit-user-select: text; user-select: text; }
 .wallet { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 5px 14px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); font-variant-numeric: tabular-nums; display: flex; gap: 8px; align-items: center; font-size: 18px; }
 .wallet b { font-family: var(--display); font-weight: 400; font-size: 22px; }
 #sheet { position: fixed; top: max(76px, calc(env(safe-area-inset-top, 0px) + 64px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); width: 440px; max-width: calc(100% - 32px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
-#tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; border-bottom: 3px solid var(--ink); background: var(--soft); }
-#tabs button { border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 8px 2px; font-family: var(--display); font-size: 16px; }
+#tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px; border-bottom: 3px solid var(--ink); background: var(--soft); }
+#tabs button { border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 8px 2px; font-family: var(--display); font-size: 15px; position: relative; }
+#tabs .dot { position: absolute; top: -8px; right: -6px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: var(--paper); font: 800 12px/20px var(--body); border: 2px solid var(--ink); }
 #tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .tab { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; min-height: 0; }
 .tab h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; }
@@ -176,7 +177,22 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 .adminList .btn { padding: 3px 10px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); flex-shrink: 0; }
 .badge { display: inline-block; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-weight: 800; }
 .powers { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+#feed { position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); top: max(116px, calc(env(safe-area-inset-top, 0px) + 106px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; z-index: 6; max-width: min(60%, 360px); }
+#feed div { background: rgba(29,42,68,.88); color: var(--paper); border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 800; transition: opacity .4s; }
+.friend { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--soft); }
+.friend .on { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--muted); }
+.friend .on.yes { background: var(--go); }
+.friend b { overflow-wrap: anywhere; }
+.friend .where { grid-column: 2; font-size: 12px; color: var(--muted); }
+.friend .acts { grid-column: 3; grid-row: 1 / span 2; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.friend .btn { padding: 3px 9px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); }
+.list { display: flex; flex-direction: column; gap: 6px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.seg button { border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 6px; font-weight: 800; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.ok { color: var(--go); font-weight: 800; }
 @media (max-width: 720px) {
+  #tabs button { font-size: 13px; }
   .brand { font-size: 28px; }
   #sheet { top: auto; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); bottom: max(10px, env(safe-area-inset-bottom, 0px)); width: auto; max-width: none; height: 56%; }
   .tab { padding: 12px; }
@@ -203,6 +219,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
       <button role="tab" data-tab="games" aria-selected="true">Spiele</button>
       <button role="tab" data-tab="avatar" aria-selected="false">Avatar</button>
       <button role="tab" data-tab="shop" aria-selected="false">Shop</button>
+      <button role="tab" data-tab="friends" aria-selected="false">Freunde</button>
       <button role="tab" data-tab="admin" aria-selected="false">Admin</button>
     </div>
 
@@ -270,6 +287,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
         <button class="btn primary" id="buyBtn">Kaufen</button>
       </div>
     </div>
+    <div class="tab" id="tab-friends" hidden></div>
     <div class="tab" id="tab-admin" hidden></div>
   </section>
 </div>
@@ -292,6 +310,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 </div>
 
 <div id="toast"></div>
+<div id="feed" aria-live="polite"></div>
 
 <div id="banPanel" class="panel" hidden role="dialog" aria-labelledby="banTitle">
   <h2 id="banTitle">Gebannte</h2>
@@ -650,7 +669,11 @@ const profile = (() => {
   if (nameProblem(np.name)) np.name = 'Klotzi';
   return np;
 })();
-function saveProfile() { store.set('klotzwelt-profil', profile); $('coinCount').textContent = profile.coins; }
+let profileTimer = 0;
+function saveProfile() {
+  store.set('klotzwelt-profil', profile); $('coinCount').textContent = profile.coins;
+  if (typeof NET !== 'undefined' && NET.me) { clearTimeout(profileTimer); profileTimer = setTimeout(() => netSend({ t: 'profile', profile: profilePayload() }), 800); }
+}
 
 // ---------- Admins ----------
 // Hinweis: Ohne Server liegt alles nur auf diesem Gerät. Der Code-Schutz ist für die Familie gedacht, nicht gegen Profis.
@@ -1819,12 +1842,13 @@ let currentTab = 'games', menuZoom = 0, menuZoomCur = 0;
 function showTab(t) {
   currentTab = t;
   for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b.dataset.tab === t));
-  for (const id of ['games', 'avatar', 'shop', 'admin']) $('tab-' + id).hidden = id !== t;
+  for (const id of ['games', 'avatar', 'shop', 'friends', 'admin']) $('tab-' + id).hidden = id !== t;
   if (t !== 'shop' && tryOn) { tryOn = null; rebuildAvatar(); }
   if (t === 'avatar') renderAvatarTab();
   if (t === 'shop') renderShop();
   if (t === 'admin') renderAdminTab();
   if (t === 'games') renderGames();
+  if (t === 'friends') renderFriendsTab();
   menuZoom = t === 'games' ? 0 : 1;
 }
 for (const b of $('tabs').children) b.onclick = () => showTab(b.dataset.tab);
@@ -1868,8 +1892,9 @@ function renderAvatarTab() {
   if (avatarCat === 'body') {
     $('name').value = profile.name;
     $('shHeight').value = profile.shape.height; $('shWidth').value = profile.shape.width; $('shHead').value = profile.shape.head;
-    $('name').disabled = isAdmin();
+    $('name').disabled = isAdmin() || !!NET.me;
     if (isAdmin()) showNameMsg('Als Admin heißt du wie dein Admin-Konto. Zum Ändern erst abmelden.', false);
+    else if (NET.me) showNameMsg('Online heißt du so wie dein Benutzername.', false);
     chipRow($('bodyParts'), PARTS, bodyPart, p => { bodyPart = p; renderAvatarTab(); });
     const sw = $('bodySwatches'); sw.innerHTML = '';
     const cur = bodyPart === 'all' ? profile.body.head : profile.body[bodyPart];
@@ -2471,6 +2496,235 @@ function renderGames() {
   }
 }
 
+// ======================================================================
+// Online: Konten, Freunde, Gruppen und Mehrspieler (braucht den Klotzwelt-Server)
+// ======================================================================
+var NET = { ws: null, open: false, tries: 0, me: null, social: null, room: null, roomGame: null, myId: null, peers: new Map(), pendingRoom: null, lastSend: 0, form: 'login', msg: '', msgBad: false };
+const canOnline = /^https?:$/.test(location.protocol);
+function feed(t) {
+  const f = $('feed'), d = document.createElement('div'); d.textContent = t; f.appendChild(d);
+  while (f.children.length > 4) f.firstChild.remove();
+  setTimeout(() => { d.style.opacity = 0; setTimeout(() => d.remove(), 450); }, 3800);
+}
+function netSend(m) { if (NET.open) try { NET.ws.send(JSON.stringify(m)); } catch (e) {} }
+function netConnect() {
+  if (!canOnline || NET.ws) return;
+  let ws;
+  try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { NET.tries = 99; return; }
+  NET.ws = ws;
+  ws.onopen = () => { NET.open = true; NET.tries = 0; const tk = store.get('klotzwelt-token', null); if (tk) netSend({ t: 'resume', token: tk }); renderFriendsIfOpen(); };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } netHandle(m); };
+  ws.onclose = () => {
+    const was = NET.open;
+    NET.ws = null; NET.open = false; NET.me = null; NET.social = null; NET.room = null; clearPeers(); updateFriendDot(); renderFriendsIfOpen();
+    if (was) feed('Verbindung zum Server verloren. Neuer Versuch …');
+    if (was || ++NET.tries < 4) setTimeout(netConnect, Math.min(15000, 1500 * (NET.tries + 1)));
+  };
+  ws.onerror = () => {};
+}
+function profilePayload() { return { coins: profile.coins, owned: profile.owned, wear: profile.wear, body: profile.body, shape: profile.shape }; }
+function applyServerProfile(me) {
+  const sp = me.profile;
+  if (sp && Array.isArray(sp.owned) && sp.owned.length) {
+    profile.coins = sp.coins;
+    profile.owned = sp.owned.filter(id => ITEM[id]);
+    for (const id of DEFAULT_PROFILE.owned) if (!profile.owned.includes(id)) profile.owned.push(id);
+    profile.wear = Object.assign(clone(DEFAULT_PROFILE.wear), sp.wear || {});
+    for (const k in profile.wear) if (profile.wear[k] && (!ITEM[profile.wear[k]] || !profile.owned.includes(profile.wear[k]))) profile.wear[k] = DEFAULT_PROFILE.wear[k];
+    profile.body = Object.assign(clone(DEFAULT_PROFILE.body), sp.body || {});
+    profile.shape = Object.assign({ height: 1, width: 1, head: 1 }, sp.shape || {});
+  }
+  profile.name = me.name;
+  saveProfile(); rebuildAvatar();
+  if (!sp || !Array.isArray(sp.owned) || !sp.owned.length) netSend({ t: 'profile', profile: profilePayload() });
+}
+const AGE = { u13: 'unter 13', '13-17': '13 bis 17', '18+': '18 und älter' };
+function netHandle(m) {
+  switch (m.t) {
+    case 'auth':
+      NET.me = m.me; store.set('klotzwelt-token', m.token); NET.msg = '';
+      applyServerProfile(m.me); feed('Angemeldet als ' + m.me.name);
+      if (mode !== 'menu' && mode !== 'win') netJoinGame(mode);
+      renderFriendsIfOpen(); break;
+    case 'loggedOut': NET.me = null; NET.social = null; store.set('klotzwelt-token', null); clearPeers(); updateFriendDot(); renderFriendsIfOpen(); break;
+    case 'kicked': NET.me = null; store.set('klotzwelt-token', null); clearPeers(); renderFriendsIfOpen(); break;
+    case 'social': NET.social = m; updateFriendDot(); renderFriendsIfOpen(); break;
+    case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); break;
+    case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); break;
+    case 'roomJoined':
+      NET.room = m.room; NET.roomGame = m.game; NET.myId = m.you; clearPeers();
+      for (const pl of m.players) addPeer(pl);
+      if (m.players.length) feed(m.players.length === 1 ? '1 Mitspieler ist hier' : m.players.length + ' Mitspieler sind hier');
+      break;
+    case 'playerJoin': addPeer(m); feed(m.name + ' ist ins Spiel gekommen'); break;
+    case 'playerLeave': { const pr = NET.peers.get(m.id); if (pr) feed(pr.name + ' ist gegangen'); removePeer(m.id); break; }
+    case 'states': for (const [id, st] of m.list) { const pr = NET.peers.get(id); if (pr) pr.target = st; } break;
+    case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
+    case 'partyGo':
+      if (isBanned(m.game, profile.name)) { feed('Du bist aus ' + GAMES[m.game] + ' gebannt.'); break; }
+      feed(m.from + ' startet ' + GAMES[m.game] + ', du kommst mit!');
+      NET.pendingRoom = m.room; enterPlay(m.game); break;
+  }
+}
+function netJoinGame(m) {
+  if (!NET.me) return;
+  const room = NET.pendingRoom || (NET.roomGame === m ? NET.room : null);
+  NET.pendingRoom = null;
+  netSend({ t: 'join', game: m, room });
+}
+function netLeaveGame() { if (NET.room) netSend({ t: 'leave' }); NET.room = null; NET.roomGame = null; clearPeers(); }
+function netSendState() {
+  if (!NET.room || mode === 'menu') return;
+  const t = performance.now(); if (t - NET.lastSend < 100) return;
+  NET.lastSend = t;
+  const r2 = v => Math.round(v * 100) / 100;
+  const s = { x: r2(P.pos.x), y: r2(P.pos.y), z: r2(P.pos.z), f: r2(P.facing), m: Math.hypot(P.vel.x, P.vel.z) > 1 ? 1 : 0, a: P.onGround ? 0 : 1, d: dead > 0 ? 1 : 0 };
+  if (race && playingGame() === 'race') s.c = r2(race.car.h);
+  netSend({ t: 'state', s });
+}
+// Andere Spieler in der eigenen Welt
+function peerLook(pr) {
+  const l = pr.look || {}, wear = {};
+  for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back']) wear[k] = l.wear && ITEM[l.wear[k]] ? l.wear[k] : null;
+  if (!wear.face) wear.face = 'f-smile';
+  const sh = l.shape || {}, cl = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 1));
+  return { name: pr.name, body: Object.assign({ head: 0, torso: 0, arms: 0, legs: 0 }, l.body || {}), wear, shape: { height: cl(sh.height, 0.85, 1.2), width: cl(sh.width, 0.85, 1.35), head: cl(sh.head, 0.85, 1.3) } };
+}
+function buildPeerMesh(pr) {
+  if (pr.g && pr.g.parent) pr.g.parent.remove(pr.g);
+  if (pr.car && pr.car.parent) pr.car.parent.remove(pr.car);
+  pr.car = null; pr.g = makeAvatar(peerLook(pr)); pr.g.visible = false;
+  if (world) world.add(pr.g);
+}
+function addPeer(p) {
+  if (NET.peers.has(p.id)) removePeer(p.id);
+  const pr = { id: p.id, name: p.name, look: p.look, target: null, g: null, car: null, pos: new V3(), facing: 0, walk: 0, init: false };
+  NET.peers.set(p.id, pr); buildPeerMesh(pr);
+}
+function removePeer(id) {
+  const pr = NET.peers.get(id); if (!pr) return;
+  if (pr.g && pr.g.parent) pr.g.parent.remove(pr.g);
+  if (pr.car && pr.car.parent) pr.car.parent.remove(pr.car);
+  NET.peers.delete(id);
+}
+function clearPeers() { for (const id of [...NET.peers.keys()]) removePeer(id); }
+function updatePeers(dt) {
+  if (!NET.peers.size) return;
+  const k = 1 - Math.exp(-dt * 12);
+  for (const pr of NET.peers.values()) {
+    const st = pr.target;
+    if (!st || mode === 'menu') { pr.g.visible = false; continue; }
+    if (pr.g.parent !== world) world.add(pr.g);
+    if (pr.car && pr.car.parent !== world) world.add(pr.car);
+    if (!pr.init) { pr.pos.set(st.x, st.y, st.z); pr.facing = st.f; pr.init = true; }
+    pr.pos.x += (st.x - pr.pos.x) * k; pr.pos.y += (st.y - pr.pos.y) * k; pr.pos.z += (st.z - pr.pos.z) * k;
+    let df = st.f - pr.facing; df = Math.atan2(Math.sin(df), Math.cos(df)); pr.facing += df * k;
+    const u = pr.g.userData;
+    if (st.c !== undefined && playingGame() === 'race') {
+      if (!pr.car) { pr.car = makeCar(0x6fd0f0, null); world.add(pr.car); }
+      pr.car.position.set(pr.pos.x, 0, pr.pos.z); pr.car.rotation.y = st.c;
+      pr.g.position.set(pr.pos.x - Math.sin(st.c) * 0.35, 0.05, pr.pos.z - Math.cos(st.c) * 0.35); pr.g.rotation.y = st.c; seatPose(pr.g);
+    } else {
+      if (pr.car) { world.remove(pr.car); pr.car = null; }
+      pr.g.position.copy(pr.pos); pr.g.rotation.y = pr.facing;
+      const sw = st.m ? Math.sin(pr.walk += dt * 9) * 0.7 : 0;
+      u.legL.rotation.x = st.a ? 0.3 : sw; u.legR.rotation.x = st.a ? -0.3 : -sw;
+      u.armL.rotation.x = st.a ? -2.6 : -sw; u.armR.rotation.x = st.a ? -2.6 : sw;
+    }
+    pr.g.visible = !st.d;
+  }
+}
+// Freunde-Tab
+function updateFriendDot() {
+  const b = document.querySelector('#tabs [data-tab="friends"]');
+  const n = NET.social ? NET.social.requests.length + NET.social.invites.length : 0;
+  b.innerHTML = 'Freunde' + (n ? `<span class="dot">${n}</span>` : '');
+}
+function renderFriendsIfOpen() { if (currentTab === 'friends' && mode === 'menu') renderFriendsTab(); }
+function renderFriendsTab() {
+  const el = $('tab-friends');
+  const msg = NET.msg ? `<p class="small ${NET.msgBad ? 'err' : 'ok'}" id="fMsg">${esc(NET.msg)}</p>` : '<p class="small" id="fMsg"></p>';
+  let h = '<h2>Freunde</h2>';
+  if (!NET.open) {
+    h += canOnline && NET.tries < 4
+      ? '<p class="small">Verbinde mit dem Klotzwelt-Server …</p>'
+      : '<p class="small">Hier bist du offline. Freunde, Gruppen und Mehrspieler gibt es, wenn Klotzwelt über deinen eigenen Klotzwelt-Server läuft. Alle anderen Spiele funktionieren auch offline.</p>';
+    el.innerHTML = h; return;
+  }
+  if (!NET.me) {
+    const reg = NET.form === 'register';
+    h += `<div class="seg" role="group" aria-label="Anmelden oder Registrieren"><button type="button" data-form="login" aria-pressed="${!reg}">Anmelden</button><button type="button" data-form="register" aria-pressed="${reg}">Neues Konto</button></div>
+      <form id="fAcc" class="sect">
+        <label class="label" for="aName">Benutzername</label><input id="aName" class="field" autocomplete="username" maxlength="16" value="${esc(NET.lastName || (reg ? profile.name.replace(/[^A-Za-z0-9_]/g, '') : ''))}">
+        <label class="label" for="aPw">Passwort${reg ? ' (mindestens 8 Zeichen)' : ''}</label><input id="aPw" class="field" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}">
+        ${reg ? `<label class="label" for="aPw2">Passwort wiederholen</label><input id="aPw2" class="field" type="password" autocomplete="new-password">
+        <label class="label" for="aYear">Geburtsjahr</label><input id="aYear" class="field" inputmode="numeric" maxlength="4" placeholder="z. B. 2008">
+        <p class="small">Das Geburtsjahr brauchen wir für die Altersgruppen, zum Beispiel beim Sprachchat. Andere sehen es nicht.</p>` : ''}
+        ${msg}
+        <button class="btn primary" type="submit">${reg ? 'Konto erstellen' : 'Anmelden'}</button>
+      </form>`;
+    el.innerHTML = h;
+    el.querySelectorAll('[data-form]').forEach(b => b.onclick = () => { NET.form = b.dataset.form; NET.msg = ''; renderFriendsTab(); });
+    $('fAcc').onsubmit = e => {
+      e.preventDefault();
+      const name = $('aName').value.trim(), pw = $('aPw').value;
+      NET.lastName = name;
+      const say = t => { NET.msg = t; NET.msgBad = true; $('fMsg').textContent = t; $('fMsg').className = 'small err'; };
+      if (!reg) return netSend({ t: 'login', name, password: pw });
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) return say('Benutzernamen: 3 bis 16 Zeichen, nur Buchstaben ohne Umlaute, Zahlen und _.');
+      const pr = nameProblem(name); if (pr) return say(pr);
+      if (pw.length < 8) return say('Das Passwort braucht mindestens 8 Zeichen.');
+      if (pw !== $('aPw2').value) return say('Die beiden Passwörter sind nicht gleich.');
+      netSend({ t: 'register', name, password: pw, birthYear: Number($('aYear').value), profile: profilePayload() });
+    };
+    return;
+  }
+  const S = NET.social || { friends: [], requests: [], invites: [], party: null };
+  const party = S.party, leader = party && same(party.leader, NET.me.name);
+  h += `<p><span class="badge">${esc(NET.me.name)}</span> <span class="small">Altersgruppe: ${AGE[NET.me.age] || NET.me.age}</span></p>
+    <form id="fAdd2" class="row" style="justify-content:flex-start;flex-wrap:nowrap">
+      <input id="fName" class="field" placeholder="Benutzername deines Freundes" aria-label="Benutzername deines Freundes" autocomplete="off" style="min-width:0">
+      <button class="btn go" type="submit">Hinzufügen</button>
+    </form>${msg}`;
+  if (S.requests.length) h += `<div class="label">Freundschaftsanfragen</div><div class="list">${S.requests.map(n => `<div class="friend"><span class="on yes"></span><b>${esc(n)}</b><span class="acts"><button class="btn go" data-acc="${esc(n)}">Annehmen</button><button class="btn" data-dec="${esc(n)}">Ablehnen</button></span></div>`).join('')}</div>`;
+  if (S.invites.length) h += `<div class="label">Gruppen-Einladungen</div><div class="list">${S.invites.map(iv => `<div class="friend"><span class="on yes"></span><b>${esc(iv.from)}</b><span class="where">lädt dich in seine Gruppe ein</span><span class="acts"><button class="btn go" data-pacc="${iv.id}">Beitreten</button><button class="btn" data-pdec="${iv.id}">Nein</button></span></div>`).join('')}</div>`;
+  h += '<div class="label">Gruppe</div>';
+  if (party) h += `<p class="small">Wenn ${leader ? 'du' : esc(party.leader)} ein Spiel startet, kommen alle in der Gruppe mit.</p><div class="list">${party.members.map(n => `<div class="friend"><span class="on yes"></span><b>${esc(n)}</b><span class="where">${same(n, party.leader) ? 'Gruppenleiter' : 'Mitglied'}</span></div>`).join('')}</div><div class="row" style="justify-content:flex-start"><button class="btn" id="pLeave">Gruppe verlassen</button></div>`;
+  else h += '<div class="row" style="justify-content:flex-start"><button class="btn go" id="pCreate">Gruppe gründen</button></div><p class="small">In einer Gruppe spielt ihr zusammen: Startet der Gruppenleiter ein Spiel, kommen alle mit.</p>';
+  h += `<div class="label">Deine Freunde (${S.friends.length})</div>`;
+  h += S.friends.length ? `<div class="list">${S.friends.map(f => {
+    const inParty = party && party.members.some(n => same(n, f.name));
+    const acts = [];
+    if (f.game) acts.push(`<button class="btn primary" data-join="${esc(f.name)}">Mitspielen</button>`);
+    if (party && leader && !inParty) acts.push(`<button class="btn" data-inv="${esc(f.name)}">Einladen</button>`);
+    acts.push(`<button class="btn" data-rem="${esc(f.name)}" aria-label="${esc(f.name)} entfernen">Entfernen</button>`);
+    return `<div class="friend"><span class="on ${f.online ? 'yes' : ''}" title="${f.online ? 'online' : 'offline'}"></span><b>${esc(f.name)}</b><span class="where">${f.online ? (f.game ? 'spielt ' + esc(GAMES[f.game] || f.game) : 'online') : 'offline'}</span><span class="acts">${acts.join('')}</span></div>`;
+  }).join('')}</div>` : '<p class="small">Noch keine Freunde. Gib oben den Benutzernamen deines Freundes ein.</p>';
+  h += '<div class="row" style="justify-content:flex-start"><button class="btn" id="aOut">Abmelden</button></div>';
+  el.innerHTML = h;
+  $('fAdd2').onsubmit = e => { e.preventDefault(); const n = $('fName').value.trim(); if (n) netSend({ t: 'friendRequest', name: n }); };
+  const on = (sel, fn) => el.querySelectorAll(sel).forEach(b => b.onclick = () => fn(b));
+  on('[data-acc]', b => netSend({ t: 'friendAnswer', name: b.dataset.acc, accept: true }));
+  on('[data-dec]', b => netSend({ t: 'friendAnswer', name: b.dataset.dec, accept: false }));
+  on('[data-pacc]', b => netSend({ t: 'partyAnswer', id: +b.dataset.pacc, accept: true }));
+  on('[data-pdec]', b => netSend({ t: 'partyAnswer', id: +b.dataset.pdec, accept: false }));
+  on('[data-inv]', b => netSend({ t: 'partyInvite', name: b.dataset.inv }));
+  let remArmed = null;
+  on('[data-rem]', b => {
+    if (remArmed !== b) { remArmed = b; b.textContent = 'Wirklich?'; return; }
+    netSend({ t: 'friendRemove', name: b.dataset.rem });
+  });
+  on('[data-join]', b => {
+    const f = S.friends.find(x => same(x.name, b.dataset.join));
+    if (!f || !f.game) return;
+    if (isBanned(f.game, profile.name)) { NET.msg = 'Du bist aus ' + GAMES[f.game] + ' gebannt.'; NET.msgBad = true; return renderFriendsTab(); }
+    NET.pendingRoom = f.room; enterPlay(f.game);
+  });
+  const pc = $('pCreate'); if (pc) pc.onclick = () => netSend({ t: 'partyCreate' });
+  const pl = $('pLeave'); if (pl) pl.onclick = () => netSend({ t: 'partyLeave' });
+  $('aOut').onclick = () => { netSend({ t: 'logout', token: store.get('klotzwelt-token', null) }); store.set('klotzwelt-token', null); };
+}
+
 // ---------- HUD ----------
 const game = { coins: 0, total: 0, time: 0, running: false, deaths: 0, stage: 0, earned: 0 };
 let toastTimer = 0;
@@ -2532,6 +2786,7 @@ function showMenu() {
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
   renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
   ghost.visible = false;
+  netLeaveGame();
   buildStage();
   P.pos.copy(P.spawn); P.vel.set(0, 0, 0); P.facing = 0;
   applyViewOffset();
@@ -2574,6 +2829,7 @@ function enterPlay(m) {
   if (m === 'obby' && canBuild()) buildToolbar();
   renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
   renderStats();
+  netJoinGame(m);
 }
 $('playObby').onclick = () => enterPlay('obby');
 $('playBuild').onclick = () => enterPlay('build');
@@ -2746,6 +3002,8 @@ function frame(now) {
   if (playingGame() === 'obby') updateObby(dt);
   updateParticles(dt);
   updateDebris(dt);
+  updatePeers(dt);
+  netSendState();
   if (firstPerson()) P.facing = cam.yaw + Math.PI;
   if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson();
   placeCamera();
@@ -2789,6 +3047,7 @@ document.querySelectorAll('.dev').forEach(b => b.onclick = () => {
 $('deviceBtn').onclick = openDevicePick;
 applyDevice();
 if (!device) openDevicePick();
+netConnect();
 
 // Vorschaubilder für die Spiele-Karten
 function previewShot(setup, pos, look) {

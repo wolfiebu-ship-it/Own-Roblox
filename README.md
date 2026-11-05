@@ -26,6 +26,19 @@ Ein eigenes Blockwelt-Spiel für Browser und iPhone, gebaut mit [three.js](https
 
 Profil, Münzen, Bauten und Admin-Liste werden im Browser auf dem jeweiligen Gerät gespeichert. Die Codes werden nur als Hash gespeichert. Ohne Server ist dieser Schutz aber für die Familie gedacht und nicht gegen Leute, die sich mit Browser-Technik auskennen. Mit Etappe 2 kommt die Admin-Liste auf den Server.
 
+## Online: Freunde, Gruppen, Mehrspieler
+
+Mit dem Klotzwelt-Server (Ordner `server/`) gibt es:
+
+- **Konten** mit Benutzername, Passwort und Geburtsjahr (für Altersgruppen). Avatar, Münzen und gekaufte Sachen werden auf dem Server gespeichert.
+- **Freunde** über den Benutzernamen hinzufügen, Anfragen annehmen oder ablehnen und sehen, wer online ist und was er gerade spielt.
+- **Mitspielen**: direkt in das Spiel eines Freundes springen.
+- **Gruppen**: Freunde einladen. Startet der Gruppenleiter ein Spiel, kommen alle mit.
+- **Mehrspieler** in allen vier Spielen: Ihr seht euch gegenseitig laufen, springen und Kart fahren (bis zu 10 Leute pro Raum).
+
+Wie du den Server kostenlos online stellst, steht in **[ONLINE-ANLEITUNG.md](ONLINE-ANLEITUNG.md)**.
+Ohne Server (zum Beispiel als Datei oder über GitHub Pages) läuft Klotzwelt offline weiter.
+
 ## Auf das iPhone bringen
 
 1. Die Seite muss im Internet erreichbar sein, zum Beispiel über **GitHub Pages**: im Repo unter *Settings → Pages* den Branch `master` und den Ordner `/ (root)` wählen. Nach ein bis zwei Minuten läuft die Seite unter `https://<name>.github.io/Own-Roblox/`.
