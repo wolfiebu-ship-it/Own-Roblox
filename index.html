@@ -2194,12 +2194,27 @@ $('banClose').onclick = () => { $('banPanel').hidden = true; };
 // ======================================================================
 // Klotz-Rennen
 // ======================================================================
-const SX = 1.7, R1 = 18, R2 = 27, ROAD_MID = 22.5, LAPS = 3;
+const LAPS = 3, ROAD_W = 7, TRACK_N = 1000;
 let race = null, lastGame = 'obby';
-const trackTheta = (x, z) => Math.atan2(z, x / SX);
-const trackPos = (th, lane) => new V3(Math.cos(th) * (ROAD_MID + lane) * SX, 0, Math.sin(th) * (ROAD_MID + lane));
-const trackHeading = th => Math.atan2(-Math.sin(th) * SX, Math.cos(th));
-function isOnRoad(x, z) { const r = Math.hypot(x / SX, z); return r >= R1 && r <= R2; }
+const TRACK = (() => {
+  const P = [[0, 0], [70, 0], [120, -8], [150, -40], [145, -85], [110, -110], [70, -100], [52, -70], [15, -62], [-25, -88], [-80, -100], [-130, -75], [-145, -30], [-125, 15], [-75, 35], [-35, 25]];
+  const curve = new THREE.CatmullRomCurve3(P.map(([x, z]) => new V3(x, 0, z)), true, 'centripetal');
+  const pts = curve.getSpacedPoints(TRACK_N).slice(0, TRACK_N), tan = [], nrm = [];
+  for (let i = 0; i < TRACK_N; i++) {
+    const t = pts[(i + 1) % TRACK_N].clone().sub(pts[(i + TRACK_N - 1) % TRACK_N]).normalize();
+    tan.push(t); nrm.push(new V3(t.z, 0, -t.x));
+  }
+  return { pts, tan, nrm, seg: curve.getLength() / TRACK_N };
+})();
+const wrapIdx = i => ((i % TRACK_N) + TRACK_N) % TRACK_N;
+const trackAt = (s, lane) => { const i = wrapIdx(Math.floor(s)), f = s - Math.floor(s), a = TRACK.pts[i], b = TRACK.pts[wrapIdx(i + 1)], n = TRACK.nrm[i]; return new V3(a.x + (b.x - a.x) * f + n.x * lane, 0, a.z + (b.z - a.z) * f + n.z * lane); };
+const trackHeadingAt = s => { const t = TRACK.tan[wrapIdx(Math.round(s))]; return Math.atan2(t.x, t.z); };
+// Nächster Streckenpunkt: in der Nähe des letzten suchen, das ist schnell
+function nearestIdx(pos, hint) {
+  let best = hint, bd = 1e9;
+  for (let k = -60; k <= 60; k++) { const i = wrapIdx(hint + k), p = TRACK.pts[i], d = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2; if (d < bd) { bd = d; best = i; } }
+  return best;
+}
 function olAdd(parent, geo, m, x, y, z) {
   const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = true;
   if (geo.userData.dims) { const [w, h, d] = geo.userData.dims; const o = new THREE.Mesh(geo, outlineMat); o.scale.set((w + 0.05) / w, (h + 0.05) / h, (d + 0.05) / d); me.add(o); }
@@ -2228,59 +2243,73 @@ function seatPose(a) {
   u.armL.rotation.x = u.armR.rotation.x = -1.1;
 }
 function stripeTex(key, a, b, n) { return canvasTex(key, 64, (g, s) => { for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { g.fillStyle = (i + j) % 2 ? a : b; g.fillRect(i * s / n, j * s / n, s / n + 1, s / n + 1); } }); }
+function ribbon(from, to, y, color, everyOther) {
+  const pos = [];
+  for (let i = 0; i < TRACK_N; i++) {
+    if (everyOther && (Math.floor(i / everyOther) % 2)) continue;
+    const a = TRACK.pts[i], b = TRACK.pts[wrapIdx(i + 1)], na = TRACK.nrm[i], nb = TRACK.nrm[wrapIdx(i + 1)];
+    const q = [[a, na, from], [a, na, to], [b, nb, to], [b, nb, from]].map(([p, n, o]) => [p.x + n.x * o, y, p.z + n.z * o]);
+    pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color, gradientMap: gradMap, side: THREE.DoubleSide })); m.receiveShadow = true; world.add(m); return m;
+}
 function buildRace() {
   clearWorld();
   addClouds(5);
-  addBox(0, -0.5, 0, 200, 1, 140, 0x5cb85c);
-  const flat = (geo, m, x, z, y = 0.02) => { const me = new THREE.Mesh(geo, m); me.rotation.x = -Math.PI / 2; me.position.set(x, y, z); me.receiveShadow = true; world.add(me); return me; };
-  flat(new THREE.RingGeometry(R1, R2, 160, 1), pm(0x4a4f5a), 0, 0).scale.set(SX, 1, 1);
-  flat(new THREE.RingGeometry(R1 - 0.7, R1, 160, 1), pm(0xe2453c), 0, 0, 0.03).scale.set(SX, 1, 1);
-  flat(new THREE.RingGeometry(R2, R2 + 0.7, 160, 1), pm(0xe2453c), 0, 0, 0.03).scale.set(SX, 1, 1);
-  for (let k = 0; k < 40; k++) flat(new THREE.RingGeometry(ROAD_MID - 0.2, ROAD_MID + 0.2, 6, 1, k / 40 * Math.PI * 2, Math.PI / 40), pm(0xf4f4f0), 0, 0, 0.035).scale.set(SX, 1, 1);
-  flat(new THREE.PlaneGeometry((R2 - R1) * SX, 1.6), new THREE.MeshToonMaterial({ gradientMap: gradMap, map: stripeTex('checker', '#1d2a44', '#fffdf6', 8) }), ROAD_MID * SX, 0, 0.04);
-  // Turbo-Pfeile
-  const arrow = canvasTex('arrow', 64, (g, n) => { g.fillStyle = '#ffd23f'; g.fillRect(0, 0, n, n); g.fillStyle = '#ff6b3d'; for (const y of [8, 30]) { g.beginPath(); g.moveTo(10, y); g.lineTo(32, y + 22); g.lineTo(54, y); g.lineTo(54, y + 10); g.lineTo(32, y + 32); g.lineTo(10, y + 10); g.closePath(); g.fill(); } });
-  const padsR = [];
-  for (const th of [Math.PI * 0.5, Math.PI, Math.PI * 1.5]) {
-    const pp = trackPos(th, 0), grp = new THREE.Group(); grp.position.set(pp.x, 0.05, pp.z); grp.rotation.y = trackHeading(th);
-    const me = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: arrow })); me.rotation.x = -Math.PI / 2; grp.add(me); world.add(grp);
-    padsR.push({ x: pp.x, z: pp.z });
-  }
-  // Münzen auf der Strecke
-  for (let k = 0; k < 12; k++) { const pp = trackPos(k / 12 * Math.PI * 2 + 0.35, ((k * 7) % 5 - 2) * 1.6); addCoin(pp.x, 1.2, pp.z); }
-  // Bäume, Kegel, Tribüne
-  let sd = 9; const rnd = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
-  for (let k = 0; k < 40; k++) {
-    const x = (rnd() - 0.5) * 180, z = (rnd() - 0.5) * 120, r = Math.hypot(x / SX, z);
-    if (r > R1 - 4 && r < R2 + 4) continue;
-    const tr = new THREE.Group(); tr.position.set(x, 0, z);
-    olAdd(tr, gd(new THREE.CylinderGeometry(0.35, 0.45, 2, 10), 0.9, 2, 0.9), tc(0x8b5a2b), 0, 1, 0);
-    olAdd(tr, gd(new THREE.SphereGeometry(1.6, 14, 10), 3.2), tc(k % 3 ? 0x3fb55e : 0x23824a), 0, 3, 0);
-    world.add(tr);
-  }
-  for (let k = 0; k < 4; k++) olAdd(world, roundedBox(3, 1 + k, 22, 0.2), tc([0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e][k]), 52 + k * 3, (1 + k) / 2, 0);
-  // Banden an beiden Seiten: man kann die Strecke nicht verlassen
-  const bandGeo = roundedBox(0.6, 0.8, 1.4, 0.15), bandMat = new THREE.MeshToonMaterial({ gradientMap: gradMap });
-  for (const [r, n] of [[R1 - 0.45, 150], [R2 + 0.45, 210]]) {
-    const im = new THREE.InstancedMesh(bandGeo, bandMat, n), dummy = new THREE.Object3D(), col = new THREE.Color();
-    for (let k = 0; k < n; k++) {
-      const th = k / n * Math.PI * 2;
-      dummy.position.set(Math.cos(th) * r * SX, 0.4, Math.sin(th) * r); dummy.rotation.set(0, trackHeading(th), 0); dummy.updateMatrix();
+  addBox(0, -0.5, -40, 420, 1, 300, 0x5cb85c);
+  // Fahrbahn, Randsteine, Mittellinie
+  ribbon(-ROAD_W, ROAD_W, 0.02, 0x4a4f5a);
+  ribbon(ROAD_W, ROAD_W + 0.9, 0.03, 0xe2453c); ribbon(-ROAD_W - 0.9, -ROAD_W, 0.03, 0xe2453c);
+  ribbon(ROAD_W, ROAD_W + 0.9, 0.035, 0xf4f4f0, 4); ribbon(-ROAD_W - 0.9, -ROAD_W, 0.035, 0xf4f4f0, 4);
+  ribbon(-0.2, 0.2, 0.035, 0xf4f4f0, 6);
+  // Start- und Ziellinie
+  const st = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W * 2, 1.8), new THREE.MeshToonMaterial({ gradientMap: gradMap, map: stripeTex('checker', '#1d2a44', '#fffdf6', 8) }));
+  st.rotation.set(-Math.PI / 2, 0, -trackHeadingAt(3)); st.position.copy(trackAt(3, 0)); st.position.y = 0.045; world.add(st);
+  // Banden an beiden Seiten
+  const bandGeo = roundedBox(0.7, 0.9, 1.5, 0.15), bandMat = new THREE.MeshToonMaterial({ gradientMap: gradMap });
+  const step = Math.max(1, Math.round(1.5 / TRACK.seg)), count = Math.ceil(TRACK_N / step);
+  for (const side of [-1, 1]) {
+    const im = new THREE.InstancedMesh(bandGeo, bandMat, count), dummy = new THREE.Object3D(), col = new THREE.Color();
+    for (let k = 0; k < count; k++) {
+      const i = k * step;
+      dummy.position.copy(trackAt(i, side * (ROAD_W + 1.5))); dummy.position.y = 0.45; dummy.rotation.set(0, trackHeadingAt(i), 0); dummy.updateMatrix();
       im.setMatrixAt(k, dummy.matrix); im.setColorAt(k, col.set(k % 2 ? 0xf4f4f0 : 0xe2453c));
     }
     im.castShadow = true; world.add(im);
   }
-  for (let k = 0; k < 10; k++) { const pp = trackPos(k / 10 * Math.PI * 2, (k % 2 ? 1 : -1) * 6.2); const c = olAdd(world, gd(new THREE.ConeGeometry(0.4, 1, 10), 0.8, 1, 0.8), tc(0xff8a2b), pp.x, 0.5, pp.z); c.castShadow = true; }
-  // Autos
-  const startTh = -0.07;
-  const car = { pos: trackPos(startTh, -2.2), h: trackHeading(startTh), speed: 0, boost: 0, prog: 0, lap: 0 };
-  car.lastTh = trackTheta(car.pos.x, car.pos.z);
+  // Turbo-Pfeile auf den Geraden
+  const arrow = canvasTex('arrow', 64, (g, n) => { g.fillStyle = '#ffd23f'; g.fillRect(0, 0, n, n); g.fillStyle = '#ff6b3d'; for (const y of [8, 30]) { g.beginPath(); g.moveTo(10, y); g.lineTo(32, y + 22); g.lineTo(54, y); g.lineTo(54, y + 10); g.lineTo(32, y + 32); g.lineTo(10, y + 10); g.closePath(); g.fill(); } });
+  const padsR = [];
+  for (const [f, lane] of [[0.06, 0], [0.25, -3], [0.47, 3], [0.62, 0], [0.86, -3]]) {
+    const i = Math.round(f * TRACK_N), pp = trackAt(i, lane), grp = new THREE.Group();
+    grp.position.set(pp.x, 0.05, pp.z); grp.rotation.y = trackHeadingAt(i);
+    const me = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: arrow })); me.rotation.x = -Math.PI / 2; grp.add(me); world.add(grp);
+    padsR.push({ x: pp.x, z: pp.z });
+  }
+  // Münzen
+  for (let k = 0; k < 20; k++) { const pp = trackAt((k + 0.5) / 20 * TRACK_N, ((k * 7) % 5 - 2) * 2.2); addCoin(pp.x, 1.2, pp.z); }
+  // Bäume und Tribüne neben der Strecke
+  let sd = 9; const rnd = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
+  for (let k = 0, made = 0; k < 400 && made < 70; k++) {
+    const x = (rnd() - 0.5) * 400, z = (rnd() - 0.5) * 280 - 40;
+    let near = 1e9; for (let i = 0; i < TRACK_N; i += 8) near = Math.min(near, Math.hypot(TRACK.pts[i].x - x, TRACK.pts[i].z - z));
+    if (near < ROAD_W + 7) continue;
+    const tr = new THREE.Group(); tr.position.set(x, 0, z);
+    olAdd(tr, gd(new THREE.CylinderGeometry(0.35, 0.45, 2, 10), 0.9, 2, 0.9), tc(0x8b5a2b), 0, 1, 0);
+    olAdd(tr, gd(new THREE.SphereGeometry(1.6, 14, 10), 3.2), tc(made % 3 ? 0x3fb55e : 0x23824a), 0, 3, 0);
+    world.add(tr); made++;
+  }
+  const tb = trackAt(12, -(ROAD_W + 6)), th0 = trackHeadingAt(12);
+  for (let k = 0; k < 4; k++) { const sx = Math.cos(th0) * -k * 3, sz = -Math.sin(th0) * -k * 3; const b = olAdd(world, roundedBox(26, 1 + k, 3, 0.2), tc([0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e][k]), tb.x + sx, (1 + k) / 2, tb.z + sz); b.rotation.y = th0; }
+  // Autos in der Startaufstellung
+  const car = { s: TRACK_N - 6, pos: trackAt(TRACK_N - 6, -2.6), h: trackHeadingAt(TRACK_N - 6), speed: 0, boost: 0, prog: -6 / TRACK_N, lap: 0 };
+  car.idx = TRACK_N - 6;
   car.mesh = makeCar(0xff6b3d, null); world.add(car.mesh);
   const bots = [];
-  const names = BOT_NAMES.filter(n => !isBanned('race', n)).slice(0, 3);
-  names.forEach((n, i) => {
-    const th = startTh - (i === 0 ? 0 : 0.07), lane = i === 0 ? 2.2 : (i === 1 ? -2.2 : 2.2);
-    const b = { name: n, th: i === 2 ? startTh - 0.07 : th, lane, speed: 20.5 + i, ph: i * 2, prog: 0, pos: new V3(), h: 0 };
+  BOT_NAMES.filter(n => !isBanned('race', n)).slice(0, 3).forEach((n, i) => {
+    const s0 = TRACK_N - (i === 0 ? 6 : 14), lane = i === 1 ? -2.6 : 2.6;
+    const b = { name: n, s: s0, lane, lane0: lane, speed: 24 + i * 0.8, ph: i * 2, prog: (s0 - TRACK_N) / TRACK_N, pos: new V3(), h: 0 };
     b.mesh = makeCar([0x3b7de0, 0x3fb55e, 0x8b5cd6][i], botLook(n)); world.add(b.mesh); bots.push(b);
   });
   race = { car, bots, pads: padsR, count: 3.5, time: 0, done: false };
@@ -2293,7 +2322,7 @@ function placeCars() {
   c.mesh.position.copy(c.pos); c.mesh.rotation.y = c.h;
   for (const w of c.mesh.userData.wheels) w.children[0].rotation.x += 0;
   avatar.position.set(c.pos.x - Math.sin(c.h) * 0.35, 0.05, c.pos.z - Math.cos(c.h) * 0.35); avatar.rotation.y = c.h; seatPose(avatar);
-  for (const b of race.bots) { b.pos.copy(trackPos(b.th, b.lane)); b.h = trackHeading(b.th); b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h; }
+  for (const b of race.bots) { b.pos.copy(trackAt(b.s, b.lane)); b.h = trackHeadingAt(b.s); b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h; }
 }
 function updateRace(dt) {
   const R = race; if (!R) return;
@@ -2316,12 +2345,12 @@ function updateRace(dt) {
     if (c.charge > 0.5) { c.boost = Math.min(1.5, 0.4 + c.charge * 0.5); boing(); toast(c.charge > 1.2 ? 'Super-Turbo!' : 'Mini-Turbo!'); }
     c.charge = 0;
   }
-  let max = 24;
-  if (c.boost > 0) { c.boost -= dt; max = 34; }
-  if (gas > 0) c.speed += 16 * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 28 : 10) * gas * dt;
+  let max = 28;
+  if (c.boost > 0) { c.boost -= dt; max = 38; }
+  if (gas > 0) c.speed += (c.speed < 0 ? 30 : 17) * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 30 : 20) * gas * dt;
   c.speed -= c.speed * (c.drifting ? 0.65 : 0.5) * dt;
   if (c.speed > max) c.speed += (max - c.speed) * Math.min(1, 3 * dt);
-  if (c.speed < -7) c.speed = -7;
+  if (c.speed < -12) c.speed = -12;
   const grip = Math.max(-1, Math.min(1, c.speed / 8));
   if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * 1.9 * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
   else c.h -= steer * 1.9 * dt * grip;
@@ -2344,7 +2373,12 @@ function updateRace(dt) {
   }
   for (const b of R.bots) {
     const dx = c.pos.x - b.pos.x, dz = c.pos.z - b.pos.z, d = Math.hypot(dx, dz);
-    if (d < 2.4 && d > 0.01) { c.pos.x += dx / d * (2.4 - d); c.pos.z += dz / d * (2.4 - d); c.speed *= 0.85; }
+    if (d < 2.3 && d > 0.01) {
+      // nur zur Seite schubsen, nie mitziehen; der Bot weicht aus
+      const n = TRACK.nrm[c.idx], side = Math.sign(dx * n.x + dz * n.z) || 1, push = Math.min(0.25, 2.3 - d);
+      c.pos.x += n.x * side * push; c.pos.z += n.z * side * push;
+      b.lane = Math.max(-ROAD_W + 1.6, Math.min(ROAD_W - 1.6, b.lane - side * 0.6));
+    }
   }
   for (const pd of R.pads) if (Math.hypot(c.pos.x - pd.x, c.pos.z - pd.z) < 2.6 && ctrl) { if (c.boost <= 0) { boing(); toast('Turbo!'); } c.boost = 1.2; }
   for (const co of coins) {
@@ -2352,19 +2386,23 @@ function updateRace(dt) {
     co.mesh.rotation.z += dt * 3;
     if (ctrl && Math.hypot(co.mesh.position.x - c.pos.x, co.mesh.position.z - c.pos.z) < 2) { co.taken = true; co.mesh.visible = false; game.coins++; earn(5); beep('coin'); }
   }
-  const th = trackTheta(c.pos.x, c.pos.z);
-  let dth = th - c.lastTh; dth = Math.atan2(Math.sin(dth), Math.cos(dth)); c.lastTh = th;
-  if (R.count <= 0 && !R.done) { c.prog += dth; R.time += dt; game.time = R.time; }
-  const lap = Math.floor(c.prog / (Math.PI * 2));
+  const ni = nearestIdx(c.pos, c.idx);
+  let di = ni - c.idx; if (di > TRACK_N / 2) di -= TRACK_N; if (di < -TRACK_N / 2) di += TRACK_N;
+  c.idx = ni;
+  if (R.count <= 0 && !R.done) { c.prog += di / TRACK_N; R.time += dt; game.time = R.time; }
+  const lap = Math.floor(c.prog);
   if (lap > c.lap && lap < LAPS && !R.done) { c.lap = lap; toast('Runde ' + (lap + 1) + '/' + LAPS); beep('check'); }
-  if (!R.done && mode === 'race' && c.prog >= LAPS * Math.PI * 2) finishRace();
+  if (!R.done && mode === 'race' && c.prog >= LAPS) finishRace();
   for (const b of R.bots) {
     if (R.count <= 0) {
-      const sp = b.speed * (1 + Math.sin(tAll * 0.7 + b.ph) * 0.08);
-      const mag = (ROAD_MID + b.lane) * Math.hypot(SX * Math.sin(b.th), Math.cos(b.th));
-      const step = sp * dt / mag; b.th += step; b.prog += step;
+      let sp = b.speed * (1 + Math.sin(tAll * 0.7 + b.ph) * 0.06);
+      // Ist der Spieler direkt vor dem Bot, bremst der Bot statt zu schieben
+      const t = TRACK.tan[wrapIdx(Math.round(b.s))], rx = c.pos.x - b.pos.x, rz = c.pos.z - b.pos.z, ahead = rx * t.x + rz * t.z, lat = Math.abs(rx * t.z - rz * t.x);
+      if (ahead > 0 && ahead < 5 && lat < 2.4) sp = Math.min(sp, Math.max(4, c.speed - 2));
+      b.lane += (b.lane0 - b.lane) * Math.min(1, dt * 0.5);
+      const step = sp * dt / TRACK.seg; b.s += step; b.prog += step / TRACK_N; b.curSpeed = sp;
     }
-    for (const w of b.mesh.userData.wheels) w.rotation.x += b.speed * dt / 0.42;
+    for (const w of b.mesh.userData.wheels) w.rotation.x += (b.curSpeed || 0) * dt / 0.42;
   }
   for (const w of c.mesh.userData.wheels) w.rotation.x += c.speed * dt / 0.42;
   c.mesh.userData.wheels[0].rotation.y = c.mesh.userData.wheels[1].rotation.y = -steer * 0.4;
@@ -2374,15 +2412,21 @@ function updateRace(dt) {
   if (!drags.size) cam.yaw += dy * Math.min(1, 4 * dt);
   camTarget.lerp(tmpV.set(c.pos.x, 1.4, c.pos.z), 1 - Math.exp(-dt * 10));
 }
-// Hält das Kart zwischen den Banden; wer dagegen fährt, wird langsamer
+// Hält das Kart zwischen den Banden. Man prallt ab und wird in Fahrtrichtung gelenkt, statt stecken zu bleiben.
 function keepOnTrack(o) {
-  const th = Math.atan2(o.pos.z, o.pos.x / SX);
-  let r = Math.hypot(o.pos.x / SX, o.pos.z);
-  const lo = R1 + 1.1, hi = R2 - 1.1;
-  if (r >= lo && r <= hi) return;
-  r = r < lo ? lo : hi;
-  o.pos.x = Math.cos(th) * r * SX; o.pos.z = Math.sin(th) * r;
-  o.speed *= 0.6; o.drifting = false; o.charge = 0;
+  const idx = nearestIdx(o.pos, o.idx || 0);
+  const p = TRACK.pts[idx], n = TRACK.nrm[idx], t = TRACK.tan[idx];
+  const lat = (o.pos.x - p.x) * n.x + (o.pos.z - p.z) * n.z, lim = ROAD_W - 1.1;
+  if (Math.abs(lat) <= lim) return;
+  const side = Math.sign(lat);
+  o.pos.x -= n.x * (Math.abs(lat) - lim + 0.5) * side; o.pos.z -= n.z * (Math.abs(lat) - lim + 0.5) * side;
+  // Richtung zur Strecke hin drehen (vorwärts oder rückwärts, je nachdem wie man fährt)
+  const fwd = Math.atan2(t.x, t.z), away = Math.atan2(-n.x * side, -n.z * side);
+  let target = Math.cos(o.h - fwd) >= 0 ? fwd : fwd + Math.PI;
+  let dAway = away - target; dAway = Math.atan2(Math.sin(dAway), Math.cos(dAway)); target += Math.sign(dAway) * 0.12; // leicht von der Bande weg
+  const turn = a => { let d = target - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * 0.5; };
+  o.h = turn(o.h); if (o.vdir !== undefined) o.vdir = turn(o.vdir);
+  o.speed *= 0.9; o.drifting = false; o.charge = 0;
   if (!o.hitT || tAll - o.hitT > 0.4) { o.hitT = tAll; beep('bonk'); }
 }
 const racePlace = () => 1 + race.bots.filter(b => b.prog > race.car.prog).length;
@@ -3171,7 +3215,7 @@ function previewShot(setup, pos, look) {
     setup();
     thumbFor(ITEMS[0]);
     thumbR.setSize(480, 270); thumbCam.aspect = 16 / 9; thumbCam.fov = 55; thumbCam.updateProjectionMatrix();
-    thumbCam.position.set(...pos); thumbCam.lookAt(...look);
+    thumbCam.position.set(...(typeof pos === 'function' ? pos() : pos)); thumbCam.lookAt(...(typeof look === 'function' ? look() : look));
     if (!race) animateAvatar(0);
     thumbR.render(scene, thumbCam);
     return thumbR.domElement.toDataURL('image/jpeg', 0.85);
@@ -3180,7 +3224,7 @@ function previewShot(setup, pos, look) {
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
 setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
-setPreview('prevRace', previewShot(() => { buildRace(); race.count = 0; }, [50, 9, -16], [36, 1, 6]));
+setPreview('prevRace', previewShot(() => { buildRace(); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevHorror', previewShot(() => { buildHorror(); updateHorror(0); }, [-8, 20, -4], [-14, 0, -18]));
 setPreview('prevBuild', previewShot(() => { buildSandbox(); P.pos.set(2.5, 0, 6.5); P.facing = Math.PI * 1.1; }, [11, 8, 15], [1, 1.5, -1]));
 showMenu();
