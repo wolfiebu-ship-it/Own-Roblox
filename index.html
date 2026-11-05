@@ -2235,6 +2235,9 @@ function renderAdminTab() {
       <li><b>Gebannte</b> (Taste L): Im Spiel siehst du, wer aus diesem Spiel gebannt ist, und kannst ihn zurückholen.</li>
     </ul>
     ${msg}
+    ${creator && !NET.me.owner ? `<div class="label">Haupt-Erfinder werden</div>
+    <form id="fOwner" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="oCode" class="field" type="password" placeholder="Erfinder-Code" aria-label="Erfinder-Code" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Bestätigen</button></form>
+    <p class="small">Der Haupt-Erfinder kann alle anderen Erfinder und Admins löschen.</p>` : ''}
     <div class="label">Admin hinzufügen</div>
     <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Admin hinzufügen</button></form>
     ${creator ? `<div class="label">Admin löschen</div>
@@ -2257,6 +2260,7 @@ function renderAdminTab() {
     }).join('')}`;
   el.innerHTML = h;
   $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n }); $('nName').value = ''; } };
+  if ($('fOwner')) $('fOwner').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('oCode').value }); $('oCode').value = ''; };
   if ($('fDelAdm')) $('fDelAdm').onsubmit = e => { e.preventDefault(); const n = $('dName').value.trim(); if (n) { netSend({ t: 'adminRemove', name: n }); $('dName').value = ''; } };
   $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
   el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => netSend({ t: 'adminRemove', name: b.dataset.remove }));
