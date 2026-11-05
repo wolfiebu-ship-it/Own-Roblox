@@ -114,8 +114,10 @@ input { -webkit-user-select: text; user-select: text; }
 #toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.8); font-family: var(--display); font-size: 44px; color: var(--paper); -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-#banPanel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
-#banPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
+#banPanel, #fsHelp { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+#fsHelp { z-index: 25; }
+#fsHelp p { margin: 0; }
+#banPanel h2, #fsHelp h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
 #win { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 24px; width: min(340px, calc(100% - 32px)); box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 12px; }
 #win h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; color: var(--gold); -webkit-text-stroke: 1.5px var(--ink); text-shadow: 3px 3px 0 var(--ink); }
 #win dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; text-align: left; font-variant-numeric: tabular-nums; }
@@ -126,9 +128,23 @@ input { -webkit-user-select: text; user-select: text; }
 /* Touch */
 #stick { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 60px)); width: 120px; height: 120px; border-radius: 50%; background: rgba(255,253,246,.35); border: 3px solid rgba(29,42,68,.6); touch-action: none; }
 #knob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); }
-#jumpBtn { position: absolute; right: max(24px, env(safe-area-inset-right, 0px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 84px; height: 84px; border-radius: 50%; font-family: var(--display); font-size: 18px; touch-action: none; }
-#stickZone { position: absolute; left: 0; bottom: 0; width: 45%; height: 62%; touch-action: none; }
-#stick { pointer-events: none; }
+#jumpBtn, #driftBtn { position: absolute; right: max(24px, env(safe-area-inset-right, 0px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 84px; height: 84px; border-radius: 50%; font-family: var(--display); font-size: 18px; touch-action: none; }
+#stickZone { position: absolute; left: 0; bottom: 0; width: 50%; height: 70%; touch-action: none; }
+#stick { pointer-events: none; opacity: .45; transition: opacity .15s; }
+#stick.held { opacity: 1; transition: none; }
+#driftBtn { background: var(--gold); }
+html[data-device="phone"] .pill { padding: 3px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
+html[data-device="phone"] .pill b { font-size: 15px; }
+html[data-device="phone"] #topright .btn, html[data-device="phone"] #adminBar .btn { padding: 5px 9px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); }
+html[data-device="phone"] #stick { width: 110px; height: 110px; }
+html[data-device="phone"] #knob { width: 44px; height: 44px; margin: -22px; }
+html[data-device="phone"] #jumpBtn, html[data-device="phone"] #driftBtn { width: 76px; height: 76px; font-size: 16px; }
+html[data-device="phone"] #zoomBtns .btn { width: 40px; height: 40px; font-size: 20px; }
+html[data-device="phone"] #toast { font-size: 30px; }
+html[data-device="phone"] #hint { font-size: 11px; padding: 4px 10px; }
+html[data-device="phone"] #toolbar .sw { width: 26px; height: 26px; }
+html[data-device="phone"] #toolbar .btn { padding: 3px 8px; font-size: 13px; }
+html[data-device="tablet"] #driftBtn { width: 120px; height: 120px; font-size: 22px; }
 #zoomBtns { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
 #zoomBtns .btn { width: 46px; height: 46px; padding: 0; border-radius: 50%; font-family: var(--display); font-size: 24px; line-height: 1; }
 html[data-device="tablet"] #stick { width: 170px; height: 170px; }
@@ -210,6 +226,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="topbar">
     <div class="brand">Klotzwelt</div>
     <div class="topright2">
+      <button class="btn" id="fsBtn" type="button">Vollbild</button>
       <button class="btn" id="deviceBtn" aria-label="Gerät wählen">Gerät</button>
       <div class="wallet" title="Deine Münzen"><i class="coin"></i><b id="coinCount">0</b></div>
     </div>
@@ -297,6 +314,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="stats"></div>
   <div id="zoomBtns"><button class="btn" id="zoomIn" aria-label="Näher ran">+</button><button class="btn" id="zoomOut" aria-label="Weiter weg">−</button></div>
   <div id="topright">
+    <button class="btn" id="fsBtn2" type="button">Vollbild</button>
     <button class="btn" id="soundBtn" aria-pressed="true">Ton an</button>
     <button class="btn" id="menuBtn">Zurück</button>
   </div>
@@ -304,6 +322,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   <div id="hint"></div>
   <div id="stick" hidden><div id="knob"></div></div>
   <button class="btn primary" id="jumpBtn" hidden>Sprung</button>
+  <button class="btn" id="driftBtn" hidden>Drift</button>
   <button class="btn" id="downBtn" hidden>Runter</button>
   <button class="btn" id="hitBtn" hidden>Hau!</button>
   <div id="adminBar" hidden></div>
@@ -311,6 +330,12 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 
 <div id="toast"></div>
 <div id="feed" aria-live="polite"></div>
+
+<div id="fsHelp" class="panel" hidden role="dialog" aria-labelledby="fsTitle">
+  <h2 id="fsTitle">Vollbild</h2>
+  <p id="fsText"></p>
+  <button class="btn primary" id="fsClose" type="button">Alles klar</button>
+</div>
 
 <div id="banPanel" class="panel" hidden role="dialog" aria-labelledby="banTitle">
   <h2 id="banTitle">Gebannte</h2>
@@ -1809,16 +1834,23 @@ zone.addEventListener('pointerdown', e => {
   e.preventDefault();
   stickId = e.pointerId; zone.setPointerCapture(e.pointerId);
   const w = stick.offsetWidth;
-  stick.style.left = (e.clientX - w / 2) + 'px'; stick.style.top = (e.clientY - w / 2) + 'px'; stick.style.bottom = 'auto';
+  // Joystick genau unter den Daumen setzen, aber immer ganz auf dem Bildschirm
+  const x = Math.max(6, Math.min(innerWidth - w - 6, e.clientX - w / 2)), y = Math.max(6, Math.min(innerHeight - w - 6, e.clientY - w / 2));
+  stick.style.left = x + 'px'; stick.style.top = y + 'px'; stick.style.bottom = 'auto';
+  stick.classList.add('held');
   moveStick(e);
 });
 zone.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
 const endStick = e => {
   if (e.pointerId !== stickId) return;
   stickId = null; joy.x = joy.y = 0; knob.style.transform = '';
-  stick.style.left = stick.style.top = stick.style.bottom = '';
+  stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('held');
 };
-zone.addEventListener('pointerup', endStick); zone.addEventListener('pointercancel', endStick);
+zone.addEventListener('pointerup', endStick); zone.addEventListener('pointercancel', endStick); zone.addEventListener('lostpointercapture', endStick);
+// Wenn die App in den Hintergrund geht, darf der Joystick nicht "hängen bleiben"
+const resetInput = () => { stickId = null; joy.x = joy.y = 0; knob.style.transform = ''; stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('held'); for (const k in keys) keys[k] = false; };
+addEventListener('blur', resetInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) resetInput(); });
 function moveStick(e) {
   const r = stick.getBoundingClientRect();
   let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
@@ -1833,6 +1865,8 @@ for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   $('downBtn').addEventListener(ev, () => { keys.TouchDown = false; });
 }
 $('downBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchDown = true; });
+$('driftBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchDrift = true; $('driftBtn').setPointerCapture(e.pointerId); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('driftBtn').addEventListener(ev, () => { keys.TouchDrift = false; });
 $('hitBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (isAdmin() && powers.hammer) hammerAction(); });
 
 // ======================================================================
@@ -2225,6 +2259,17 @@ function buildRace() {
     world.add(tr);
   }
   for (let k = 0; k < 4; k++) olAdd(world, roundedBox(3, 1 + k, 22, 0.2), tc([0x3b7de0, 0xe2453c, 0xffd23f, 0x3fb55e][k]), 52 + k * 3, (1 + k) / 2, 0);
+  // Banden an beiden Seiten: man kann die Strecke nicht verlassen
+  const bandGeo = roundedBox(0.6, 0.8, 1.4, 0.15), bandMat = new THREE.MeshToonMaterial({ gradientMap: gradMap });
+  for (const [r, n] of [[R1 - 0.45, 150], [R2 + 0.45, 210]]) {
+    const im = new THREE.InstancedMesh(bandGeo, bandMat, n), dummy = new THREE.Object3D(), col = new THREE.Color();
+    for (let k = 0; k < n; k++) {
+      const th = k / n * Math.PI * 2;
+      dummy.position.set(Math.cos(th) * r * SX, 0.4, Math.sin(th) * r); dummy.rotation.set(0, trackHeading(th), 0); dummy.updateMatrix();
+      im.setMatrixAt(k, dummy.matrix); im.setColorAt(k, col.set(k % 2 ? 0xf4f4f0 : 0xe2453c));
+    }
+    im.castShadow = true; world.add(im);
+  }
   for (let k = 0; k < 10; k++) { const pp = trackPos(k / 10 * Math.PI * 2, (k % 2 ? 1 : -1) * 6.2); const c = olAdd(world, gd(new THREE.ConeGeometry(0.4, 1, 10), 0.8, 1, 0.8), tc(0xff8a2b), pp.x, 0.5, pp.z); c.castShadow = true; }
   // Autos
   const startTh = -0.07;
@@ -2263,16 +2308,40 @@ function updateRace(dt) {
     gas = Math.max(-1, Math.min(1, (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y));
     steer = Math.max(-1, Math.min(1, (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x));
   }
-  const onRoad = isOnRoad(c.pos.x, c.pos.z);
-  let max = onRoad ? 24 : 11;
+  // Driften: Drift-Taste halten und lenken. Je länger der Drift, desto stärker der Turbo danach.
+  const driftKey = ctrl && (keys.ShiftLeft || keys.ShiftRight || keys.Space || keys.TouchDrift);
+  if (driftKey && !c.drifting && Math.abs(steer) > 0.2 && c.speed > 12) { c.drifting = true; c.driftDir = Math.sign(steer); c.charge = 0; beep('jump'); }
+  if (c.drifting && (!driftKey || c.speed < 8)) {
+    c.drifting = false;
+    if (c.charge > 0.5) { c.boost = Math.min(1.5, 0.4 + c.charge * 0.5); boing(); toast(c.charge > 1.2 ? 'Super-Turbo!' : 'Mini-Turbo!'); }
+    c.charge = 0;
+  }
+  let max = 24;
   if (c.boost > 0) { c.boost -= dt; max = 34; }
   if (gas > 0) c.speed += 16 * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 28 : 10) * gas * dt;
-  c.speed -= c.speed * 0.5 * dt;
+  c.speed -= c.speed * (c.drifting ? 0.65 : 0.5) * dt;
   if (c.speed > max) c.speed += (max - c.speed) * Math.min(1, 3 * dt);
   if (c.speed < -7) c.speed = -7;
-  c.h -= steer * 1.9 * dt * Math.max(-1, Math.min(1, c.speed / 8));
-  c.pos.x = Math.max(-95, Math.min(95, c.pos.x + Math.sin(c.h) * c.speed * dt));
-  c.pos.z = Math.max(-65, Math.min(65, c.pos.z + Math.cos(c.h) * c.speed * dt));
+  const grip = Math.max(-1, Math.min(1, c.speed / 8));
+  if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * 1.9 * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
+  else c.h -= steer * 1.9 * dt * grip;
+  // Die Fahrtrichtung folgt der Nase des Karts: beim Driften langsam, sonst schnell
+  if (c.vdir === undefined) c.vdir = c.h;
+  let dv = c.h - c.vdir; dv = Math.atan2(Math.sin(dv), Math.cos(dv));
+  c.vdir += dv * Math.min(1, (c.drifting ? 2.2 : 9) * dt);
+  c.pos.x += Math.sin(c.vdir) * c.speed * dt;
+  c.pos.z += Math.cos(c.vdir) * c.speed * dt;
+  keepOnTrack(c);
+  if (c.drifting && (c.smokeT = (c.smokeT || 0) - dt) <= 0) {
+    c.smokeT = 0.05;
+    const col = c.charge > 1.2 ? 0xff8a2b : c.charge > 0.5 ? 0x6fd0f0 : 0xdfe6ee;
+    for (const sd of [-1, 1]) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 }));
+      m.position.set(c.pos.x - Math.sin(c.h) * 1.4 + Math.cos(c.h) * sd * 0.9, 0.3, c.pos.z - Math.cos(c.h) * 1.4 - Math.sin(c.h) * sd * 0.9);
+      world.add(m);
+      particles.push({ m, v: new V3((Math.random() - 0.5) * 1.5, 1.2, (Math.random() - 0.5) * 1.5), life: 0.6, smoke: true });
+    }
+  }
   for (const b of R.bots) {
     const dx = c.pos.x - b.pos.x, dz = c.pos.z - b.pos.z, d = Math.hypot(dx, dz);
     if (d < 2.4 && d > 0.01) { c.pos.x += dx / d * (2.4 - d); c.pos.z += dz / d * (2.4 - d); c.speed *= 0.85; }
@@ -2304,6 +2373,17 @@ function updateRace(dt) {
   let dy = (c.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size) cam.yaw += dy * Math.min(1, 4 * dt);
   camTarget.lerp(tmpV.set(c.pos.x, 1.4, c.pos.z), 1 - Math.exp(-dt * 10));
+}
+// Hält das Kart zwischen den Banden; wer dagegen fährt, wird langsamer
+function keepOnTrack(o) {
+  const th = Math.atan2(o.pos.z, o.pos.x / SX);
+  let r = Math.hypot(o.pos.x / SX, o.pos.z);
+  const lo = R1 + 1.1, hi = R2 - 1.1;
+  if (r >= lo && r <= hi) return;
+  r = r < lo ? lo : hi;
+  o.pos.x = Math.cos(th) * r * SX; o.pos.z = Math.sin(th) * r;
+  o.speed *= 0.6; o.drifting = false; o.charge = 0;
+  if (!o.hitT || tAll - o.hitT > 0.4) { o.hitT = tAll; beep('bonk'); }
 }
 const racePlace = () => 1 + race.bots.filter(b => b.prog > race.car.prog).length;
 function finishRace() {
@@ -2648,7 +2728,13 @@ function renderFriendsTab() {
   if (!NET.open) {
     h += canOnline && NET.tries < 4
       ? '<p class="small">Verbinde mit dem Klotzwelt-Server …</p>'
-      : '<p class="small">Hier bist du offline. Freunde, Gruppen und Mehrspieler gibt es, wenn Klotzwelt über deinen eigenen Klotzwelt-Server läuft. Alle anderen Spiele funktionieren auch offline.</p>';
+      : `<p class="small">Du spielst gerade <b>offline</b>. Freunde hinzufügen geht nur, wenn Klotzwelt über deinen eigenen Klotzwelt-Server läuft.</p>
+        <ol class="powers">
+          <li>Server online stellen, wie in der Datei <b>ONLINE-ANLEITUNG.md</b> im GitHub-Repo beschrieben.</li>
+          <li>Klotzwelt über deine Server-Adresse öffnen, zum Beispiel <b>klotzwelt.onrender.com</b>.</li>
+          <li>Hier im Tab <b>Freunde</b> ein Konto erstellen und den Benutzernamen deines Freundes eingeben.</li>
+        </ol>
+        <p class="small">Alle Spiele funktionieren auch offline.</p>`;
     el.innerHTML = h; return;
   }
   if (!NET.me) {
@@ -2800,6 +2886,7 @@ function enterPlay(m) {
   tryOn = null; rebuildAvatar();
   $('home').hidden = true; $('hud').hidden = false; $('win').hidden = true;
   $('stick').hidden = $('stickZone').hidden = $('jumpBtn').hidden = !isTouch;
+  $('driftBtn').hidden = true;
   applyViewOffset();
   cam.pitch = 0.38; cam.dist = m === 'build' ? 14 : 11;
   if (m === 'obby') {
@@ -2810,8 +2897,8 @@ function enterPlay(m) {
   } else if (m === 'race') {
     buildRace();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
-    $('jumpBtn').hidden = true;
-    $('hint').textContent = isTouch ? 'Joystick nach oben: Gas · nach unten: Bremse · zur Seite: lenken' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Esc zurück';
+    $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch;
+    $('hint').textContent = isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo · Esc zurück';
     toast('3'); beep('equip');
   } else if (m === 'horror') {
     buildHorror();
@@ -2970,7 +3057,9 @@ function updateObby(dt) {
 function updateParticles(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
-    p.v.y -= 20 * dt; p.m.position.addScaledVector(p.v, dt); p.m.rotation.x += dt * 5; p.m.rotation.y += dt * 4;
+    if (p.smoke) { p.m.scale.multiplyScalar(1 + dt * 2.5); p.m.material.opacity = Math.max(0, p.life * 1.3); }
+    else { p.v.y -= 20 * dt; p.m.rotation.x += dt * 5; p.m.rotation.y += dt * 4; }
+    p.m.position.addScaledVector(p.v, dt);
     if ((p.life -= dt) <= 0) { world.remove(p.m); particles.splice(i, 1); }
   }
 }
@@ -3032,6 +3121,7 @@ function applyDevice() {
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || playingGame() === 'race';
+    $('driftBtn').hidden = !isTouch || playingGame() !== 'race';
     renderAdminBar();
   }
 }
@@ -3045,6 +3135,32 @@ document.querySelectorAll('.dev').forEach(b => b.onclick = () => {
   applyDevice(); $('devicePick').hidden = true; toast(DEVICE_NAMES[device]); beep('equip');
 });
 $('deviceBtn').onclick = openDevicePick;
+// Vollbild
+const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const isPhoneIOS = /iPhone|iPod/.test(navigator.userAgent);
+const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function fsLabel() { for (const id of ['fsBtn', 'fsBtn2']) { $(id).textContent = fsActive() ? 'Vollbild aus' : 'Vollbild'; $(id).hidden = standalone; } }
+function fsHelp(text) { $('fsText').textContent = text; $('fsHelp').hidden = false; }
+async function toggleFullscreen() {
+  const d = document.documentElement;
+  try {
+    if (fsActive()) { await (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (d.requestFullscreen) await d.requestFullscreen({ navigationUI: 'hide' });
+    else if (d.webkitRequestFullscreen) d.webkitRequestFullscreen();
+    else throw new Error('kein Vollbild');
+    if (screen.orientation && screen.orientation.lock && mode !== 'menu') screen.orientation.lock('landscape').catch(() => {});
+  } catch (e) {
+    fsHelp(isPhoneIOS
+      ? 'Auf dem iPhone erlaubt Safari kein Vollbild für Webseiten. So geht es trotzdem: In Safari auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen. Wenn du Klotzwelt dann über das neue Symbol startest, läuft es ohne Adressleiste im Vollbild.'
+      : 'Hier wurde das Vollbild blockiert, zum Beispiel weil Klotzwelt in einem anderen Fenster eingebettet ist. Öffne Klotzwelt direkt über seine Adresse im Browser und tippe dann nochmal auf „Vollbild“.');
+  }
+  fsLabel();
+}
+$('fsBtn').onclick = toggleFullscreen; $('fsBtn2').onclick = toggleFullscreen;
+$('fsClose').onclick = () => { $('fsHelp').hidden = true; };
+document.addEventListener('fullscreenchange', fsLabel); document.addEventListener('webkitfullscreenchange', fsLabel);
+fsLabel();
+
 applyDevice();
 if (!device) openDevicePick();
 netConnect();
