@@ -133,6 +133,12 @@ html.stick-fixed #stick { opacity: 1; pointer-events: auto; }
 body.editing #stick, body.editing #jumpBtn { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; touch-action: none; cursor: grab; }
 body.editing #stickZone { display: none; }
 .game.skate { background: #d5f0ff; }
+.game.fight { background: #ffd0d0; }
+.game.blaster { background: #e3f7c8; }
+#hurt { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 55%, rgba(226,69,60,.55)); opacity: 0; transition: opacity .25s; z-index: 3; }
+.lp { display: inline-block; width: 70px; height: 9px; border-radius: 5px; background: rgba(29,42,68,.18); vertical-align: middle; margin-left: 4px; overflow: hidden; }
+.lp i { display: block; height: 100%; background: var(--go); }
+.lp.foe i { background: var(--accent); }
 #fsHelp p { margin: 0; }
 #vehPanel { z-index: 26; width: min(480px, calc(100% - 32px)); }
 .vehs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
@@ -304,6 +310,18 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
         <p>Rampen, Quarterpipes und Sprünge: Zieh Tricks in der Luft und sammle Punkte, bevor die Zeit abläuft.</p>
         <button class="btn primary" id="playSkate">Skaten</button>
       </div>
+      <div class="game fight">
+        <img class="preview" id="prevFight" alt="Vorschau: Box-Ring" hidden>
+        <h3>Box-Ring</h3>
+        <p>Ab 8 Jahren. Kämpfe im Ring mit Boxhandschuhen: schlagen, blocken, ausweichen. Wer zuerst 2 Runden gewinnt, ist Champion. Kopfschutz gibt es im Shop.</p>
+        <button class="btn primary" id="playFight">Kämpfen</button>
+      </div>
+      <div class="game blaster">
+        <img class="preview" id="prevBlaster" alt="Vorschau: Blaster-Arena" hidden>
+        <h3>Blaster-Arena</h3>
+        <p>Ab 10 Jahren. Energie-Blaster-Duell in der Arena gegen 4 Gegner. Neue Waffen wie die Minigun gibt es im Shop.</p>
+        <button class="btn primary" id="playBlaster">Spielen</button>
+      </div>
       <div class="game horror">
         <img class="preview" id="prevHorror" alt="Vorschau: Gruselvilla" hidden>
         <h3>Gruselvilla</h3>
@@ -375,6 +393,7 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
 </div>
 
 <div id="toast"></div>
+<div id="hurt"></div>
 <div id="feed" aria-live="polite"></div>
 
 <div id="fsHelp" class="panel" hidden role="dialog" aria-labelledby="fsTitle">
@@ -436,6 +455,10 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
   </div>
   <button class="btn" id="setLayout" type="button">Knöpfe mit dem Finger verschieben</button>
   <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
+  <div class="label">Alter (nur wenn du nicht angemeldet bist)</div>
+  <input id="setYear" class="field" inputmode="numeric" maxlength="4" placeholder="Geburtsjahr, z. B. 2012" aria-label="Geburtsjahr">
+  <div class="label">Blut in Kampf- und Waffenspielen (ab 13)</div>
+  <div class="seg" id="bloodSeg"><button type="button" data-b="0">Aus (Sterne)</button><button type="button" data-b="1">An</button></div>
   <div class="label">Ton</div>
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
   <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
@@ -727,6 +750,18 @@ ITEMS.push(
   { id: 'b-guitar', slot: 'back', name: 'Gitarre', price: 300, back: 'guitar', color: 0xe2453c },
   { id: 'b-dragon', slot: 'back', name: 'Drachenflügel', price: 450, back: 'wings', color: 0x3fb55e }
 );
+ITEMS.push(
+  { id: 'h-box-red', slot: 'hat', name: 'Kopfschutz rot', price: 80, hat: 'boxhelm', color: 0xe2453c },
+  { id: 'h-box-blue', slot: 'hat', name: 'Kopfschutz blau', price: 80, hat: 'boxhelm', color: 0x3b7de0 },
+  { id: 'h-box-black', slot: 'hat', name: 'Kopfschutz schwarz', price: 100, hat: 'boxhelm', color: 0x2a2d34 },
+  { id: 'h-box-pink', slot: 'hat', name: 'Kopfschutz pink', price: 100, hat: 'boxhelm', color: 0xff6fae },
+  { id: 'h-box-green', slot: 'hat', name: 'Kopfschutz grün', price: 100, hat: 'boxhelm', color: 0x3fb55e },
+  { id: 'h-box-gold', slot: 'hat', name: 'Kopfschutz gold', price: 300, hat: 'boxhelm', color: 0xffc83d },
+  { id: 'w-blaster', slot: 'weapon', name: 'Blaster', price: 0, weapon: { rate: 0.32, dmg: 20, spread: 0.012, count: 1, color: 0x6fd0f0, body: 0x3b7de0 } },
+  { id: 'w-double', slot: 'weapon', name: 'Doppel-Blaster', price: 150, weapon: { rate: 0.19, dmg: 18, spread: 0.02, count: 1, color: 0x3fdc7a, body: 0x23824a } },
+  { id: 'w-shotgun', slot: 'weapon', name: 'Streu-Blaster', price: 250, weapon: { rate: 0.8, dmg: 14, spread: 0.09, count: 6, color: 0xffd23f, body: 0x8b5a2b } },
+  { id: 'w-minigun', slot: 'weapon', name: 'Minigun', price: 500, weapon: { rate: 0.07, dmg: 9, spread: 0.04, count: 1, color: 0xff6b3d, body: 0x2a2d34, mini: true } }
+);
 ITEMS.sort((a, b) => a.price - b.price);
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
@@ -795,10 +830,12 @@ const adminData = (() => {
 })();
 function saveAdmin() { store.set('klotzwelt-admin', adminData); }
 // Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
-const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', horror: 'Gruselvilla' };
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla' };
+// Mindestalter pro Spiel. Admins dürfen alles spielen.
+const GAME_AGE = { horror: 8, fight: 8, blaster: 10 };
 const isRace = m => m === 'race' || m === 'moto';
 function normBans(b) {
-  const out = { obby: [], build: [], race: [], moto: [], skate: [], horror: [] };
+  const out = { obby: [], build: [], race: [], moto: [], skate: [], fight: [], blaster: [], horror: [] };
   if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
@@ -1040,6 +1077,14 @@ function buildHat(item) {
     case 'halo': {
       const t = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 10, 28), new THREE.MeshBasicMaterial({ color: item.color }));
       t.position.set(0, HEAD_TOP + 0.3, 0); t.rotation.x = Math.PI / 2; g.add(t); break;
+    }
+    case 'boxhelm': {
+      // Gepolsterter Kopfschutz mit offenem Gesicht
+      add(roundedBox(0.68, 0.22, 0.66, 0.1), c, 0, HEAD_TOP - 0.02, -0.02);
+      add(roundedBox(0.68, 0.5, 0.16, 0.07), c, 0, HEAD_Y + 0.02, -0.28);
+      for (const sx of [-1, 1]) add(roundedBox(0.14, 0.46, 0.5, 0.06), c, sx * 0.33, HEAD_Y, 0);
+      add(roundedBox(0.4, 0.07, 0.1, 0.03), pm(0xf4f4f0), 0, HEAD_TOP + 0.02, 0.28);
+      break;
     }
     case 'crown': {
       const gold = new THREE.MeshLambertMaterial({ color: item.color, emissive: 0x6a4a00, emissiveIntensity: 0.3 });
@@ -1317,6 +1362,11 @@ function thumbFor(item) {
       const d = new THREE.DirectionalLight(0xffffff, 0.6); d.position.set(2, 4, 5); thumbScene.add(d);
       thumbCam = new THREE.PerspectiveCamera(35, 1, 0.05, 50);
     }
+    if (item.slot === 'weapon') {
+      const w = makeWeapon(item.id); w.rotation.set(Math.PI / 2, 0, 0); thumbScene.add(w);
+      thumbCam.position.set(1.3, 0.55, -0.4); thumbCam.lookAt(0, -0.05, -1.0);
+      thumbR.render(thumbScene, thumbCam); const url = thumbR.domElement.toDataURL('image/png'); thumbScene.remove(w); thumbs.set(item.id, url); return url;
+    }
     const lk = { name: '', body: { head: 1, torso: 1, arms: 1, legs: 1 }, wear: { face: 'f-smile' } };
     if (item.slot === 'shirt' || item.slot === 'pants' || item.slot === 'shoes' || item.slot === 'neck') { lk.wear.shirt = 's-white'; lk.wear.pants = 'p-black'; }
     lk.wear[item.slot] = item.id;
@@ -1343,7 +1393,7 @@ function clearWorld() {
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   solids = []; coins = []; movers = []; pads = []; particles = [];
-  setAtmosphere('day'); race = null; horror = null; skate = null; stopDrone();
+  setAtmosphere('day'); race = null; horror = null; skate = null; fight = null; arena = null; stopDrone();
   spinners = []; fades = []; discs = []; bouncers = []; debris = []; dead = 0; bots = []; blocks = new Map();
   if (avatar) avatar.visible = true;
 }
@@ -1889,6 +1939,7 @@ let lastMouse = null, menuSpin = 0;
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
+  if (mode === 'blaster' && e.pointerType === 'mouse' && e.button === 0) keys.MouseFire = true;
   drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button });
 });
 cv.addEventListener('pointermove', e => {
@@ -1913,11 +1964,14 @@ cv.addEventListener('pointermove', e => {
 });
 let pinchLast = 0;
 function endDrag(e) {
+  if (e.pointerType === 'mouse') keys.MouseFire = false;
   const d = drags.get(e.pointerId);
   drags.delete(e.pointerId);
   if (drags.size < 2) pinchLast = 0;
   if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
   const locked = document.pointerLockElement === cv, px = locked ? innerWidth / 2 : e.clientX, py = locked ? innerHeight / 2 : e.clientY;
+  if (mode === 'fight') { fightPunchReq = true; return; }
+  if (mode === 'blaster') return;
   if (isAdmin() && powers.hammer) { hammerAction(px, py); return; }
   if (canBuild()) buildAction(px, py, d.button === 2 || e.shiftKey);
 }
@@ -2094,7 +2148,7 @@ const SLOT_WORDS = { hat: 'hüte hut mütze kappe', hair: 'haare frisur', face: 
 const matchItem = (i, q) => (i.name + ' ' + SLOT_WORDS[i.slot]).toLowerCase().includes(q);
 function renderShop() {
   const q = $('shopSearch').value.trim().toLowerCase();
-  chipRow($('shopCats'), SLOTS, q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
+  chipRow($('shopCats'), [...SLOTS, ['weapon', 'Waffen']], q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
   const grid = $('shopGrid'); grid.innerHTML = '';
   const list = q ? ITEMS.filter(i => matchItem(i, q)) : ITEMS.filter(i => i.slot === shopCat);
   if (!list.length) grid.innerHTML = '<p class="small">Nichts gefunden. Versuch ein anderes Wort, zum Beispiel „Hut“, „rot“ oder „Brille“.</p>';
@@ -2190,7 +2244,7 @@ function renderAdminTab() {
   if (!NET.admin) netSend({ t: 'adminList' });
 }
 function togglePower(k) {
-  if (!isAdmin() || ((isRace(mode) || mode === 'skate') && k !== 'build')) return;
+  if (!isAdmin() || ((isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode)) && k !== 'build')) return;
   powers[k] = !powers[k];
   const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
   toast(names[k] + (powers[k] ? ' an' : ' aus'));
@@ -2206,7 +2260,7 @@ function renderAdminBar() {
   $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
   $('jumpBtn').textContent = mode === 'skate' ? 'Ollie' : (isAdmin() && powers.fly ? 'Hoch' : 'Sprung');
   if (bar.hidden) return;
-  const items = isRace(mode) || mode === 'skate' ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
+  const items = isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode) ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
   for (const [k, label, key] of items) {
@@ -2751,6 +2805,261 @@ function finishSkate() {
 }
 
 // ======================================================================
+// Alter, Blut, Treffer-Effekte
+// ======================================================================
+function playerAge() {
+  if (typeof NET !== 'undefined' && NET && NET.me && NET.me.years != null) return NET.me.years;
+  return settings.birthYear ? new Date().getFullYear() - settings.birthYear : null;
+}
+function ageOk(g) { const min = GAME_AGE[g]; if (!min || isAdmin()) return true; const a = playerAge(); return a != null && a >= min; }
+const bloodOn = () => !!settings.blood && (isAdmin() || (playerAge() ?? 0) >= 13);
+function hitFx(pos) {
+  const blood = bloodOn();
+  for (let i = 0; i < (blood ? 14 : 8); i++) {
+    const m = new THREE.Mesh(blood ? new THREE.SphereGeometry(0.07 + Math.random() * 0.06, 6, 5) : new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: blood ? 0xb3121d : [0xffd23f, 0xfff1a8, 0xffffff][i % 3] }));
+    m.position.copy(pos); world.add(m);
+    particles.push({ m, v: new V3((Math.random() - 0.5) * 5, 2 + Math.random() * 4, (Math.random() - 0.5) * 5), life: 0.6 });
+  }
+}
+function hurtFlash() { const h = $('hurt'); h.style.opacity = 1; clearTimeout(hurtFlash.t); hurtFlash.t = setTimeout(() => { h.style.opacity = 0; }, 160); }
+function addGloves(a, color) {
+  for (const arm of [a.userData.armL, a.userData.armR]) { const gl = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), tc(color)); gl.position.set(0, -0.82, 0.05); gl.castShadow = true; arm.add(gl); }
+}
+const hasHelm = lk => !!(lk.wear && lk.wear.hat && ITEM[lk.wear.hat] && ITEM[lk.wear.hat].hat === 'boxhelm');
+const angTo = (from, to) => Math.atan2(to.x - from.x, to.z - from.z);
+const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+// ======================================================================
+// Box-Ring
+// ======================================================================
+let fight = null, fightPunchReq = false;
+const RING = 6.2, RING_Y = 1.2;
+function makeFoe(round) {
+  const names = BOT_NAMES.filter(n => !isBanned('fight', n));
+  const name = names[(round - 1) % names.length] || 'Boxi', look = botLook(name);
+  look.wear.hat = ['h-box-red', 'h-box-blue', 'h-box-black'][round % 3];
+  const g = makeAvatar(look); addGloves(g, 0x3b7de0); world.add(g);
+  return { name, look, g, pos: new V3(0, RING_Y, -3.5), facing: 0, hp: 100, cool: 1, punchT: 0, arm: 0, block: 0, stun: 0, strafe: 1, power: 1 + (round - 1) * 0.15 };
+}
+function buildFight() {
+  clearWorld();
+  addClouds(6);
+  addBox(0, -0.5, 0, 90, 1, 90, 0x5a6a88);
+  plat(0, RING_Y, 0, RING * 2 + 1, RING * 2 + 1, 0x3b7de0, RING_Y);
+  const mat2 = new THREE.Mesh(new THREE.BoxGeometry(RING * 2 - 0.4, 0.02, RING * 2 - 0.4), tc(0xf4f4f0)); mat2.position.y = RING_Y + 0.011; mat2.receiveShadow = true; world.add(mat2);
+  for (const [x, z, c] of [[-1, -1, 0xe2453c], [1, 1, 0x3b7de0], [-1, 1, 0xf4f4f0], [1, -1, 0xf4f4f0]]) olAdd(world, gd(new THREE.CylinderGeometry(0.18, 0.18, 2.2, 12), 0.36, 2.2, 0.36), tc(c), x * (RING + 0.2), RING_Y + 1.1, z * (RING + 0.2));
+  for (const h of [0.6, 1.1, 1.6]) for (const [x, z, w, d] of [[0, -1, 1, 0], [0, 1, 1, 0], [-1, 0, 0, 1], [1, 0, 0, 1]]) {
+    const len = RING * 2 + 0.4, r = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, len, 8), tc(0xe2453c));
+    if (w) { r.rotation.z = Math.PI / 2; r.position.set(0, RING_Y + h, z * (RING + 0.2)); } else { r.rotation.x = Math.PI / 2; r.position.set(x * (RING + 0.2), RING_Y + h, 0); }
+    world.add(r);
+  }
+  // unsichtbare Wände: man fällt nicht aus dem Ring
+  for (const [x, z, w, d] of [[0, -RING - 0.3, RING * 2 + 1, 0.4], [0, RING + 0.3, RING * 2 + 1, 0.4], [-RING - 0.3, 0, 0.4, RING * 2 + 1], [RING + 0.3, 0, 0.4, RING * 2 + 1]]) addBox(x, RING_Y + 2, z, w, 4, d, 0).mesh.visible = false;
+  // Publikum
+  let fs = 5; const fr = () => (fs = (fs * 9301 + 49297) % 233280) / 233280;
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2, grp = new THREE.Group(); grp.rotation.y = a; world.add(grp);
+    for (let row = 0; row < 3; row++) { const st = new THREE.Mesh(new THREE.BoxGeometry(26, 0.6 * (row + 1), 2), tc(0x46395c)); st.position.set(0, 0.3 * (row + 1), -12 - row * 2); st.receiveShadow = true; grp.add(st);
+      for (let j = 0; j < 14; j++) { if (fr() < 0.3) continue; const fan = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.5), tc([0xff6b3d, 0x6fd0f0, 0xff6fae, 0xf4f4f0, 0xffd23f][Math.floor(fr() * 5)])); fan.position.set(-12 + j * 1.8, 0.6 * (row + 1) + 0.45, -12 - row * 2); grp.add(fan); } }
+  }
+  addGloves(avatar, 0xe2453c);
+  setSpawn(0, RING_Y, 3.5);
+  fight = { foe: makeFoe(1), round: 1, wins: 0, losses: 0, php: 100, cool: 0, punchT: 0, arm: 0, between: 0, prevPunch: false };
+}
+function fightRespawnHook() { if (fight && fight.php <= 0) fight.php = 100; }
+function startNextRound() {
+  const F = fight;
+  if (F.foe.g.parent) world.remove(F.foe.g);
+  F.round++; F.foe = makeFoe(F.round); F.php = 100; F.between = 0;
+  P.pos.set(0, RING_Y, 3.5); P.vel.set(0, 0, 0);
+  toast('Runde ' + F.round); beep('check');
+}
+function endFight(won) {
+  mode = 'win'; beep(won ? 'win' : 'die');
+  if (won) { earn(40); confetti(P.pos.clone().add(new V3(0, 2, 0))); }
+  showResult(won ? 'Champion!' : 'Verloren', [['Siege', fight.wins], ['Niederlagen', fight.losses], ['Verdient', '<i class="coin"></i> ' + game.earned]]);
+}
+function updateFight(dt) {
+  const F = fight; if (!F) return;
+  const live = mode === 'fight' && dead <= 0;
+  const foe = F.foe, myHelm = hasHelm(currentLook());
+  if (F.between > 0) { F.between -= dt; if (F.between <= 0) { if (F.wins >= 2) return endFight(true); if (F.losses >= 2) return endFight(false); startNextRound(); } }
+  if (dead <= 0 && F.php <= 0) F.php = 100;
+  // immer zum Gegner schauen
+  if (live && foe.hp > 0) { const want = angTo(P.pos, foe.pos); let d = want - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 10); avatar.rotation.y = P.facing; }
+  // Schlagen (Klick, J, Schlag-Knopf) und Blocken (K, Block-Knopf)
+  const punchKey = !!(keys.KeyJ || keys.TouchDrift);
+  const blocking = live && !!(keys.KeyK || keys.TouchWheelie);
+  F.cool = Math.max(0, F.cool - dt); F.punchT = Math.max(0, F.punchT - dt);
+  if (live && (fightPunchReq || (punchKey && !F.prevPunch)) && F.cool <= 0 && !blocking && foe.hp > 0 && F.between <= 0) {
+    F.cool = 0.35; F.punchT = 0.16; F.arm = 1 - F.arm; beep('bonk');
+    const dist = Math.hypot(foe.pos.x - P.pos.x, foe.pos.z - P.pos.z);
+    if (dist < 2.1 && angDiff(angTo(P.pos, foe.pos), P.facing) < 1.0) {
+      const dmg = Math.round((foe.block > 0 ? 2 : 9 + Math.random() * 5) * (hasHelm(foe.look) ? 0.75 : 1));
+      foe.hp = Math.max(0, foe.hp - dmg); foe.stun = 0.25;
+      const a = angTo(P.pos, foe.pos); foe.pos.x += Math.sin(a) * 0.7; foe.pos.z += Math.cos(a) * 0.7;
+      hitFx(foe.pos.clone().add(new V3(0, 1.85, 0)));
+      if (foe.hp <= 0) { explode(foe.look, foe.pos.clone(), foe.facing, foe.g.userData, new V3()); world.remove(foe.g); oof(); toast('K.O.!'); F.wins++; earn(10); F.between = 2.2; }
+    }
+  }
+  fightPunchReq = false; F.prevPunch = punchKey;
+  // Arme: Deckung, Schlag
+  const u = avatar.userData;
+  if (live) {
+    u.armL.rotation.x = blocking ? -2.2 : -1.2; u.armR.rotation.x = blocking ? -2.2 : -1.2;
+    if (F.punchT > 0) (F.arm ? u.armR : u.armL).rotation.x = -1.65;
+  }
+  // Gegner-KI
+  if (foe.hp > 0 && F.between <= 0) {
+    foe.cool = Math.max(0, foe.cool - dt); foe.punchT = Math.max(0, foe.punchT - dt); foe.block = Math.max(0, foe.block - dt); foe.stun = Math.max(0, foe.stun - dt);
+    const dx = P.pos.x - foe.pos.x, dz = P.pos.z - foe.pos.z, dist = Math.hypot(dx, dz);
+    foe.facing = Math.atan2(dx, dz);
+    if (foe.stun <= 0 && live) {
+      if (dist > 1.7) { const sp = 3.6 * foe.power; foe.pos.x += dx / dist * sp * dt; foe.pos.z += dz / dist * sp * dt; }
+      else {
+        foe.pos.x += -dz / dist * foe.strafe * 1.4 * dt; foe.pos.z += dx / dist * foe.strafe * 1.4 * dt;
+        if (Math.random() < dt * 0.6) foe.strafe *= -1;
+        if (F.punchT > 0 && Math.random() < 0.35 * foe.power && foe.block <= 0) foe.block = 0.5;
+        if (foe.cool <= 0 && foe.block <= 0 && Math.random() < dt * 2.2 * foe.power) {
+          foe.cool = 0.75 / foe.power; foe.punchT = 0.16; foe.arm = 1 - (foe.arm || 0); beep('bonk');
+          if (dist < 2.1) {
+            const dmg = Math.round((blocking ? 1.5 : 7 + Math.random() * 4) * foe.power * (myHelm ? 0.75 : 1));
+            F.php = Math.max(0, F.php - dmg); hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.85, 0)));
+            P.vel.x += dx / dist * 5; P.vel.z += dz / dist * 5;
+            if (F.php <= 0) { F.losses++; die(); F.between = 2.4; }
+          }
+        }
+      }
+    }
+    if (dist < 1.3 && dist > 0.001) { const push = (1.3 - dist) / 2; foe.pos.x -= dx / dist * push; foe.pos.z -= dz / dist * push; P.pos.x += dx / dist * push; P.pos.z += dz / dist * push; }
+    foe.pos.x = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.x)); foe.pos.z = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.z));
+    const fu = foe.g.userData, moving = dist > 1.7 && foe.stun <= 0, sw = moving ? Math.sin(tAll * 9) * 0.6 : 0;
+    fu.legL.rotation.x = sw; fu.legR.rotation.x = -sw;
+    fu.armL.rotation.x = foe.block > 0 ? -2.2 : -1.2; fu.armR.rotation.x = foe.block > 0 ? -2.2 : -1.2;
+    if (foe.punchT > 0) (foe.arm ? fu.armR : fu.armL).rotation.x = -1.65;
+    foe.g.position.copy(foe.pos); foe.g.rotation.y = foe.facing;
+  }
+}
+
+// ======================================================================
+// Blaster-Arena
+// ======================================================================
+let arena = null;
+function makeWeapon(id) {
+  const it = ITEM[id] || ITEM['w-blaster'], w = it.weapon, g = new THREE.Group();
+  olAdd(g, roundedBox(0.18, 0.55, 0.26, 0.06), tc(w.body), 0, -0.85, 0.05);
+  olAdd(g, roundedBox(0.12, 0.2, 0.16, 0.04), tc(0x2a2d34), 0, -0.68, -0.12);
+  if (w.mini) { const br = new THREE.Group(); br.position.set(0, -1.25, 0.05); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, c = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.75, 8), tc(0x8a8f99)); c.position.set(Math.cos(a) * 0.09, 0, Math.sin(a) * 0.09); br.add(c); } g.add(br); g.userData.barrel = br; }
+  else { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 10), tc(0x8a8f99)); c.position.set(0, -1.3, 0.05); g.add(c); }
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: w.color })); tip.position.set(0, w.mini ? -1.62 : -1.56, 0.05); g.add(tip);
+  return g;
+}
+const myWeaponId = () => (profile.wear.weapon && profile.owned.includes(profile.wear.weapon) && ITEM[profile.wear.weapon]) ? profile.wear.weapon : 'w-blaster';
+function buildArena() {
+  clearWorld();
+  addClouds(8);
+  addBox(0, -0.5, 0, 72, 1, 72, 0x9aa3b5);
+  for (const [x, z, w, d] of [[0, -35.5, 72, 1], [0, 35.5, 72, 1], [-35.5, 0, 1, 72], [35.5, 0, 1, 72]]) addBox(x, 1.6, z, w, 3.2, d, 0x5a6a88);
+  let sd = 21; const r = () => (sd = (sd * 9301 + 49297) % 233280) / 233280;
+  const cols = [0xe2453c, 0x3b7de0, 0xffd23f, 0x3fb55e, 0x8b5cd6, 0xff8a2b];
+  for (let k = 0; k < 16; k++) {
+    const x = (r() - 0.5) * 56, z = (r() - 0.5) * 56; if (Math.hypot(x, z - 20) < 6) continue;
+    const w = 2 + Math.floor(r() * 4), d = 1 + Math.floor(r() * 3), h = 1.4 + Math.floor(r() * 2) * 0.9;
+    addBox(x, h / 2, z, w, h, d, cols[k % 6]);
+  }
+  const spots = [[-24, -24], [24, -24], [-24, 6], [24, 6], [0, -26], [-10, -8], [10, -12]];
+  const bots2 = [];
+  BOT_NAMES.filter(n => !isBanned('blaster', n)).slice(0, 4).forEach((n, i) => {
+    const look = botLook(n), g = makeAvatar(look); g.userData.armR.add(makeWeapon('w-blaster')); world.add(g);
+    const [x, z] = spots[i];
+    bots2.push({ name: n, look, g, pos: new V3(x, 0, z), facing: 0, hp: 60, cool: 1 + Math.random(), target: null, dead: 0, seeT: 0, sees: false });
+  });
+  arena = { bots: bots2, shots: [], time: 120, kills: 0, php: 100, cool: 0, spots, spin: 0 };
+  setSpawn(0, 0, 22);
+  avatar.userData.armR.add(makeWeapon(myWeaponId())); avatar.userData.gun = avatar.userData.armR.children[avatar.userData.armR.children.length - 1];
+}
+function insideSolid(x, y, z, pad = 0) { for (const sd of solids) if (sd.box.min.x - pad < x && x < sd.box.max.x + pad && sd.box.min.y < y && y < sd.box.max.y && sd.box.min.z - pad < z && z < sd.box.max.z + pad) return sd; return null; }
+function shoot(from, dir, w, owner, dmg) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(owner === 'p' ? 0.12 : 0.14, 8, 6), new THREE.MeshBasicMaterial({ color: owner === 'p' ? w.color : 0xff3b8d }));
+  m.position.copy(from); world.add(m);
+  arena.shots.push({ m, v: dir.clone().multiplyScalar(owner === 'p' ? 46 : 30), owner, dmg, life: 1.6 });
+}
+function updateArena(dt) {
+  const A = arena; if (!A) return;
+  const live = mode === 'blaster' && dead <= 0;
+  if (mode === 'blaster') { A.time -= dt; if (A.time <= 0) { A.time = 0; mode = 'win'; beep('win'); showResult('Zeit um!', [['Treffer (K.O.)', A.kills], ['Erwischt', game.deaths], ['Verdient', '<i class="coin"></i> ' + game.earned]]); return; } }
+  if (dead <= 0 && A.php <= 0) A.php = 100;
+  const it = ITEM[myWeaponId()], w = it.weapon, u = avatar.userData;
+  // Zielen: Figur schaut immer in Kamerarichtung, Waffe nach vorne
+  if (live) { u.armR.rotation.x = -1.5; u.armL.rotation.x = -1.3; }
+  const firing = live && !!(keys.MouseFire || keys.KeyJ || keys.TouchDrift);
+  A.cool = Math.max(0, A.cool - dt);
+  if (w.mini && u.gun && u.gun.userData.barrel) { A.spin = Math.min(1, Math.max(0, A.spin + (firing ? dt * 3 : -dt * 2))); u.gun.userData.barrel.rotation.y += A.spin * dt * 30; }
+  if (firing && A.cool <= 0 && (!w.mini || A.spin > 0.5)) {
+    A.cool = w.rate;
+    // Ziel: was in der Bildmitte liegt
+    ndc.set(firstPerson() ? 0 : 0, 0); raycaster.setFromCamera(ndc, camera); raycaster.far = 120;
+    const hits = raycaster.intersectObjects(solids.map(sd => sd.mesh).concat(A.bots.filter(b => b.dead <= 0).map(b => b.g)), true);
+    const target = hits.length ? hits[0].point : raycaster.ray.at(80, new V3());
+    const from = new V3(P.pos.x + Math.cos(P.facing) * -0.5 + Math.sin(P.facing) * 0.9, P.pos.y + 1.45, P.pos.z - Math.sin(P.facing) * -0.5 + Math.cos(P.facing) * 0.9);
+    for (let k = 0; k < w.count; k++) {
+      const dir = target.clone().sub(from).normalize();
+      dir.x += (Math.random() - 0.5) * w.spread * 2; dir.y += (Math.random() - 0.5) * w.spread * 2; dir.z += (Math.random() - 0.5) * w.spread * 2; dir.normalize();
+      shoot(from, dir, w, 'p', w.dmg);
+    }
+    beep(w.mini ? 'place' : 'jump');
+  }
+  // Gegner
+  for (const b of A.bots) {
+    if (b.dead > 0) { b.dead -= dt; if (b.dead <= 0) { const [x, z] = A.spots[Math.floor(Math.random() * A.spots.length)]; b.pos.set(x, 0, z); b.hp = 60; b.g.visible = true; } continue; }
+    const dx = P.pos.x - b.pos.x, dz = P.pos.z - b.pos.z, dist = Math.hypot(dx, dz);
+    if ((b.seeT -= dt) <= 0) {
+      b.seeT = 0.3;
+      const eye = b.pos.clone().add(new V3(0, 1.6, 0)), to = new V3(P.pos.x, P.pos.y + 1.4, P.pos.z), dir = to.clone().sub(eye);
+      raycaster.set(eye, dir.clone().normalize()); raycaster.far = dir.length();
+      b.sees = live && dist < 28 && raycaster.intersectObjects(solids.map(sd => sd.mesh), false).length === 0;
+    }
+    if (b.sees) {
+      b.facing = Math.atan2(dx, dz);
+      if (dist > 9) { b.pos.x += dx / dist * 3 * dt; b.pos.z += dz / dist * 3 * dt; }
+      if ((b.cool -= dt) <= 0) {
+        b.cool = 1.1 + Math.random() * 0.8;
+        const from = b.pos.clone().add(new V3(Math.sin(b.facing) * 0.9, 1.45, Math.cos(b.facing) * 0.9)), dir = new V3(P.pos.x, P.pos.y + 1.2, P.pos.z).sub(from).normalize();
+        dir.x += (Math.random() - 0.5) * 0.12; dir.z += (Math.random() - 0.5) * 0.12; dir.normalize();
+        shoot(from, dir, null, 'b', 8);
+      }
+    } else {
+      if (!b.target || Math.hypot(b.target.x - b.pos.x, b.target.z - b.pos.z) < 1) b.target = new V3((Math.random() - 0.5) * 56, 0, (Math.random() - 0.5) * 56);
+      const tx = b.target.x - b.pos.x, tz = b.target.z - b.pos.z, td = Math.hypot(tx, tz) || 1;
+      const nx = b.pos.x + tx / td * 3.2 * dt, nz = b.pos.z + tz / td * 3.2 * dt;
+      if (insideSolid(nx, 0.5, nz, 0.4)) b.target = null; else { b.pos.x = nx; b.pos.z = nz; }
+      b.facing = Math.atan2(tx, tz);
+    }
+    const bu = b.g.userData, sw = Math.sin(tAll * 8 + b.hp) * 0.6;
+    bu.legL.rotation.x = sw; bu.legR.rotation.x = -sw; bu.armR.rotation.x = -1.5; bu.armL.rotation.x = -1.3;
+    b.g.position.copy(b.pos); b.g.rotation.y = b.facing;
+  }
+  // Schüsse
+  for (let i = A.shots.length - 1; i >= 0; i--) {
+    const s2 = A.shots[i]; s2.life -= dt; s2.m.position.addScaledVector(s2.v, dt);
+    const p2 = s2.m.position; let gone = s2.life <= 0 || !!insideSolid(p2.x, p2.y, p2.z);
+    if (!gone && s2.owner === 'p') for (const b of A.bots) {
+      if (b.dead > 0) continue;
+      if (Math.hypot(p2.x - b.pos.x, p2.z - b.pos.z) < 0.55 && p2.y > b.pos.y && p2.y < b.pos.y + 2.2) {
+        gone = true; b.hp -= s2.dmg; hitFx(p2.clone());
+        if (b.hp <= 0) { explode(b.look, b.pos.clone(), b.facing, b.g.userData, new V3()); b.g.visible = false; b.dead = 4; A.kills++; earn(3); oof(); feed(b.name + ' erwischt!'); }
+        break;
+      }
+    }
+    if (!gone && s2.owner === 'b' && live && Math.hypot(p2.x - P.pos.x, p2.z - P.pos.z) < 0.55 && p2.y > P.pos.y && p2.y < P.pos.y + 2.2) {
+      gone = true; A.php = Math.max(0, A.php - s2.dmg); hurtFlash(); hitFx(p2.clone());
+      if (A.php <= 0) die();
+    }
+    if (gone) { world.remove(s2.m); A.shots.splice(i, 1); }
+  }
+}
+
+// ======================================================================
 // Gruselvilla
 // ======================================================================
 let horror = null, drone = null;
@@ -2909,13 +3218,13 @@ function showResult(title, rows) {
 
 // ---------- Spiele-Tab: Sperren und Postfach ----------
 function renderGames() {
-  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playSkate', 'skate', 'Skaten'], ['playHorror', 'horror', 'Spielen']]) {
-    const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name);
-    btn.disabled = banned; btn.textContent = banned ? 'Gesperrt' : label;
+  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playSkate', 'skate', 'Skaten'], ['playFight', 'fight', 'Kämpfen'], ['playBlaster', 'blaster', 'Spielen'], ['playHorror', 'horror', 'Spielen']]) {
+    const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name), young = !ageOk(g);
+    btn.disabled = banned || young; btn.textContent = banned ? 'Gesperrt' : young ? 'Ab ' + GAME_AGE[g] : label;
     let note = card.querySelector('.lock');
     if (!note) { note = document.createElement('p'); note.className = 'small err lock'; card.appendChild(note); }
-    note.hidden = !banned;
-    note.textContent = banned ? `Du wurdest aus „${GAMES[g]}“ gebannt. Alle anderen Spiele kannst du weiter spielen.` : '';
+    note.hidden = !banned && !young;
+    note.textContent = banned ? `Du wurdest aus „${GAMES[g]}“ gebannt. Alle anderen Spiele kannst du weiter spielen.` : young ? (playerAge() == null ? `Ab ${GAME_AGE[g]} Jahren. Melde dich an oder gib in den Einstellungen dein Geburtsjahr an.` : `Dieses Spiel ist erst ab ${GAME_AGE[g]} Jahren.`) : '';
   }
   const box = $('inbox');
   const mine = adminData.mail.filter(m => !m.read && same(m.to, profile.name));
@@ -3011,6 +3320,7 @@ function netHandle(m) {
     case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
     case 'partyGo':
       if (isBanned(m.game, profile.name)) { feed('Du bist aus ' + GAMES[m.game] + ' gebannt.'); break; }
+      if (!ageOk(m.game)) { feed(GAMES[m.game] + ' ist erst ab ' + GAME_AGE[m.game] + ' Jahren.'); break; }
       feed(m.from + ' startet ' + GAMES[m.game] + ', du kommst mit!');
       NET.pendingRoom = m.room; enterPlay(m.game); break;
   }
@@ -3191,6 +3501,10 @@ function renderStats() {
   const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
+  } else if (mode === 'fight' && fight) {
+    $('stats').innerHTML = adm + `<span class="pill">Du <span class="lp"><i style="width:${fight.php}%"></i></span></span><span class="pill">${esc(fight.foe.name)} <span class="lp foe"><i style="width:${Math.max(0, fight.foe.hp)}%"></i></span></span><span class="pill">Runde <b>${fight.round}</b> · <b>${fight.wins}:${fight.losses}</b></span>`;
+  } else if (mode === 'blaster' && arena) {
+    $('stats').innerHTML = adm + `<span class="pill">Leben <span class="lp"><i style="width:${arena.php}%"></i></span></span><span class="pill">K.O. <b>${arena.kills}</b></span><span class="pill">Zeit <b>${Math.ceil(arena.time)} s</b></span><span class="pill">${esc(ITEM[myWeaponId()].name)}</span>`;
   } else if (mode === 'skate' && skate) {
     $('stats').innerHTML = adm + `<span class="pill">Punkte <b>${skate.score}</b></span><span class="pill">Zeit <b>${Math.ceil(skate.time)} s</b></span><span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span>`;
   } else if (isRace(mode) && race) {
@@ -3240,7 +3554,7 @@ function setTool(t) {
 // ---------- Modi ----------
 function showBest() { const b = store.get('klotzwelt-bestzeit', null); $('best').textContent = b ? 'Bestzeit: ' + fmt(b) : ''; }
 function showMenu() {
-  if (lastGame === 'skate' || isRace(lastGame)) { avatar.rotation.z = 0; rebuildAvatar(); }
+  if (['skate', 'fight', 'blaster'].includes(lastGame) || isRace(lastGame)) { avatar.rotation.z = 0; rebuildAvatar(); }
   paused = false; $('pausePanel').hidden = true; setShiftLock(false);
   mode = 'menu';
   document.body.className = 'menu';
@@ -3255,7 +3569,7 @@ function showMenu() {
   showTab(currentTab);
 }
 function enterPlay(m) {
-  if (isBanned(m, profile.name)) { renderGames(); return; }
+  if (isBanned(m, profile.name) || !ageOk(m)) { renderGames(); return; }
   mode = m; lastGame = m;
   document.body.className = m;
   tryOn = null; rebuildAvatar();
@@ -3273,10 +3587,27 @@ function enterPlay(m) {
     const veh = chosenVehicle.admin && !isAdmin() ? VEHICLES[0] : chosenVehicle;
     buildRace(m, veh);
     $('wheelieBtn').hidden = !isTouch || !(veh.type === 'bike' || veh.type === 'scooter');
+    $('wheelieBtn').textContent = 'Wheelie';
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
     $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Drift';
     $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
+  } else if (m === 'fight') {
+    buildFight();
+    Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
+    cam.pitch = 0.35; cam.dist = 8;
+    $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Schlag';
+    $('wheelieBtn').hidden = !isTouch; $('wheelieBtn').textContent = 'Block';
+    $('hint').textContent = isTouch ? 'Joystick bewegen · Schlag-Knopf tippen · Block-Knopf halten' : 'WASD bewegen · Klick oder J: Schlag · K halten: Block · Leertaste: Sprung · Esc: Pause';
+    toast('Runde 1');
+  } else if (m === 'blaster') {
+    buildArena();
+    Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
+    cam.pitch = 0.3; cam.dist = 7;
+    $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Feuer';
+    $('hint').textContent = isTouch ? 'Joystick laufen · rechts ziehen: zielen · Feuer-Knopf halten' : 'WASD laufen · Maus zielen · Klick halten oder J: schießen · Leertaste: Sprung · Esc: Pause';
+    setShiftLock(true);
+    toast('Los!');
   } else if (m === 'skate') {
     buildSkate();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
@@ -3317,6 +3648,8 @@ function openVehPicker() {
 }
 $('playRace').onclick = () => { if (isBanned('race', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[0]; openVehPicker(); };
 $('playSkate').onclick = () => enterPlay('skate');
+$('playFight').onclick = () => enterPlay('fight');
+$('playBlaster').onclick = () => enterPlay('blaster');
 $('vehCancel').onclick = () => { $('vehPanel').hidden = true; };
 $('vehGo').onclick = () => { $('vehPanel').hidden = true; enterPlay('race'); };
 $('wheelieBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchWheelie = true; $('wheelieBtn').setPointerCapture(e.pointerId); });
@@ -3502,6 +3835,8 @@ function frame(now) {
   } else {
     updatePlayer(dt);
     if (playingGame() === 'horror') updateHorror(dt);
+    if (playingGame() === 'fight') updateFight(dt);
+    if (playingGame() === 'blaster') updateArena(dt);
     const so = shiftLock && !firstPerson() ? 1.1 : 0; // Shift-Lock: Kamera über die rechte Schulter
     camTarget.lerp(tmpV.set(P.pos.x + Math.cos(cam.yaw) * so, P.pos.y + 1.6, P.pos.z - Math.sin(cam.yaw) * so), 1 - Math.exp(-dt * 12));
   }
@@ -3510,7 +3845,7 @@ function frame(now) {
   updateDebris(dt);
   updatePeers(dt);
   netSendState();
-  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && playingGame() !== 'skate' && dead <= 0) P.facing = cam.yaw + Math.PI;
+  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && playingGame() !== 'skate' && playingGame() !== 'fight' && dead <= 0) P.facing = cam.yaw + Math.PI;
   if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson() && !isRace(playingGame());
   if (race && race.car.mesh.userData.driver) race.car.mesh.userData.driver.visible = !firstPerson();
   placeCamera();
@@ -3539,7 +3874,7 @@ function applyDevice() {
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || isRace(playingGame());
-    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || playingGame() === 'skate');
+    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || ['skate', 'fight', 'blaster'].includes(playingGame()));
     renderAdminBar();
   }
 }
@@ -3581,6 +3916,8 @@ function setGender(g) {
   saveProfile(); rebuildAvatar(); syncSettingsUI(); beep('equip');
 }
 function syncSettingsUI() {
+  $('setYear').value = settings.birthYear || '';
+  document.querySelectorAll('#bloodSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.b === '1') === !!settings.blood)));
   const d = devDef();
   $('setStick').value = settings.stick ?? d.stick; $('setJump').value = settings.jump ?? d.jump;
   $('setJumpX').value = settings.jumpX ?? d.jumpX; $('setJumpY').value = settings.jumpY ?? d.jumpY;
@@ -3600,6 +3937,11 @@ for (const [id, key] of [['setStick', 'stick'], ['setJump', 'jump'], ['setJumpX'
 document.querySelectorAll('#genderSeg button, #genderSeg1 button').forEach(b => b.onclick = () => setGender(b.dataset.g));
 document.querySelectorAll('#devSeg button').forEach(b => b.onclick = () => { device = b.dataset.d; store.set('klotzwelt-geraet', device); applyDevice(); syncSettingsUI(); });
 document.querySelectorAll('#stickModeSeg button').forEach(b => b.onclick = () => { settings.stickMode = b.dataset.sm; applySettings(); syncSettingsUI(); });
+$('setYear').addEventListener('change', () => { const y = Math.round(Number($('setYear').value)), now = new Date().getFullYear(); settings.birthYear = y > now - 100 && y < now - 2 ? y : null; applySettings(); syncSettingsUI(); renderGames(); });
+document.querySelectorAll('#bloodSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.b === '1' && !isAdmin() && !((playerAge() ?? 0) >= 13)) { showInfo('Blut', 'Blut gibt es erst ab 13 Jahren. Melde dich mit deinem Konto an oder gib dein Geburtsjahr an.'); return; }
+  settings.blood = b.dataset.b === '1'; applySettings(); syncSettingsUI();
+});
 document.querySelectorAll('#soundSeg button').forEach(b => b.onclick = () => { soundOn = b.dataset.snd === '1'; store.set('klotzwelt-ton', soundOn); soundLabel(); if (!soundOn) stopDrone(); else if (mode === 'horror') startDrone(); syncSettingsUI(); });
 $('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = settings.stickX = settings.stickY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
 // Knöpfe mit dem Finger verschieben
@@ -3688,6 +4030,8 @@ function previewShot(setup, pos, look) {
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
 setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
+setPreview('prevFight', previewShot(() => { buildFight(); P.pos.set(0, RING_Y, 1.2); P.facing = Math.PI; fight.foe.pos.set(0, RING_Y, -0.6); updateFight(0); }, [5, 4.2, 4], [0, 2, 0]));
+setPreview('prevBlaster', previewShot(() => { buildArena(); P.pos.set(0, 0, 14); P.facing = Math.PI; }, [4, 3.5, 20], [0, 1.5, 8]));
 setPreview('prevSkate', previewShot(() => { buildSkate(); P.pos.set(22, 3, 21); skate.air = true; skate.vy = 0; skate.h = Math.PI; updateSkate(0); }, [36, 9, 32], [16, 2, 12]));
 setPreview('prevRace', previewShot(() => { buildRace('race', VEHICLES[4]); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevHorror', previewShot(() => { buildHorror(); updateHorror(0); }, [-8, 20, -4], [-14, 0, -18]));
