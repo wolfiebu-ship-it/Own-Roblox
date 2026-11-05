@@ -823,8 +823,11 @@ const profile = (() => {
   return np;
 })();
 let profileTimer = 0;
+// Nur der Haupt-Erfinder hat unendlich Münzen
+const infCoins = () => !!(NET && NET.me && NET.me.owner);
+const coinText = () => infCoins() ? '∞' : profile.coins;
 function saveProfile() {
-  store.set('klotzwelt-profil', profile); $('coinCount').textContent = profile.coins;
+  store.set('klotzwelt-profil', profile); $('coinCount').textContent = coinText();
   if (typeof NET !== 'undefined' && NET.me) { clearTimeout(profileTimer); profileTimer = setTimeout(() => netSend({ t: 'profile', profile: profilePayload() }), 800); }
 }
 
@@ -2186,7 +2189,7 @@ function renderShop() {
     $('buyInfo').textContent = worn ? 'Hast du gerade an.' : 'Gehört dir schon.';
     btn.textContent = worn ? 'Angezogen' : 'Anziehen'; btn.disabled = worn; btn.className = 'btn go';
   } else {
-    const can = profile.coins >= it.price;
+    const can = infCoins() || profile.coins >= it.price;
     $('buyInfo').innerHTML = can ? `Kostet <i class="coin"></i> ${it.price}` : `Dir fehlen <i class="coin"></i> ${it.price - profile.coins}. Sammle Münzen im Parcours!`;
     btn.textContent = can ? 'Kaufen' : 'Zu wenig Münzen'; btn.disabled = !can; btn.className = 'btn primary';
   }
@@ -2194,8 +2197,8 @@ function renderShop() {
 $('buyBtn').onclick = () => {
   const it = ITEM[shopSel]; if (!it) return;
   if (!profile.owned.includes(it.id)) {
-    if (profile.coins < it.price) return;
-    profile.coins -= it.price; profile.owned.push(it.id); beep('buy'); toast('Gekauft!');
+    if (!infCoins() && profile.coins < it.price) return;
+    if (!infCoins()) profile.coins -= it.price; profile.owned.push(it.id); beep('buy'); toast('Gekauft!');
   } else beep('equip');
   profile.wear[it.slot] = it.id; tryOn = null;
   saveProfile(); rebuildAvatar(); renderShop();
@@ -2238,6 +2241,9 @@ function renderAdminTab() {
     ${creator && !NET.me.owner ? `<div class="label">Haupt-Erfinder werden</div>
     <form id="fOwner" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="oCode" class="field" type="password" placeholder="Erfinder-Code" aria-label="Erfinder-Code" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Bestätigen</button></form>
     <p class="small">Der Haupt-Erfinder kann alle anderen Erfinder und Admins löschen.</p>` : ''}
+    ${NET.me.owner ? `<div class="label">Münzen schenken</div>
+    <form id="fGift" class="row" style="justify-content:flex-start;flex-wrap:nowrap;gap:6px"><input id="gName" class="field" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off" style="min-width:0;flex:2"><input id="gCoins" class="field" inputmode="numeric" placeholder="Anzahl" aria-label="Anzahl Münzen" autocomplete="off" style="min-width:0;flex:1"><button class="btn go" type="submit">Schenken</button></form>
+    <p class="small">Nur du als Haupt-Erfinder kannst Münzen schenken. Du selbst hast unendlich Münzen.</p>` : ''}
     <div class="label">Admin hinzufügen</div>
     <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Admin hinzufügen</button></form>
     ${creator ? `<div class="label">Admin löschen</div>
@@ -2260,6 +2266,7 @@ function renderAdminTab() {
     }).join('')}`;
   el.innerHTML = h;
   $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n }); $('nName').value = ''; } };
+  if ($('fGift')) $('fGift').onsubmit = e => { e.preventDefault(); const n = $('gName').value.trim(), c = Math.round(Number($('gCoins').value)); if (!n || !(c > 0)) { NET.msg = 'Gib einen Namen und eine Anzahl ein.'; NET.msgBad = true; renderAdminTab(); return; } netSend({ t: 'giftCoins', name: n, coins: c }); $('gCoins').value = ''; };
   if ($('fOwner')) $('fOwner').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('oCode').value }); $('oCode').value = ''; };
   if ($('fDelAdm')) $('fDelAdm').onsubmit = e => { e.preventDefault(); const n = $('dName').value.trim(); if (n) { netSend({ t: 'adminRemove', name: n }); $('dName').value = ''; } };
   $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
@@ -3506,7 +3513,7 @@ function netHandle(m) {
     case 'social': NET.social = m; updateFriendDot(); renderFriendsIfOpen(); break;
     case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
     case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
-    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
+    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); $('coinCount').textContent = coinText(); if (mode === 'menu' && currentTab === 'shop') renderShop(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
     case 'adminData': NET.admin = m; renderAdminIfOpen(); renderAdminBar(); if (!$('banPanel').hidden) openBanPanel(); break;
     case 'banned':
       if (NET.me) NET.me.bans = [...new Set([...(NET.me.bans || []), m.game])];
@@ -3522,6 +3529,7 @@ function netHandle(m) {
     case 'playerLeave': { const pr = NET.peers.get(m.id); if (pr) feed(pr.name + ' ist gegangen'); removePeer(m.id); break; }
     case 'states': for (const [id, st] of m.list) { const pr = NET.peers.get(id); if (pr) pr.target = st; } break;
     case 'hit': gotHit(m); break;
+    case 'gift': profile.coins += m.coins; saveProfile(); beep('buy'); feed('🎁 ' + m.from + ' hat dir ' + m.coins + ' Münzen geschenkt!'); break;
     case 'ko': gotKo(m); break;
     case 'shot': if (arena && mode === 'blaster') shoot(new V3(...m.a), new V3(...m.b), m.col, 'v', 0, 70, true); break;
     case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
@@ -3717,7 +3725,7 @@ const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(
 function renderStats() {
   const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
-    $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
+    $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${coinText()}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'fight' && fight && fight.pvp) {
     $('stats').innerHTML = adm + `<span class="pill">Du <span class="lp"><i style="width:${fight.php}%"></i></span></span><span class="pill">Gegen Freunde</span><span class="pill">K.O. <b>${fight.pvpWins || 0}</b> · eingesteckt <b>${fight.pvpLoss || 0}</b></span>`;
   } else if (mode === 'fight' && fight) {
@@ -3725,7 +3733,7 @@ function renderStats() {
   } else if (mode === 'blaster' && arena) {
     $('stats').innerHTML = adm + `<span class="pill">Leben <span class="lp"><i style="width:${arena.php}%"></i></span></span><span class="pill">K.O. <b>${arena.kills}</b></span><span class="pill">Zeit <b>${Math.ceil(arena.time)} s</b></span><span class="pill">${esc(ITEM[myWeaponId()].name)}</span>`;
   } else if (mode === 'skate' && skate) {
-    $('stats').innerHTML = adm + `<span class="pill">Punkte <b>${skate.score}</b></span><span class="pill">Zeit <b>${Math.ceil(skate.time)} s</b></span><span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span>`;
+    $('stats').innerHTML = adm + `<span class="pill">Punkte <b>${skate.score}</b></span><span class="pill">Zeit <b>${Math.ceil(skate.time)} s</b></span><span class="pill"><i class="coin"></i> <b>${coinText()}</b></span>`;
   } else if (isRace(mode) && race) {
     $('stats').innerHTML = adm + `<span class="pill">Runde <b>${Math.min(LAPS, race.car.lap + 1)}/${LAPS}</b></span><span class="pill">Platz <b>${racePlace()}/${race.bots.length + 1}</b></span><span class="pill">Zeit <b>${fmt(race.time)}</b></span><span class="pill"><b>${Math.round(Math.abs(race.car.speed) * 4)}</b> km/h</span>`;
   } else if (mode === 'horror' && horror) {

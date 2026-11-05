@@ -318,6 +318,17 @@ function handle(c, m) {
       send(c, { t: 'me', me: meOf(c.user) }); send(c, adminData());
       return notice(c, 'Du bist jetzt Erfinder!');
     }
+    case 'giftCoins': {
+      if (D().owner !== c.user || roleOf(c.user) !== 'creator') return err(c, 'Münzen schenken kann nur der Haupt-Erfinder.');
+      const t = low(m.name), other = users[t], n = Math.round(num(m.coins, 0, 1e6, 0));
+      if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
+      if (n < 1) return err(c, 'Gib eine Anzahl zwischen 1 und 1000000 ein.');
+      other.profile = cleanProfile(other.profile); other.profile.coins = Math.min(1e7, other.profile.coins + n);
+      const oc = online.get(t);
+      if (oc) send(oc, { t: 'gift', coins: n, from: users[c.user].name });
+      else { other.mail = other.mail || []; other.mail.push({ text: '🎁 ' + users[c.user].name + ' hat dir ' + n + ' Münzen geschenkt!', at: now(), read: false }); }
+      db.save(); return notice(c, other.name + ' hat ' + n + ' Münzen bekommen.');
+    }
     case 'adminList': if (isAdminU(c.user)) send(c, adminData()); return;
     case 'adminAdd': {
       if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
