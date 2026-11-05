@@ -825,7 +825,8 @@ const profile = (() => {
 })();
 let profileTimer = 0;
 // Nur der Haupt-Erfinder hat unendlich Münzen
-const infCoins = () => !!(NET && NET.me && NET.me.owner);
+let infOn = store.get('klotzwelt-unendlich', true);
+const infCoins = () => !!(NET && NET.me && NET.me.owner) && infOn !== false;
 // Eigenes Unendlich-Zeichen als Grafik (kein Emoji), passend zur Schrift
 const INF_SVG = '<svg class="inf" viewBox="0 0 40 20" aria-label="unendlich" role="img"><path d="M20 10c-4-5-6.5-7-10-7a7 7 0 0 0 0 14c3.5 0 6-2 10-7s6.5-7 10-7a7 7 0 0 1 0 14c-3.5 0-6-2-10-7z" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const coinText = () => infCoins() ? INF_SVG : profile.coins;
@@ -2244,9 +2245,12 @@ function renderAdminTab() {
     ${creator && !NET.me.owner ? `<div class="label">Haupt-Erfinder werden</div>
     <form id="fOwner" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="oCode" class="field" type="password" placeholder="Erfinder-Code" aria-label="Erfinder-Code" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Bestätigen</button></form>
     <p class="small">Der Haupt-Erfinder kann alle anderen Erfinder und Admins löschen.</p>` : ''}
-    ${NET.me.owner ? `<div class="label">Münzen schenken</div>
+    ${NET.me.owner ? `<div class="label">Deine Münzen</div>
+    <div class="seg" id="infSeg"><button type="button" data-inf="1" aria-pressed="${infOn !== false}">Unendlich</button><button type="button" data-inf="0" aria-pressed="${infOn === false}">Normal (${profile.coins})</button></div>
+    <p class="small">Bei „Normal“ hast du deine selbst verdienten Münzen und bezahlst im Shop ganz normal.</p>
+    <div class="label">Münzen schenken</div>
     <form id="fGift" class="row" style="justify-content:flex-start;flex-wrap:nowrap;gap:6px"><input id="gName" class="field" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off" style="min-width:0;flex:2"><input id="gCoins" class="field" inputmode="numeric" placeholder="Anzahl" aria-label="Anzahl Münzen" autocomplete="off" style="min-width:0;flex:1"><button class="btn go" type="submit">Schenken</button></form>
-    <p class="small">Nur du als Haupt-Erfinder kannst Münzen schenken. Du selbst hast unendlich Münzen.</p>` : ''}
+    <p class="small">Nur du als Haupt-Erfinder kannst Münzen schenken.</p>` : ''}
     <div class="label">Admin hinzufügen</div>
     <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Admin hinzufügen</button></form>
     ${creator ? `<div class="label">Admin löschen</div>
@@ -2269,6 +2273,7 @@ function renderAdminTab() {
     }).join('')}`;
   el.innerHTML = h;
   $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n }); $('nName').value = ''; } };
+  el.querySelectorAll('#infSeg button').forEach(b => b.onclick = () => { infOn = b.dataset.inf === '1'; store.set('klotzwelt-unendlich', infOn); $('coinCount').innerHTML = coinText(); beep('equip'); renderAdminTab(); });
   if ($('fGift')) $('fGift').onsubmit = e => { e.preventDefault(); const n = $('gName').value.trim(), c = Math.round(Number($('gCoins').value)); if (!n || !(c > 0)) { NET.msg = 'Gib einen Namen und eine Anzahl ein.'; NET.msgBad = true; renderAdminTab(); return; } netSend({ t: 'giftCoins', name: n, coins: c }); $('gCoins').value = ''; };
   if ($('fOwner')) $('fOwner').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('oCode').value }); $('oCode').value = ''; };
   if ($('fDelAdm')) $('fDelAdm').onsubmit = e => { e.preventDefault(); const n = $('dName').value.trim(); if (n) { netSend({ t: 'adminRemove', name: n }); $('dName').value = ''; } };
