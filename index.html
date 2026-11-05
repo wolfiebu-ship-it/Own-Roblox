@@ -2241,7 +2241,7 @@ function renderAdminTab() {
     <form id="fDelAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="dName" class="field" placeholder="Benutzername" aria-label="Benutzername des Admins, der gelöscht wird" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Löschen</button></form>
     <p class="small">Die Person ist danach wieder ein normaler Spieler. Du kannst sie jederzeit wieder als Admin hinzufügen.</p>` : ''}
     <div class="label">Admins</div>
-    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Löschen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
+    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && (a.role === 'admin' || (NET.me.owner && !a.owner)) ? `<span class="small">${a.role === 'creator' ? 'Erfinder' : ''}</span> <button class="btn" data-remove="${esc(a.name)}">Löschen</button>` : `<span class="small">${a.owner ? 'Haupt-Erfinder' : a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
     ${creator ? '' : '<p class="small">Admins löschen kann nur der Erfinder.</p>'}
     <div class="label">Spieler aus einem Spiel bannen</div>
     <form id="fBan" class="sect">

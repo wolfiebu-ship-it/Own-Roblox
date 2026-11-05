@@ -123,7 +123,7 @@ const roleOf = u => (D().users[u] && D().users[u].role) || null;
 const isAdminU = u => roleOf(u) === 'creator' || roleOf(u) === 'admin';
 const bansOf = u => Object.keys(GAMES).filter(g => (D().bans[g] || []).some(b => b.u === u));
 function adminData() {
-  const admins = Object.entries(D().users).filter(([, x]) => x.role).map(([, x]) => ({ name: x.name, role: x.role }));
+  const admins = Object.entries(D().users).filter(([, x]) => x.role).map(([u, x]) => ({ name: x.name, role: x.role, owner: D().owner === u }));
   const bans = {};
   for (const g of Object.keys(GAMES)) bans[g] = (D().bans[g] || []).map(b => ({ name: D().users[b.u] ? D().users[b.u].name : b.u, by: b.by, at: b.at }));
   return { t: 'adminData', admins, bans };
@@ -131,7 +131,7 @@ function adminData() {
 function pushAdmins() { for (const [u, c] of online) if (isAdminU(u)) send(c, adminData()); }
 function meOf(u) {
   const usr = D().users[u];
-  return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
+  return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, owner: D().owner === u, bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
 const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, body: p.body, wear: p.wear, shape: p.shape }; };
 
@@ -312,7 +312,9 @@ function handle(c, m) {
       // Groß- und Kleinschreibung egal, weil Handy-Tastaturen oft den ersten Buchstaben groß machen
       const a = Buffer.from(String(m.code || '').trim().toLowerCase()), b = Buffer.from(CREATOR_CODE.toLowerCase());
       if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return err(c, 'Der Code stimmt nicht.');
-      users[c.user].role = 'creator'; db.save();
+      // Es gibt nur einen Haupt-Erfinder: wer den Code zuerst eingibt (nach diesem Update)
+      if (D().owner && D().owner !== c.user && users[D().owner] && users[D().owner].role === 'creator') return err(c, 'Es gibt schon einen Erfinder.');
+      users[c.user].role = 'creator'; D().owner = c.user; db.save();
       send(c, { t: 'me', me: meOf(c.user) }); send(c, adminData());
       return notice(c, 'Du bist jetzt Erfinder!');
     }
@@ -330,7 +332,10 @@ function handle(c, m) {
       if (roleOf(c.user) !== 'creator') return err(c, 'Admins löschen kann nur der Erfinder.');
       const t = low(m.name), other = users[t];
       if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
-      if (other.role === 'creator') return err(c, 'Den Erfinder kann man nicht löschen.');
+      if (t === c.user) return err(c, 'Dich selbst kannst du nicht löschen.');
+      // Der Haupt-Erfinder darf auch andere Erfinder löschen
+      if (other.role === 'creator' && D().owner !== c.user) return err(c, 'Den Erfinder kann man nicht löschen.');
+      if (other.role === 'creator') { delete other.role; db.save(); const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Erfinder mehr.'); } pushAdmins(); return notice(c, other.name + ' ist kein Erfinder mehr.'); }
       if (other.role !== 'admin') return err(c, other.name + ' ist kein Admin.');
       delete other.role; db.save();
       const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Admin mehr.'); }
