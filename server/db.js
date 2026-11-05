@@ -30,6 +30,7 @@ async function load() {
   }
   data.users = data.users || {};
   data.tokens = data.tokens || {};
+  data.bans = data.bans || {};
   return data;
 }
 

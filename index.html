@@ -114,10 +114,19 @@ input { -webkit-user-select: text; user-select: text; }
 #toast { position: fixed; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.8); font-family: var(--display); font-size: 44px; color: var(--paper); -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-#banPanel, #fsHelp { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
-#fsHelp { z-index: 25; }
+#banPanel, #fsHelp, #pausePanel, #settingsPanel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 520px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+#fsHelp { z-index: 27; }
+#pausePanel { z-index: 24; }
+#pausePanel .btn { width: 100%; padding: 12px; font-size: 17px; }
+#settingsPanel { z-index: 26; width: min(440px, calc(100% - 32px)); }
+#crosshair { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); pointer-events: none; z-index: 4; }
+#topright .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg3 button { border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 6px; font-weight: 800; }
+.seg3 button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+html.stick-fixed #stick { opacity: 1; }
 #fsHelp p { margin: 0; }
-#banPanel h2, #fsHelp h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
+#banPanel h2, #fsHelp h2, #pausePanel h2, #settingsPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
 #win { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 24px; width: min(340px, calc(100% - 32px)); box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 12px; }
 #win h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; color: var(--gold); -webkit-text-stroke: 1.5px var(--ink); text-shadow: 3px 3px 0 var(--ink); }
 #win dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; text-align: left; font-variant-numeric: tabular-nums; }
@@ -193,7 +202,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 .adminList .btn { padding: 3px 10px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); flex-shrink: 0; }
 .badge { display: inline-block; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-weight: 800; }
 .powers { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-#feed { position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); top: max(116px, calc(env(safe-area-inset-top, 0px) + 106px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; z-index: 6; max-width: min(60%, 360px); }
+#feed { position: fixed; left: 50%; transform: translateX(-50%); top: 34%; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 6; width: max-content; max-width: min(86%, 420px); }
 #feed div { background: rgba(29,42,68,.88); color: var(--paper); border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 800; transition: opacity .4s; }
 .friend { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--soft); }
 .friend .on { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--muted); }
@@ -216,6 +225,16 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   .buybar { padding: 10px 12px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
   #toast { font-size: 32px; }
+}
+.gameList { display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 720px) {
+  .gameList { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gameList .game { grid-template-columns: 1fr; padding: 8px; gap: 6px; }
+  .gameList .game .preview { margin-bottom: 0; }
+  .gameList .game h3 { font-size: 16px; }
+  .gameList .game p { display: none; }
+  .gameList .game p.lock { display: block; font-size: 11px; }
+  .gameList .game .btn { grid-row: auto; grid-column: 1; width: 100%; padding: 6px 4px; }
 }
 @media (prefers-reduced-motion: reduce) { #toast, .btn { transition: none; } }
 </style>
@@ -243,6 +262,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
     <div class="tab" id="tab-games">
       <div id="inbox" class="sect" hidden></div>
       <h2>Was spielst du?</h2>
+      <div class="gameList">
       <div class="game obby">
         <img class="preview" id="prevObby" alt="Vorschau: Himmelsparcours" hidden>
         <h3>Himmelsparcours</h3>
@@ -266,6 +286,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
         <h3>Gruselvilla</h3>
         <p>Ein bisschen gruselig, ab 8 Jahren: Finde mit der Taschenlampe 3 Schlüssel im dunklen Labyrinth und entkomme, bevor dich der Geist erwischt.</p>
         <button class="btn primary" id="playHorror">Spielen</button>
+      </div>
       </div>
       <p class="small">Steuerung: WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera · Mausrad zoomt · Esc zurück. Am Handy: Joystick links, Sprung-Taste rechts.</p>
     </div>
@@ -312,11 +333,12 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 <div id="hud" hidden>
   <div id="stickZone" hidden></div>
   <div id="stats"></div>
-  <div id="zoomBtns"><button class="btn" id="zoomIn" aria-label="Näher ran">+</button><button class="btn" id="zoomOut" aria-label="Weiter weg">−</button></div>
+  <div id="crosshair" hidden></div>
   <div id="topright">
     <button class="btn" id="fsBtn2" type="button">Vollbild</button>
-    <button class="btn" id="soundBtn" aria-pressed="true">Ton an</button>
-    <button class="btn" id="menuBtn">Zurück</button>
+    <button class="btn" id="soundBtn" aria-pressed="true" hidden>Ton an</button>
+    <button class="btn" id="slBtn" aria-pressed="false" title="Shift-Lock (Shift)">Shift-Lock</button>
+    <button class="btn primary" id="menuBtn">Pause</button>
   </div>
   <div id="toolbar" class="panel" hidden></div>
   <div id="hint"></div>
@@ -347,11 +369,40 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
 <div id="devicePick" class="panel" hidden role="dialog" aria-labelledby="devTitle">
   <h2 id="devTitle">Worauf spielst du?</h2>
   <p class="small">Danach passen sich Joystick, Knöpfe und Steuerung an dein Gerät an. Ändern kannst du es jederzeit oben über den Knopf mit deinem Gerät.</p>
+  <div class="label">Ich bin</div>
+  <div class="seg" id="genderSeg1"><button type="button" data-g="boy">Junge</button><button type="button" data-g="girl">Mädchen</button></div>
+  <div class="label">Ich spiele auf</div>
   <div class="devs">
     <button class="dev" data-dev="phone"><span class="ico phone"></span>Handy<small>Joystick und Knöpfe für kleine Bildschirme</small></button>
     <button class="dev" data-dev="tablet"><span class="ico tablet"></span>iPad / Tablet<small>Größere Knöpfe, mehr Platz</small></button>
     <button class="dev" data-dev="pc"><span class="ico pc"></span>PC / Laptop<small>Tastatur und Maus</small></button>
   </div>
+</div>
+
+<div id="pausePanel" class="panel" hidden role="dialog" aria-labelledby="pauseTitle">
+  <h2 id="pauseTitle">Pause</h2>
+  <button class="btn primary" id="pResume" type="button">Weiter spielen</button>
+  <button class="btn" id="pSettings" type="button">Einstellungen</button>
+  <button class="btn" id="pLobby" type="button">Zur Lobby</button>
+</div>
+
+<div id="settingsPanel" class="panel" hidden role="dialog" aria-labelledby="setTitle">
+  <h2 id="setTitle">Einstellungen</h2>
+  <div class="label">Ich bin</div>
+  <div class="seg" id="genderSeg"><button type="button" data-g="boy">Junge</button><button type="button" data-g="girl">Mädchen</button></div>
+  <div class="label">Gerät</div>
+  <div class="seg3" id="devSeg"><button type="button" data-d="phone">Handy</button><button type="button" data-d="tablet">iPad</button><button type="button" data-d="pc">PC</button></div>
+  <div class="label">Knöpfe am Bildschirm</div>
+  <div class="shape">
+    <label for="setStick">Joystick</label><div><input type="range" id="setStick" min="80" max="200" step="2"><div class="ends"><span>klein</span><span>groß</span></div></div>
+    <label for="setJump">Sprung-Knopf</label><div><input type="range" id="setJump" min="56" max="150" step="2"><div class="ends"><span>klein</span><span>groß</span></div></div>
+    <label for="setJumpX">Abstand rechts</label><div><input type="range" id="setJumpX" min="8" max="260" step="2"><div class="ends"><span>am Rand</span><span>weiter innen</span></div></div>
+    <label for="setJumpY">Abstand unten</label><div><input type="range" id="setJumpY" min="16" max="360" step="2"><div class="ends"><span>unten</span><span>höher</span></div></div>
+  </div>
+  <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
+  <div class="label">Ton</div>
+  <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
+  <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
 </div>
 
 <div id="win" class="panel" hidden>
@@ -715,7 +766,10 @@ function normBans(b) {
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
 }
-function isBanned(game, name) { return !!adminData.bans[game] && adminData.bans[game].some(b => same(b.name, name)); }
+function isBanned(game, name) {
+  if (adminData.bans[game] && adminData.bans[game].some(b => same(b.name, name))) return true;
+  return typeof NET !== 'undefined' && !!NET && !!NET.me && same(NET.me.name, name) && (NET.me.bans || []).includes(game);
+}
 function banFrom(game, name) {
   if (!isBanned(game, name)) adminData.bans[game].push({ name, by: session.name, at: Date.now() });
   saveAdmin();
@@ -732,9 +786,11 @@ const sess = {
   get() { try { return JSON.parse(sessionStorage.getItem('klotzwelt-sitzung')) || null; } catch (e) { return null; } },
   set(v) { try { if (v && v.role) sessionStorage.setItem('klotzwelt-sitzung', JSON.stringify(v)); else sessionStorage.removeItem('klotzwelt-sitzung'); } catch (e) {} }
 };
-let session = sess.get() || { role: null, name: null };
-if (session.role === 'admin' && !adminData.admins.some(a => a.name === session.name)) session = { role: null, name: null };
-if (session.role === 'creator' && adminData.creatorName !== session.name) session = { role: null, name: null };
+// Admin-Rechte kommen vom Server: nur Konten mit der Rolle "creator" (Erfinder) oder "admin"
+const session = {
+  get role() { return typeof NET !== 'undefined' && NET && NET.me && NET.me.role ? NET.me.role : null; },
+  get name() { return typeof NET !== 'undefined' && NET && NET.me ? NET.me.name : null; }
+};
 const isAdmin = () => !!session.role;
 const powers = { fly: false, hammer: false, build: false };
 let swing = 0;
@@ -1672,36 +1728,35 @@ function hammerAction(cx, cy) {
   if (dead > 0) return;
   swing = 0.3; beep('bonk');
   const game = currentGame();
-  let bot = null;
+  const targets = bots.map(b => ({ kind: 'bot', ref: b, g: b.g, name: b.name }));
+  if (typeof NET !== 'undefined') for (const pr of NET.peers.values()) if (pr.g && pr.g.visible && pr.target) targets.push({ kind: 'peer', ref: pr, g: pr.g, name: pr.name });
+  let hit = null;
   if (cx !== undefined) {
-    // 1. direkt angeklickt
     ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera); raycaster.far = 80;
-    const hits = raycaster.intersectObjects(bots.map(b => b.g), true);
-    if (hits.length) bot = bots.find(b => { for (let x = hits[0].object; x; x = x.parent) if (x === b.g) return true; return false; }) || null;
-    // 2. knapp daneben geklickt: nächster Bot am Klickpunkt auf dem Bildschirm
-    if (!bot) {
+    const hits = raycaster.intersectObjects(targets.map(t => t.g), true);
+    if (hits.length) hit = targets.find(t => { for (let x = hits[0].object; x; x = x.parent) if (x === t.g) return true; return false; }) || null;
+    if (!hit) {
       let best = isTouch ? 90 : 70;
       const v = new V3();
-      for (const b of bots) {
-        v.copy(b.g.position); v.y += 1.2; v.project(camera);
+      for (const t of targets) {
+        v.copy(t.g.position); v.y += 1.2; v.project(camera);
         if (v.z > 1) continue;
         const d = Math.hypot((v.x + 1) / 2 * innerWidth - cx, (1 - v.y) / 2 * innerHeight - cy);
-        if (d < best) { best = d; bot = b; }
+        if (d < best) { best = d; hit = t; }
       }
     }
   }
-  // 3. sonst der nächste Bot direkt neben dir
-  if (!bot) {
+  if (!hit) {
     let best = cx === undefined ? 6 : 4.5;
-    for (const b of bots) { const d = b.g.position.distanceTo(P.pos); if (d < best) { best = d; bot = b; } }
+    for (const t of targets) { const d = t.g.position.distanceTo(P.pos); if (d < best) { best = d; hit = t; } }
   }
-  if (!bot) { if (cx === undefined) toast('Niemand in der Nähe'); return; }
-  if (bot.g.position.distanceTo(P.pos) > 30) { toast('Zu weit weg!'); return; }
-  explode(botLook(bot.name), bot.g.position.clone(), bot.facing, bot.g.userData, new V3());
-  world.remove(bot.g); bots.splice(bots.indexOf(bot), 1);
-  banFrom(game, bot.name);
-  oof(); toast(bot.name + ' gebannt!'); renderAdminBar();
+  if (!hit) { if (cx === undefined) toast('Niemand in der Nähe'); return; }
+  if (hit.g.position.distanceTo(P.pos) > 30) { toast('Zu weit weg!'); return; }
+  explode(hit.kind === 'bot' ? botLook(hit.name) : peerLook(hit.ref), hit.g.position.clone(), hit.ref.facing || 0, hit.g.userData, new V3());
+  if (hit.kind === 'bot') { world.remove(hit.g); bots.splice(bots.indexOf(hit.ref), 1); banFrom(game, hit.name); }
+  else { hit.g.visible = false; hit.ref.target = null; netSend({ t: 'ban', name: hit.name, game }); }
+  oof(); toast(hit.name + ' gebannt!'); renderAdminBar();
 }
 function updateDebris(dt) {
   for (let i = debris.length - 1; i >= 0; i--) if ((debris[i].life -= dt) <= 0) { world.remove(debris[i].o); debris.splice(i, 1); }
@@ -1762,10 +1817,11 @@ let jumpPressed = false;
 const joy = { x: 0, y: 0 };
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
-  if (e.code === 'Escape') { if (mode !== 'menu') showMenu(); return; }
+  if (e.code === 'Escape') { if (mode !== 'menu') { if (paused) resumeGame(); else openPause(); } return; }
   if (mode === 'menu') return;
   keys[e.code] = true;
   if (e.code === 'Space') { jumpPressed = true; e.preventDefault(); }
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && mode !== 'race') setShiftLock(!shiftLock);
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isAdmin() && mode !== 'menu' && mode !== 'win') {
     if (e.code === 'KeyF') togglePower('fly');
@@ -1817,14 +1873,31 @@ function endDrag(e) {
   drags.delete(e.pointerId);
   if (drags.size < 2) pinchLast = 0;
   if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
-  if (isAdmin() && powers.hammer) { hammerAction(e.clientX, e.clientY); return; }
-  if (canBuild()) buildAction(e.clientX, e.clientY, d.button === 2 || e.shiftKey);
+  const locked = document.pointerLockElement === cv, px = locked ? innerWidth / 2 : e.clientX, py = locked ? innerHeight / 2 : e.clientY;
+  if (isAdmin() && powers.hammer) { hammerAction(px, py); return; }
+  if (canBuild()) buildAction(px, py, d.button === 2 || e.shiftKey);
 }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(1 + Math.sign(e.deltaY) * 0.12); }, { passive: false });
-$('zoomIn').onclick = () => zoomBy(0.72);
-$('zoomOut').onclick = () => zoomBy(1.4);
+// Shift-Lock wie bei großen Blockspielen: Figur schaut immer in Kamerarichtung, Maus dreht ohne Klicken
+let shiftLock = false;
+function setShiftLock(on) {
+  shiftLock = !!on && mode !== 'menu' && mode !== 'race';
+  $('slBtn').setAttribute('aria-pressed', String(shiftLock));
+  $('crosshair').hidden = !shiftLock || isTouch;
+  try {
+    if (shiftLock && !isTouch && document.pointerLockElement !== cv && cv.requestPointerLock) { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); }
+    if (!shiftLock && document.pointerLockElement) document.exitPointerLock();
+  } catch (e) {}
+}
+$('slBtn').onclick = () => setShiftLock(!shiftLock);
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && shiftLock && !isTouch && !paused) setShiftLock(false); });
+document.addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== cv || paused) return;
+  cam.yaw -= e.movementX * 0.0025;
+  cam.pitch = Math.max(firstPerson() ? -1.3 : -0.15, Math.min(1.35, cam.pitch + e.movementY * 0.002));
+});
 
 const stick = $('stick'), knob = $('knob');
 let stickId = null;
@@ -1836,7 +1909,7 @@ zone.addEventListener('pointerdown', e => {
   const w = stick.offsetWidth;
   // Joystick genau unter den Daumen setzen, aber immer ganz auf dem Bildschirm
   const x = Math.max(6, Math.min(innerWidth - w - 6, e.clientX - w / 2)), y = Math.max(6, Math.min(innerHeight - w - 6, e.clientY - w / 2));
-  stick.style.left = x + 'px'; stick.style.top = y + 'px'; stick.style.bottom = 'auto';
+  if (settings.stickMode !== 'fixed') { stick.style.left = x + 'px'; stick.style.top = y + 'px'; stick.style.bottom = 'auto'; }
   stick.classList.add('held');
   moveStick(e);
 });
@@ -2008,129 +2081,59 @@ $('buyBtn').onclick = () => {
 // ---------- Admin-Bereich ----------
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let resetArmed = false;
-function setSession(role, name) {
-  session = { role, name }; sess.set(session);
-  if (!role) { powers.fly = powers.hammer = powers.build = false; }
-  else { profile.name = name; saveProfile(); }
-  rebuildAvatar(); renderAdminTab();
-}
+function renderAdminIfOpen() { if (currentTab === 'admin' && mode === 'menu') renderAdminTab(); }
 function renderAdminTab() {
   const el = $('tab-admin');
   let h = '<h2>Admin</h2>';
-  if (!adminData.creatorHash) {
-    h += `<p class="small">Bist du der Erfinder von Klotzwelt? Lege einmalig deinen geheimen Erfinder-Code fest. Danach können nur noch du und deine Admins andere zu Admins machen.</p>
+  const msg = NET.msg ? `<p class="small ${NET.msgBad ? 'err' : 'ok'}" id="aMsg">${esc(NET.msg)}</p>` : '<p class="small err" id="aMsg"></p>';
+  if (!NET.open) { el.innerHTML = h + '<p class="small">Admins gibt es nur online auf eurer Klotzwelt-Website.</p>'; return; }
+  if (!NET.me) { el.innerHTML = h + '<p class="small">Melde dich zuerst im Tab <b>Freunde</b> mit deinem Konto an.</p>'; return; }
+  if (!isAdmin()) {
+    el.innerHTML = h + `<p class="small">Hast du den Erfinder-Code? Dann gib ihn hier ein.</p>
       <form id="fCreator" class="sect">
-        <div class="label">Dein Name</div><div><span class="badge">${esc(profile.name)}</span></div>
-        <label class="label" for="cCode">Erfinder-Code (mindestens 4 Zeichen)</label><input id="cCode" class="field" type="password" autocomplete="new-password">
-        <label class="label" for="cCode2">Code wiederholen</label><input id="cCode2" class="field" type="password" autocomplete="new-password">
-        <p class="small err" id="aMsg"></p>
-        <button class="btn primary" type="submit">Erfinder werden</button>
-      </form>`;
-  } else if (!isAdmin()) {
-    h += `<p class="small">Hier melden sich der Erfinder und die Admins an. Admins können fliegen, in allen Spielen bauen und haben den Bann-Hammer.</p>
-      <form id="fLogin" class="sect">
-        <label class="label" for="lName">Name</label><input id="lName" class="field" autocomplete="username" value="${esc(profile.name)}">
-        <label class="label" for="lCode">Code</label><input id="lCode" class="field" type="password" autocomplete="current-password">
-        <p class="small err" id="aMsg"></p>
-        <button class="btn primary" type="submit">Anmelden</button>
-      </form>`;
-  } else {
-    const creator = session.role === 'creator';
-    h += `<p><span class="badge">★ ${creator ? 'Erfinder' : 'Admin'}: ${esc(session.name)}</span></p>
-      <div class="label">Deine Kräfte im Spiel</div>
-      <ul class="powers">
-        <li><b>Fliegen</b> (Taste F): Leertaste hoch, Shift runter. Beim Fliegen kann dir nichts passieren.</li>
-        <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder neben ihm G drücken (am Handy „Hau!“). Er wird nur aus diesem Spiel gebannt.</li>
-        <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen. Bleibt gespeichert.</li>
-      </ul>
-      <p class="small">Am Handy erscheinen die Knöpfe oben rechts im Spiel.</p>
-      <div class="label">Admin hinzufügen</div>
-      <form id="fAdd" class="sect">
-        <input id="nName" class="field" placeholder="Name" autocomplete="off" aria-label="Name des neuen Admins">
-        <input id="nCode" class="field" type="password" placeholder="Code für diesen Admin (mind. 4 Zeichen)" autocomplete="new-password" aria-label="Code des neuen Admins">
-        <p class="small err" id="aMsg"></p>
-        <button class="btn go" type="submit">Hinzufügen</button>
+        <label class="label" for="cCode">Erfinder-Code</label><input id="cCode" class="field" type="password" autocomplete="off">
+        ${msg}
+        <button class="btn primary" type="submit">Freischalten</button>
       </form>
-      <div class="label">Admins</div>
-      <ul class="adminList">
-        <li>★ ${esc(adminData.creatorName)} <span class="small">Erfinder</span></li>
-        ${adminData.admins.map((a, i) => `<li>${esc(a.name)} ${creator ? `<button class="btn" data-remove="${i}">Entfernen</button>` : '<span class="small">Admin</span>'}</li>`).join('')}
-      </ul>
-      ${creator ? '' : '<p class="small">Nur der Erfinder kann Admins wieder entfernen.</p>'}
-      <div class="label">Spieler aus einem Spiel bannen</div>
-      <form id="fBan" class="sect">
-        <input id="bName" class="field" placeholder="Name des Spielers" autocomplete="off" aria-label="Name des Spielers">
-        <select id="bGame" class="field" aria-label="Spiel">${Object.entries(GAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
-        <p class="small err" id="bMsg"></p>
-        <button class="btn primary" type="submit">Aus diesem Spiel bannen</button>
-      </form>
-      <p class="small">Ein Bann gilt nur für das eine Spiel. Alle anderen Spiele kann der Spieler weiter spielen, sein Konto bleibt.</p>
-      ${Object.entries(GAMES).map(([g, gname]) => `
-        <div class="label">Gebannt aus ${gname}</div>
-        ${adminData.bans[g].length ? `<ul class="adminList">${adminData.bans[g].map((b, i) => `<li>${esc(b.name)} <button class="btn" data-unban="${g}|${i}">Wieder reinholen</button></li>`).join('')}</ul>` : '<p class="small">Niemand gebannt.</p>'}`).join('')}
-      <div class="label">Gesendete Nachrichten</div>
-      ${adminData.mail.length ? `<ul class="adminList">${adminData.mail.slice(-5).reverse().map(m => `<li><span>An ${esc(m.to)}: ${esc(m.text)}</span></li>`).join('')}</ul>` : '<p class="small">Noch keine Nachrichten.</p>'}
-      <p class="small">Bis es Mehrspieler gibt, laufen Testspieler (Bots) herum, damit du den Bann-Hammer ausprobieren kannst.</p>
-      <div class="row" style="justify-content:flex-start">
-        <button class="btn" id="resetEdits">Parcours-Bauten löschen</button>
-        <button class="btn" id="logout">Abmelden</button>
-      </div>`;
+      <p class="small">Admins können dich auch zum Admin machen.</p>`;
+    $('fCreator').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('cCode').value }); $('cCode').value = ''; };
+    return;
   }
+  const A = NET.admin || { admins: [], bans: {} }, creator = session.role === 'creator';
+  const gameOpts = Object.entries(GAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  h += `<p><span class="badge">★ ${creator ? 'Erfinder' : 'Admin'}: ${esc(session.name)}</span></p>
+    <div class="label">Deine Kräfte im Spiel</div>
+    <ul class="powers">
+      <li><b>Fliegen</b> (Taste F): Leertaste hoch, C runter. Beim Fliegen kann dir nichts passieren.</li>
+      <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder G drücken (am Handy „Hau!“). Er fliegt aus diesem Spiel.</li>
+      <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen.</li>
+      <li><b>Gebannte</b> (Taste L): Im Spiel siehst du, wer aus diesem Spiel gebannt ist, und kannst ihn zurückholen.</li>
+    </ul>
+    ${msg}
+    <div class="label">Admin hinzufügen</div>
+    <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Hinzufügen</button></form>
+    <div class="label">Admins</div>
+    <ul class="adminList">${A.admins.map(a => `<li>${a.role === 'creator' ? '★ ' : ''}${esc(a.name)} ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Entfernen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
+    ${creator ? '' : '<p class="small">Admins entfernen kann nur der Erfinder.</p>'}
+    <div class="label">Spieler aus einem Spiel bannen</div>
+    <form id="fBan" class="sect">
+      <input id="bName" class="field" placeholder="Benutzername" autocomplete="off" aria-label="Benutzername">
+      <select id="bGame" class="field" aria-label="Spiel">${gameOpts}</select>
+      <button class="btn primary" type="submit">Aus diesem Spiel bannen</button>
+    </form>
+    <p class="small">Ein Bann gilt nur für das eine Spiel. Alle anderen Spiele kann der Spieler weiter spielen.</p>
+    ${Object.entries(GAMES).map(([g, gname]) => {
+      const sv = (A.bans[g] || []).map(b => `<li>${esc(b.name)} <button class="btn" data-sunban="${g}|${esc(b.name)}">Wieder reinholen</button></li>`);
+      const bt = (adminData.bans[g] || []).map((b, i) => `<li>${esc(b.name)} <span class="small">Testspieler</span> <button class="btn" data-unban="${g}|${i}">Wieder reinholen</button></li>`);
+      return `<div class="label">Gebannt aus ${gname}</div>` + (sv.length + bt.length ? `<ul class="adminList">${sv.join('')}${bt.join('')}</ul>` : '<p class="small">Niemand gebannt.</p>');
+    }).join('')}`;
   el.innerHTML = h;
-  const msg = t => { const m = $('aMsg'); if (m) m.textContent = t; };
-  const fC = $('fCreator');
-  if (fC) fC.onsubmit = async e => {
-    e.preventDefault();
-    const c1 = $('cCode').value, c2 = $('cCode2').value;
-    if (nameProblem(profile.name)) return msg('Gib dir zuerst im Avatar-Tab einen gültigen Namen.');
-    if (c1.length < 4) return msg('Der Code braucht mindestens 4 Zeichen.');
-    if (c1 !== c2) return msg('Die beiden Codes sind nicht gleich.');
-    adminData.creatorName = profile.name; adminData.creatorHash = await hashCode(c1); saveAdmin();
-    toast('Du bist der Erfinder!'); beep('win'); setSession('creator', profile.name);
-  };
-  const fL = $('fLogin');
-  if (fL) fL.onsubmit = async e => {
-    e.preventDefault();
-    const n = $('lName').value.trim(), hsh = await hashCode($('lCode').value);
-    if (adminData.creatorName && same(n, adminData.creatorName) && hsh === adminData.creatorHash) { toast('Willkommen, Erfinder!'); return setSession('creator', adminData.creatorName); }
-    const a = adminData.admins.find(x => same(x.name, n) && x.hash === hsh);
-    if (a) { toast('Willkommen, Admin!'); return setSession('admin', a.name); }
-    msg('Name oder Code stimmt nicht.');
-  };
-  const fA = $('fAdd');
-  if (fA) fA.onsubmit = async e => {
-    e.preventDefault();
-    const n = $('nName').value.trim(), c = $('nCode').value;
-    const pr = nameProblem(n);
-    if (pr) return msg(pr);
-    if (reservedBy(n)) return msg('Diesen Namen gibt es schon als Admin.');
-    if (c.length < 4) return msg('Der Code braucht mindestens 4 Zeichen.');
-    adminData.admins.push({ name: n, hash: await hashCode(c), by: session.name }); saveAdmin();
-    toast('Admin hinzugefügt!'); beep('buy'); renderAdminTab();
-  };
-  el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => { if (session.role !== 'creator') return; adminData.admins.splice(+b.dataset.remove, 1); saveAdmin(); renderAdminTab(); });
-  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => {
-    const [g, i] = b.dataset.unban.split('|');
-    const name = unbanFrom(g, +i);
-    if (name) { toast('Nachricht gesendet'); beep('check'); }
-    renderAdminTab();
-  });
-  const fB = $('fBan');
-  if (fB) fB.onsubmit = e => {
-    e.preventDefault();
-    const n = $('bName').value.trim(), g = $('bGame').value, bm = $('bMsg');
-    if (n.length < 3) { bm.textContent = 'Bitte gib den Namen des Spielers ein.'; return; }
-    if (reservedBy(n)) { bm.textContent = 'Admins und den Erfinder kann man nicht bannen.'; return; }
-    if (isBanned(g, n)) { bm.textContent = n + ' ist dort schon gebannt.'; return; }
-    banFrom(g, n); toast('Gebannt!'); renderAdminTab();
-  };
-  const rs = $('resetEdits');
-  if (rs) rs.onclick = () => {
-    if (!resetArmed) { resetArmed = true; rs.textContent = 'Wirklich löschen?'; setTimeout(() => { resetArmed = false; if (rs.isConnected) rs.textContent = 'Parcours-Bauten löschen'; }, 2500); return; }
-    resetArmed = false; store.set(EDIT_KEY, []); toast('Gelöscht!'); renderAdminTab();
-  };
-  const lo = $('logout');
-  if (lo) lo.onclick = () => { setSession(null, null); toast('Abgemeldet'); };
+  $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) netSend({ t: 'adminAdd', name: n }); };
+  $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
+  el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => netSend({ t: 'adminRemove', name: b.dataset.remove }));
+  el.querySelectorAll('[data-sunban]').forEach(b => b.onclick = () => { const [g, n] = b.dataset.sunban.split('|'); netSend({ t: 'unban', name: n, game: g }); });
+  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => { const [g, i] = b.dataset.unban.split('|'); if (unbanFrom(g, +i)) toast('Zurückgeholt'); renderAdminTab(); });
+  if (!NET.admin) netSend({ t: 'adminList' });
 }
 function togglePower(k) {
   if (!isAdmin() || (mode === 'race' && k !== 'build')) return;
@@ -2158,7 +2161,7 @@ function renderAdminBar() {
     b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
     bar.appendChild(b);
   }
-  const g = currentGame(), n = adminData.bans[g].length;
+  const g = currentGame(), n = adminData.bans[g].length + ((NET.admin && NET.admin.bans[g]) || []).length;
   const lb = document.createElement('button'); lb.className = 'btn';
   lb.textContent = 'Gebannte (' + n + ')' + (isTouch ? '' : ' (L)');
   lb.onclick = openBanPanel;
@@ -2168,10 +2171,18 @@ function renderAdminBar() {
 const currentGame = () => GAMES[mode] ? mode : (GAMES[lastGame] ? lastGame : 'obby');
 function openBanPanel() {
   if (!isAdmin()) return;
-  const g = currentGame(), list = adminData.bans[g];
+  const g = currentGame(), list = adminData.bans[g], sv = (NET.admin && NET.admin.bans[g]) || [];
+  if ($('banPanel').hidden) netSend({ t: 'adminList' });
   $('banTitle').textContent = 'Gebannt aus ' + GAMES[g];
-  $('banInfo').textContent = list.length ? 'Wer zurückgeholt wird, darf sofort wieder mitspielen und bekommt eine Nachricht ins Postfach.' : 'Aus diesem Spiel ist niemand gebannt.';
+  $('banInfo').textContent = list.length + sv.length ? 'Wer zurückgeholt wird, darf sofort wieder mitspielen und bekommt eine Nachricht ins Postfach.' : 'Aus diesem Spiel ist niemand gebannt.';
   const ul = $('banList'); ul.innerHTML = '';
+  for (const b of sv) {
+    const li = document.createElement('li');
+    const nm = document.createElement('span'); nm.textContent = b.name; li.appendChild(nm);
+    const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = 'Wieder reinholen';
+    btn.onclick = () => { netSend({ t: 'unban', name: b.name, game: g }); beep('check'); };
+    li.appendChild(btn); ul.appendChild(li);
+  }
   list.forEach((b, i) => {
     const li = document.createElement('li');
     const nm = document.createElement('span'); nm.textContent = b.name; li.appendChild(nm);
@@ -2186,7 +2197,7 @@ function openBanPanel() {
     };
     li.appendChild(btn); ul.appendChild(li);
   });
-  ul.hidden = !list.length;
+  ul.hidden = !list.length && !sv.length;
   $('banPanel').hidden = false;
 }
 $('banClose').onclick = () => { $('banPanel').hidden = true; };
@@ -2609,9 +2620,16 @@ function renderGames() {
   }
   const box = $('inbox');
   const mine = adminData.mail.filter(m => !m.read && same(m.to, profile.name));
-  box.hidden = !mine.length;
-  if (mine.length) $('tab-games').scrollTop = 0;
+  const srv = typeof NET !== 'undefined' && NET.me && NET.me.mail ? NET.me.mail : [];
+  box.hidden = !mine.length && !srv.length;
+  if (mine.length || srv.length) $('tab-games').scrollTop = 0;
   box.innerHTML = '';
+  for (const text of srv) {
+    const d = document.createElement('div'); d.className = 'mail';
+    d.innerHTML = `<b>Post von Klotzwelt</b><p>${esc(text)}</p><button class="btn go">OK</button>`;
+    d.querySelector('button').onclick = () => { NET.me.mail = []; netSend({ t: 'mailRead' }); renderGames(); };
+    box.appendChild(d);
+  }
   for (const m of mine) {
     const d = document.createElement('div'); d.className = 'mail';
     d.innerHTML = `<b>Post von Klotzwelt</b><p>${esc(m.text)}</p><button class="btn go">OK</button>`;
@@ -2646,7 +2664,7 @@ function netConnect() {
   };
   ws.onerror = () => {};
 }
-function profilePayload() { return { coins: profile.coins, owned: profile.owned, wear: profile.wear, body: profile.body, shape: profile.shape }; }
+function profilePayload() { return { coins: profile.coins, owned: profile.owned, wear: profile.wear, body: profile.body, shape: profile.shape, gender: profile.gender || null }; }
 function applyServerProfile(me) {
   const sp = me.profile;
   if (sp && Array.isArray(sp.owned) && sp.owned.length) {
@@ -2658,6 +2676,7 @@ function applyServerProfile(me) {
     profile.body = Object.assign(clone(DEFAULT_PROFILE.body), sp.body || {});
     profile.shape = Object.assign({ height: 1, width: 1, head: 1 }, sp.shape || {});
   }
+  if (sp && (sp.gender === 'boy' || sp.gender === 'girl')) profile.gender = sp.gender;
   profile.name = me.name;
   saveProfile(); rebuildAvatar();
   if (!sp || !Array.isArray(sp.owned) || !sp.owned.length) netSend({ t: 'profile', profile: profilePayload() });
@@ -2673,8 +2692,15 @@ function netHandle(m) {
     case 'loggedOut': NET.me = null; NET.social = null; store.set('klotzwelt-token', null); clearPeers(); updateFriendDot(); renderFriendsIfOpen(); break;
     case 'kicked': NET.me = null; store.set('klotzwelt-token', null); clearPeers(); renderFriendsIfOpen(); break;
     case 'social': NET.social = m; updateFriendDot(); renderFriendsIfOpen(); break;
-    case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); break;
-    case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); break;
+    case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
+    case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
+    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
+    case 'adminData': NET.admin = m; renderAdminIfOpen(); renderAdminBar(); if (!$('banPanel').hidden) openBanPanel(); break;
+    case 'banned':
+      if (NET.me) NET.me.bans = [...new Set([...(NET.me.bans || []), m.game])];
+      if (playingGame() === m.game) showMenu();
+      showInfo('Du bist gebannt', (m.by ? 'Du wurdest von einem Admin (' + m.by + ')' : 'Du wurdest von einem Admin') + ' aus „' + GAMES[m.game] + '“ gebannt. Alle anderen Spiele kannst du weiter spielen.');
+      break;
     case 'roomJoined':
       NET.room = m.room; NET.roomGame = m.game; NET.myId = m.you; clearPeers();
       for (const pl of m.players) addPeer(pl);
@@ -2911,6 +2937,7 @@ function setTool(t) {
 // ---------- Modi ----------
 function showBest() { const b = store.get('klotzwelt-bestzeit', null); $('best').textContent = b ? 'Bestzeit: ' + fmt(b) : ''; }
 function showMenu() {
+  paused = false; $('pausePanel').hidden = true; setShiftLock(false);
   mode = 'menu';
   document.body.className = '';
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
@@ -2966,7 +2993,19 @@ $('playObby').onclick = () => enterPlay('obby');
 $('playBuild').onclick = () => enterPlay('build');
 $('playRace').onclick = () => enterPlay('race');
 $('playHorror').onclick = () => enterPlay('horror');
-$('menuBtn').onclick = showMenu;
+// Pause statt direkt zurück in die Lobby
+let paused = false;
+function openPause() {
+  if (mode === 'menu') return;
+  paused = true; resetInput();
+  if (document.pointerLockElement) document.exitPointerLock();
+  $('pausePanel').hidden = false;
+}
+function resumeGame() { paused = false; $('pausePanel').hidden = true; $('settingsPanel').hidden = true; last = performance.now(); if (shiftLock && !isTouch) setShiftLock(true); }
+$('menuBtn').onclick = openPause;
+$('pResume').onclick = resumeGame;
+$('pLobby').onclick = () => { paused = false; $('pausePanel').hidden = true; showMenu(); };
+$('pSettings').onclick = () => openSettings();
 $('winMenuBtn').onclick = showMenu;
 $('againBtn').onclick = () => { if (isBanned(lastGame, profile.name)) return showMenu(); enterPlay(lastGame); };
 const soundLabel = () => { $('soundBtn').textContent = soundOn ? 'Ton an' : 'Ton aus'; $('soundBtn').setAttribute('aria-pressed', String(soundOn)); };
@@ -3037,7 +3076,7 @@ function updatePlayer(dt) {
   const accel = P.onGround || flying ? 18 : 7;
   P.vel.x += (mx * spd - P.vel.x) * Math.min(1, accel * dt);
   P.vel.z += (mz * spd - P.vel.z) * Math.min(1, accel * dt);
-  const flyVY = (((keys.Space || keys.TouchUp) ? 1 : 0) - ((keys.ShiftLeft || keys.ShiftRight || keys.KeyC || keys.TouchDown) ? 1 : 0)) * 10;
+  const flyVY = (((keys.Space || keys.TouchUp) ? 1 : 0) - ((keys.KeyC || keys.TouchDown) ? 1 : 0)) * 10;
   if (ml > 0.1) {
     let d = Math.atan2(mx, mz) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d));
     P.facing += d * Math.min(1, 14 * dt);
@@ -3109,7 +3148,9 @@ function updateParticles(dt) {
 }
 let last = performance.now(), statTimer = 0;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; tAll += dt;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (paused) { renderer.render(scene, camera); requestAnimationFrame(frame); return; }
+  tAll += dt;
   updateMovers();
   updateParts(dt);
   updateBots(dt);
@@ -3130,14 +3171,15 @@ function frame(now) {
   } else {
     updatePlayer(dt);
     if (playingGame() === 'horror') updateHorror(dt);
-    camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.6, P.pos.z), 1 - Math.exp(-dt * 12));
+    const so = shiftLock && !firstPerson() ? 1.1 : 0; // Shift-Lock: Kamera über die rechte Schulter
+    camTarget.lerp(tmpV.set(P.pos.x + Math.cos(cam.yaw) * so, P.pos.y + 1.6, P.pos.z - Math.sin(cam.yaw) * so), 1 - Math.exp(-dt * 12));
   }
   if (playingGame() === 'obby') updateObby(dt);
   updateParticles(dt);
   updateDebris(dt);
   updatePeers(dt);
   netSendState();
-  if (firstPerson()) P.facing = cam.yaw + Math.PI;
+  if ((firstPerson() || shiftLock) && mode !== 'menu' && playingGame() !== 'race' && dead <= 0) P.facing = cam.yaw + Math.PI;
   if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson();
   placeCamera();
   sun.position.set(P.pos.x + 25, P.pos.y + 50, P.pos.z + 18); sun.target.position.copy(P.pos);
@@ -3161,7 +3203,7 @@ function suggestDevice() { if (!autoTouch) return 'pc'; return Math.min(screen.w
 function applyDevice() {
   if (device) isTouch = device !== 'pc';
   document.documentElement.dataset.device = device || (isTouch ? 'phone' : 'pc');
-  $('deviceBtn').textContent = device ? DEVICE_NAMES[device] : 'Gerät';
+
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || playingGame() === 'race';
@@ -3178,13 +3220,64 @@ document.querySelectorAll('.dev').forEach(b => b.onclick = () => {
   device = b.dataset.dev; store.set('klotzwelt-geraet', device);
   applyDevice(); $('devicePick').hidden = true; toast(DEVICE_NAMES[device]); beep('equip');
 });
-$('deviceBtn').onclick = openDevicePick;
+$('deviceBtn').onclick = openSettings;
+$('deviceBtn').textContent = 'Einstellungen';
+// Einstellungen: Knöpfe, Geschlecht, Gerät, Ton
+const settings = Object.assign({ stick: null, jump: null, jumpX: null, jumpY: null, stickMode: 'float' }, store.get('klotzwelt-einstellungen', {}) || {});
+const DEV_DEFAULTS = { phone: { stick: 110, jump: 76, jumpX: 24, jumpY: 80 }, tablet: { stick: 170, jump: 120, jumpX: 24, jumpY: 80 }, pc: { stick: 120, jump: 84, jumpX: 24, jumpY: 80 } };
+const devDef = () => DEV_DEFAULTS[device || (isTouch ? 'phone' : 'pc')];
+function applySettings() {
+  const px = v => v == null ? '' : v + 'px', d = devDef();
+  const st = $('stick');
+  st.style.width = st.style.height = px(settings.stick);
+  const k = settings.stick ? Math.round(settings.stick * 0.4) : null;
+  knob.style.width = knob.style.height = px(k); knob.style.margin = k ? (-k / 2) + 'px' : '';
+  for (const b of [$('jumpBtn'), $('driftBtn')]) { b.style.width = b.style.height = px(settings.jump); b.style.right = px(settings.jumpX); b.style.bottom = px(settings.jumpY); }
+  const custom = settings.jump != null || settings.jumpX != null || settings.jumpY != null;
+  const J = settings.jump ?? d.jump, JX = settings.jumpX ?? d.jumpX, JY = settings.jumpY ?? d.jumpY;
+  $('downBtn').style.right = custom ? (JX + J + 14) + 'px' : ''; $('downBtn').style.bottom = custom ? JY + 'px' : '';
+  $('hitBtn').style.right = custom ? JX + 'px' : ''; $('hitBtn').style.bottom = custom ? (JY + J + 16) + 'px' : '';
+  document.documentElement.classList.toggle('stick-fixed', settings.stickMode === 'fixed');
+  store.set('klotzwelt-einstellungen', settings);
+}
+const GENDER_PRESET = { boy: { hair: 'hr-short-brown', shirt: 's-blue', pants: 'p-dark' }, girl: { hair: 'hr-long-brown', shirt: 's-red', pants: 'p-skirt' } };
+function setGender(g) {
+  profile.gender = g;
+  const pr = GENDER_PRESET[g];
+  for (const k in pr) { if (!profile.owned.includes(pr[k])) profile.owned.push(pr[k]); profile.wear[k] = pr[k]; }
+  saveProfile(); rebuildAvatar(); syncSettingsUI(); beep('equip');
+}
+function syncSettingsUI() {
+  const d = devDef();
+  $('setStick').value = settings.stick ?? d.stick; $('setJump').value = settings.jump ?? d.jump;
+  $('setJumpX').value = settings.jumpX ?? d.jumpX; $('setJumpY').value = settings.jumpY ?? d.jumpY;
+  for (const seg of ['genderSeg', 'genderSeg1']) document.querySelectorAll('#' + seg + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === profile.gender)));
+  document.querySelectorAll('#devSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.d === device)));
+  document.querySelectorAll('#stickModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sm === settings.stickMode)));
+  document.querySelectorAll('#soundSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.snd === '1') === soundOn)));
+}
+function openSettings() { syncSettingsUI(); $('settingsPanel').hidden = false; }
+for (const [id, key] of [['setStick', 'stick'], ['setJump', 'jump'], ['setJumpX', 'jumpX'], ['setJumpY', 'jumpY']]) {
+  $(id).addEventListener('input', () => {
+    settings[key] = +$(id).value; applySettings();
+    // Vorschau: Knöpfe kurz zeigen, auch wenn man gerade im Menü ist
+    if (mode === 'menu') { $('hud').hidden = false; $('stick').hidden = $('jumpBtn').hidden = false; clearTimeout(window.__prevT); window.__prevT = setTimeout(() => { if (mode === 'menu') $('hud').hidden = true; }, 1500); }
+  });
+}
+document.querySelectorAll('#genderSeg button, #genderSeg1 button').forEach(b => b.onclick = () => setGender(b.dataset.g));
+document.querySelectorAll('#devSeg button').forEach(b => b.onclick = () => { device = b.dataset.d; store.set('klotzwelt-geraet', device); applyDevice(); syncSettingsUI(); });
+document.querySelectorAll('#stickModeSeg button').forEach(b => b.onclick = () => { settings.stickMode = b.dataset.sm; applySettings(); syncSettingsUI(); });
+document.querySelectorAll('#soundSeg button').forEach(b => b.onclick = () => { soundOn = b.dataset.snd === '1'; store.set('klotzwelt-ton', soundOn); soundLabel(); if (!soundOn) stopDrone(); else if (mode === 'horror') startDrone(); syncSettingsUI(); });
+$('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
+$('setClose').onclick = () => { $('settingsPanel').hidden = true; };
+
 // Vollbild
 const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 const isPhoneIOS = /iPhone|iPod/.test(navigator.userAgent);
 const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 function fsLabel() { for (const id of ['fsBtn', 'fsBtn2']) { $(id).textContent = fsActive() ? 'Vollbild aus' : 'Vollbild'; $(id).hidden = standalone; } }
-function fsHelp(text) { $('fsText').textContent = text; $('fsHelp').hidden = false; }
+function showInfo(title, text) { $('fsTitle').textContent = title; $('fsText').textContent = text; $('fsHelp').hidden = false; }
+function fsHelp(text) { showInfo('Vollbild', text); }
 async function toggleFullscreen() {
   const d = document.documentElement;
   try {
@@ -3206,6 +3299,8 @@ document.addEventListener('fullscreenchange', fsLabel); document.addEventListene
 fsLabel();
 
 applyDevice();
+applySettings();
+syncSettingsUI();
 if (!device) openDevicePick();
 netConnect();
 

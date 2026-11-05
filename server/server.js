@@ -14,6 +14,8 @@ const FILES = { '/index.html': 'text/html; charset=utf-8', '/sw.js': 'text/javas
 const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', horror: 'Gruselvilla' };
 const ROOM_MAX = 10;
 const TOKEN_DAYS = 30;
+// Der Erfinder-Code steht NICHT im Code, sondern als Umgebungsvariable CREATOR_CODE bei Render.
+const CREATOR_CODE = String(process.env.CREATOR_CODE || '').trim();
 
 // ---------- Webseite ----------
 const server = http.createServer((req, res) => {
@@ -67,7 +69,22 @@ function cleanProfile(p) {
   if (p.body && typeof p.body === 'object') for (const k of ['head', 'torso', 'arms', 'legs']) out.body[k] = Math.round(num(p.body[k], 0, 15, 0));
   const s = p.shape || {};
   out.shape = { height: num(s.height, 0.85, 1.2, 1), width: num(s.width, 0.85, 1.35, 1), head: num(s.head, 0.85, 1.3, 1) };
+  out.gender = p.gender === 'girl' || p.gender === 'boy' ? p.gender : null;
   return out;
+}
+const roleOf = u => (D().users[u] && D().users[u].role) || null;
+const isAdminU = u => roleOf(u) === 'creator' || roleOf(u) === 'admin';
+const bansOf = u => Object.keys(GAMES).filter(g => (D().bans[g] || []).some(b => b.u === u));
+function adminData() {
+  const admins = Object.entries(D().users).filter(([, x]) => x.role).map(([, x]) => ({ name: x.name, role: x.role }));
+  const bans = {};
+  for (const g of Object.keys(GAMES)) bans[g] = (D().bans[g] || []).map(b => ({ name: D().users[b.u] ? D().users[b.u].name : b.u, by: b.by, at: b.at }));
+  return { t: 'adminData', admins, bans };
+}
+function pushAdmins() { for (const [u, c] of online) if (isAdminU(u)) send(c, adminData()); }
+function meOf(u) {
+  const usr = D().users[u];
+  return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
 const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, body: p.body, wear: p.wear, shape: p.shape }; };
 
@@ -126,7 +143,7 @@ function loginAs(c, u) {
   for (const [k, v] of Object.entries(D().tokens)) if (v.exp < now()) delete D().tokens[k];
   db.save();
   const usr = D().users[u];
-  send(c, { t: 'auth', token, me: { name: usr.name, age: ageGroup(usr.year), profile: usr.profile } });
+  send(c, { t: 'auth', token, me: meOf(u) });
   pushSocial(u); pushFriends(u);
 }
 function logoutConn(c) {
@@ -140,7 +157,7 @@ function logoutConn(c) {
 }
 
 // Schutz vor zu vielen Versuchen
-const regByIp = new Map(), failByName = new Map();
+const regByIp = new Map(), failByName = new Map(), codeTries = new Map();
 function tooMany(map, key, limit, ms) {
   const list = (map.get(key) || []).filter(t => now() - t < ms);
   map.set(key, list);
@@ -241,8 +258,61 @@ function handle(c, m) {
       return pushParty(p), pushSocial(c.user);
     }
     case 'partyLeave': return leaveParty(c);
+    case 'claimCreator': {
+      if (tooMany(codeTries, c.user, 5, 600e3)) return err(c, 'Zu viele Versuche. Warte 10 Minuten.');
+      codeTries.get(c.user).push(now());
+      const code = String(m.code || '').trim(), a = Buffer.from(code), b = Buffer.from(CREATOR_CODE);
+      if (!CREATOR_CODE || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return err(c, 'Der Code stimmt nicht.');
+      users[c.user].role = 'creator'; db.save();
+      send(c, { t: 'me', me: meOf(c.user) }); send(c, adminData());
+      return notice(c, 'Du bist jetzt Erfinder!');
+    }
+    case 'adminList': if (isAdminU(c.user)) send(c, adminData()); return;
+    case 'adminAdd': {
+      if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
+      const t = low(m.name), other = users[t];
+      if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
+      if (other.role) return err(c, other.name + ' ist schon Admin.');
+      other.role = 'admin'; db.save();
+      const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, users[c.user].name + ' hat dich zum Admin gemacht!'); }
+      pushAdmins(); return notice(c, other.name + ' ist jetzt Admin.');
+    }
+    case 'adminRemove': {
+      if (roleOf(c.user) !== 'creator') return err(c, 'Admins entfernen kann nur der Erfinder.');
+      const t = low(m.name), other = users[t];
+      if (!other || other.role !== 'admin') return;
+      delete other.role; db.save();
+      const oc = online.get(t); if (oc) send(oc, { t: 'me', me: meOf(t) });
+      return pushAdmins();
+    }
+    case 'ban': {
+      if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
+      const t = low(m.name), other = users[t], g = String(m.game);
+      if (!other || !GAMES[g]) return err(c, 'Diesen Spieler gibt es nicht.');
+      if (isAdminU(t)) return err(c, 'Admins kann man nicht bannen.');
+      D().bans[g] = D().bans[g] || [];
+      if (!D().bans[g].some(b => b.u === t)) D().bans[g].push({ u: t, by: users[c.user].name, at: now() });
+      db.save();
+      const oc = online.get(t);
+      if (oc) { send(oc, { t: 'banned', game: g, by: users[c.user].name }); send(oc, { t: 'me', me: meOf(t) }); if (oc.room && oc.room.game === g) leaveRoom(oc); }
+      pushAdmins(); return notice(c, other.name + ' wurde aus ' + GAMES[g] + ' gebannt.');
+    }
+    case 'unban': {
+      if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
+      const t = low(m.name), g = String(m.game), list = D().bans[g] || [];
+      if (!list.some(b => b.u === t)) return;
+      D().bans[g] = list.filter(b => b.u !== t);
+      if (users[t]) {
+        users[t].mail = (users[t].mail || []).slice(-20);
+        users[t].mail.push({ text: 'Gute Nachricht! Du darfst wieder in „' + GAMES[g] + '“ spielen. Viel Spaß und bleib fair!', at: now(), read: false });
+        const oc = online.get(t); if (oc) send(oc, { t: 'me', me: meOf(t) });
+      }
+      db.save(); pushAdmins(); return notice(c, (users[t] ? users[t].name : t) + ' darf wieder in ' + GAMES[g] + '.');
+    }
+    case 'mailRead': { for (const ml of users[c.user].mail || []) ml.read = true; db.save(); return; }
     case 'join': {
       if (!GAMES[m.game]) return;
+      if (bansOf(c.user).includes(m.game)) return send(c, { t: 'banned', game: m.game, by: null });
       leaveRoom(c);
       let r = m.room ? rooms.get(String(m.room)) : null;
       if (!r || r.game !== m.game || r.players.size >= ROOM_MAX) r = [...rooms.values()].find(x => x.game === m.game && x.players.size < ROOM_MAX);
