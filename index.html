@@ -671,8 +671,8 @@ const ITEMS = [
   { id: 's-star', slot: 'shirt', name: 'Sternenshirt', price: 100, shirt: { base: 0x1d2a44, accent: 0xffd23f, pattern: 'star' } },
   { id: 's-hoodie', slot: 'shirt', name: 'Kapuzenpulli', price: 120, shirt: { base: 0x8b5cd6, accent: 0x6a3fb0, pattern: 'hoodie' } },
   { id: 's-jersey', slot: 'shirt', name: 'Trikot Nr. 10', price: 150, shirt: { base: 0xffd23f, accent: 0x23824a, pattern: 'jersey' } },
-  { id: 's-flames', slot: 'shirt', name: 'Flammenshirt', price: 180, shirt: { base: 0x2a2d34, accent: 0xff6b3d, pattern: 'flames' } },
-  { id: 's-suit', slot: 'shirt', name: 'Schicker Anzug', price: 250, shirt: { base: 0x2a2d34, accent: 0xf4f4f0, pattern: 'suit' } },
+  { id: 's-flames', slot: 'shirt', name: 'Flammenshirt', price: 180, shirt: { base: 0x121418, accent: 0xff6b3d, pattern: 'flames' } },
+  { id: 's-suit', slot: 'shirt', name: 'Schicker Anzug', price: 250, shirt: { base: 0x121418, accent: 0xf4f4f0, pattern: 'suit' } },
   // Hosen
   { id: 'p-dark', slot: 'pants', name: 'Dunkle Hose', price: 0, pants: { base: 0x2a3b66 } },
   { id: 'p-black', slot: 'pants', name: 'Schwarze Hose', price: 0, pants: { base: 0x2a2d34 } },
@@ -732,6 +732,7 @@ ITEMS.push(
   { id: 'sh-glow', slot: 'shoes', name: 'Leuchtschuhe', price: 200, shoe: 'sneaker', color: 0x6fd0f0, glow: true },
   { id: 'sh-gold', slot: 'shoes', name: 'Goldschuhe', price: 300, shoe: 'sneaker', color: 0xffc83d, sole: 0xffe066 },
   // mehr Kleidung
+  { id: 's-black', slot: 'shirt', name: 'Schwarzes Shirt', price: 0, shirt: { base: 0x121418 } },
   { id: 's-white', slot: 'shirt', name: 'Weißes Shirt', price: 0, shirt: { base: 0xf4f4f0 } },
   { id: 's-winter', slot: 'shirt', name: 'Winterpulli', price: 110, shirt: { base: 0xe2453c, accent: 0xf4f4f0, pattern: 'zigzag' } },
   { id: 's-hawaii', slot: 'shirt', name: 'Hawaiihemd', price: 140, shirt: { base: 0x6fd0f0, accent: 0xff6fae, pattern: 'flowers' } },
@@ -3838,7 +3839,7 @@ function frame(now) {
     if ((menuSpin -= dt) < 0) P.facing += (Math.sin(tAll * 0.5) * 0.35 - P.facing) * Math.min(1, dt * 2);
     menuZoomCur += (menuZoom - menuZoomCur) * Math.min(1, dt * 6);
     const narrow = innerWidth <= 720;
-    cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 7 : 6.4) - menuZoomCur * (narrow ? 0.6 : 1.6);
+    cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 6.2 : 5.1) - menuZoomCur * (narrow ? 0.6 : 1.4);
     camTarget.set(P.pos.x, P.pos.y + (narrow ? 1.45 : 1.25), P.pos.z);
     for (const c of world.children) if (c.userData.cloud) c.position.x += dt * 0.6;
   } else if (isRace(playingGame())) {
