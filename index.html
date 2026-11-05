@@ -127,7 +127,12 @@ input { -webkit-user-select: text; user-select: text; }
 .seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .seg3 button { border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 6px; font-weight: 800; }
 .seg3 button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-html.stick-fixed #stick { opacity: 1; }
+html.stick-fixed #stick { opacity: 1; pointer-events: auto; }
+#layoutBar { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, calc(100% - 32px)); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; z-index: 30; }
+#layoutBar p { margin: 0; }
+body.editing #stick, body.editing #jumpBtn { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; touch-action: none; cursor: grab; }
+body.editing #stickZone { display: none; }
+.game.skate { background: #d5f0ff; }
 #fsHelp p { margin: 0; }
 #vehPanel { z-index: 26; width: min(480px, calc(100% - 32px)); }
 .vehs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
@@ -290,14 +295,14 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
       <div class="game race">
         <img class="preview" id="prevRace" alt="Vorschau: Klotz-Rennen" hidden>
         <h3>Klotz-Rennen</h3>
-        <p>Fahr 3 Runden gegen die Testfahrer. Gelbe Pfeile geben Turbo, auf der Wiese wirst du langsam. Platz 1 bringt dir <i class="coin"></i> 30.</p>
+        <p>Kart, E-Roller, Motorrad oder Sportwagen: Driften, Wheelies, Turbo-Pfeile und 3 Runden gegen die Testfahrer.</p>
         <button class="btn primary" id="playRace">Fahren</button>
       </div>
-      <div class="game race">
-        <img class="preview" id="prevMoto" alt="Vorschau: Turbo-Rennen" hidden>
-        <h3>Turbo-Rennen</h3>
-        <p>Motorrad, E-Roller und richtig schnelle Sportwagen: Driften, Wheelies ziehen und Rennen gegen die Testfahrer.</p>
-        <button class="btn primary" id="playMoto">Fahren</button>
+      <div class="game skate">
+        <img class="preview" id="prevSkate" alt="Vorschau: Skatepark" hidden>
+        <h3>Skatepark</h3>
+        <p>Rampen, Quarterpipes und Sprünge: Zieh Tricks in der Luft und sammle Punkte, bevor die Zeit abläuft.</p>
+        <button class="btn primary" id="playSkate">Skaten</button>
       </div>
       <div class="game horror">
         <img class="preview" id="prevHorror" alt="Vorschau: Gruselvilla" hidden>
@@ -398,6 +403,11 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
   </div>
 </div>
 
+<div id="layoutBar" class="panel" hidden role="dialog" aria-label="Knöpfe verschieben">
+  <p class="small"><b>Knöpfe verschieben:</b> Zieh den Joystick und den Sprung-Knopf mit dem Finger dorthin, wo du sie haben willst.</p>
+  <div class="row"><button class="btn" id="layReset" type="button">Zurücksetzen</button><button class="btn primary" id="layDone" type="button">Fertig</button></div>
+</div>
+
 <div id="vehPanel" class="panel" hidden role="dialog" aria-labelledby="vehTitle">
   <h2 id="vehTitle">Fahrzeug wählen</h2>
   <div class="vehs" id="vehList"></div>
@@ -424,6 +434,7 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
     <label for="setJumpX">Abstand rechts</label><div><input type="range" id="setJumpX" min="8" max="260" step="2"><div class="ends"><span>am Rand</span><span>weiter innen</span></div></div>
     <label for="setJumpY">Abstand unten</label><div><input type="range" id="setJumpY" min="16" max="360" step="2"><div class="ends"><span>unten</span><span>höher</span></div></div>
   </div>
+  <button class="btn" id="setLayout" type="button">Knöpfe mit dem Finger verschieben</button>
   <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
   <div class="label">Ton</div>
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
@@ -784,10 +795,10 @@ const adminData = (() => {
 })();
 function saveAdmin() { store.set('klotzwelt-admin', adminData); }
 // Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
-const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', moto: 'Turbo-Rennen', horror: 'Gruselvilla' };
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', horror: 'Gruselvilla' };
 const isRace = m => m === 'race' || m === 'moto';
 function normBans(b) {
-  const out = { obby: [], build: [], race: [], moto: [], horror: [] };
+  const out = { obby: [], build: [], race: [], moto: [], skate: [], horror: [] };
   if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
@@ -1332,7 +1343,7 @@ function clearWorld() {
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   solids = []; coins = []; movers = []; pads = []; particles = [];
-  setAtmosphere('day'); race = null; horror = null; stopDrone();
+  setAtmosphere('day'); race = null; horror = null; skate = null; stopDrone();
   spinners = []; fades = []; discs = []; bouncers = []; debris = []; dead = 0; bots = []; blocks = new Map();
   if (avatar) avatar.visible = true;
 }
@@ -1854,7 +1865,7 @@ addEventListener('keydown', e => {
   if (mode === 'menu') return;
   keys[e.code] = true;
   if (e.code === 'Space') { jumpPressed = true; e.preventDefault(); }
-  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !isRace(mode)) setShiftLock(!shiftLock);
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !isRace(mode) && mode !== 'skate') setShiftLock(!shiftLock);
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isAdmin() && mode !== 'menu' && mode !== 'win') {
     if (e.code === 'KeyF') togglePower('fly');
@@ -1916,7 +1927,7 @@ cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(1 + Math.sign(e.d
 // Shift-Lock wie bei großen Blockspielen: Figur schaut immer in Kamerarichtung, Maus dreht ohne Klicken
 let shiftLock = false;
 function setShiftLock(on) {
-  shiftLock = !!on && mode !== 'menu' && !isRace(mode);
+  shiftLock = !!on && mode !== 'menu' && !isRace(mode) && mode !== 'skate';
   $('slBtn').setAttribute('aria-pressed', String(shiftLock));
   $('crosshair').hidden = !shiftLock || isTouch;
   try {
@@ -1947,14 +1958,22 @@ zone.addEventListener('pointerdown', e => {
   moveStick(e);
 });
 zone.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
+function stickHome() {
+  if (settings.stickMode === 'fixed' && settings.stickX != null) { stick.style.left = settings.stickX + 'px'; stick.style.bottom = settings.stickY + 'px'; stick.style.top = 'auto'; }
+  else stick.style.left = stick.style.top = stick.style.bottom = '';
+}
 const endStick = e => {
   if (e.pointerId !== stickId) return;
   stickId = null; joy.x = joy.y = 0; knob.style.transform = '';
-  stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('held');
+  stickHome(); stick.classList.remove('held');
 };
+// Fester Joystick: man kann ihn auch direkt anfassen, egal wo er liegt
+stick.addEventListener('pointerdown', e => { if (editingLayout || settings.stickMode !== 'fixed') return; e.preventDefault(); stickId = e.pointerId; stick.setPointerCapture(e.pointerId); stick.classList.add('held'); moveStick(e); });
+stick.addEventListener('pointermove', e => { if (e.pointerId === stickId && !editingLayout) moveStick(e); });
+stick.addEventListener('pointerup', e => endStick(e)); stick.addEventListener('pointercancel', e => endStick(e));
 zone.addEventListener('pointerup', endStick); zone.addEventListener('pointercancel', endStick); zone.addEventListener('lostpointercapture', endStick);
 // Wenn die App in den Hintergrund geht, darf der Joystick nicht "hängen bleiben"
-const resetInput = () => { stickId = null; joy.x = joy.y = 0; knob.style.transform = ''; stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('held'); for (const k in keys) keys[k] = false; };
+const resetInput = () => { stickId = null; joy.x = joy.y = 0; knob.style.transform = ''; stickHome(); stick.classList.remove('held'); for (const k in keys) keys[k] = false; };
 addEventListener('blur', resetInput);
 document.addEventListener('visibilitychange', () => { if (document.hidden) resetInput(); });
 function moveStick(e) {
@@ -2171,7 +2190,7 @@ function renderAdminTab() {
   if (!NET.admin) netSend({ t: 'adminList' });
 }
 function togglePower(k) {
-  if (!isAdmin() || (isRace(mode) && k !== 'build')) return;
+  if (!isAdmin() || ((isRace(mode) || mode === 'skate') && k !== 'build')) return;
   powers[k] = !powers[k];
   const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
   toast(names[k] + (powers[k] ? ' an' : ' aus'));
@@ -2185,9 +2204,9 @@ function renderAdminBar() {
   bar.hidden = !isAdmin() || mode === 'menu';
   $('downBtn').hidden = !(isTouch && isAdmin() && powers.fly && mode !== 'menu');
   $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
-  $('jumpBtn').textContent = isAdmin() && powers.fly ? 'Hoch' : 'Sprung';
+  $('jumpBtn').textContent = mode === 'skate' ? 'Ollie' : (isAdmin() && powers.fly ? 'Hoch' : 'Sprung');
   if (bar.hidden) return;
-  const items = isRace(mode) ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
+  const items = isRace(mode) || mode === 'skate' ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
   for (const [k, label, key] of items) {
@@ -2294,7 +2313,7 @@ const VEHICLES = [
 ];
 function riderPose(a, type) {
   const u = a.userData;
-  if (type === 'scooter') { u.legL.rotation.x = u.legR.rotation.x = 0; u.armL.rotation.x = u.armR.rotation.x = -1.2; }
+  if (type === 'scooter') { u.legL.rotation.x = u.legR.rotation.x = 0; u.armL.rotation.x = u.armR.rotation.x = -1.0; u.armL.rotation.z = -0.12; u.armR.rotation.z = 0.12; }
   else if (type === 'bike') { u.legL.rotation.x = u.legR.rotation.x = -1.1; u.armL.rotation.x = u.armR.rotation.x = -1.4; }
   else seatPose(a);
 }
@@ -2308,13 +2327,35 @@ function makeVehicle(v, color, driverLook) {
   const wheel = (x, z, r, w) => { const wg = new THREE.Group(); wg.position.set(x, r, z); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 18), tc(0x1d2a44)); m.rotation.z = Math.PI / 2; m.castShadow = true; wg.add(m); const hub = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, r * 1.1, 0.12), tc(0xc8d0dc)); wg.add(hub); body.add(wg); wheels.push(wg); };
   let seat;
   if (v.type === 'car') {
-    olAdd(body, roundedBox(2.1, 0.55, 4.3, 0.25), tc(color), 0, 0.62, 0);
-    olAdd(body, roundedBox(1.9, 0.3, 1.6, 0.14), tc(color), 0, 0.98, 1.2);
-    olAdd(body, roundedBox(1.7, 0.45, 0.08, 0.03), toon('glass', { color: 0xbfe6ff, transparent: true, opacity: 0.55 }), 0, 1.25, 0.45);
-    for (const sx of [-0.65, 0.65]) olAdd(body, roundedBox(0.4, 0.14, 0.06, 0.04), toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.8 }), sx, 0.72, 2.15);
-    if (v.spoiler) { olAdd(body, roundedBox(2.1, 0.1, 0.55, 0.04), tc(0x2a2d34), 0, 1.35, -1.9); for (const sx of [-0.7, 0.7]) olAdd(body, roundedBox(0.1, 0.45, 0.1, 0.03), tc(0x2a2d34), sx, 1.1, -1.9); }
-    for (const [x, z] of [[-1.05, 1.4], [1.05, 1.4], [-1.05, -1.4], [1.05, -1.4]]) wheel(x, z, wr, 0.4);
-    seat = [0, 0.25, -0.35];
+    // Seitenprofil mit Radkästen, in die Breite gezogen und abgerundet: flacher Roadster
+    const sh = new THREE.Shape();
+    sh.moveTo(2.25, 0.32);
+    for (const [x, y] of [[2.32, 0.52], [2.15, 0.7], [1.2, 0.82], [0.75, 0.86], [-1.0, 0.9], [-1.85, 0.9], [-2.25, 0.8], [-2.32, 0.5], [-2.2, 0.32], [-2.02, 0.32]]) sh.lineTo(x, y);
+    sh.absarc(-1.4, 0.48, 0.62, Math.PI + 0.26, -0.26, true);
+    sh.lineTo(0.78, 0.32);
+    sh.absarc(1.4, 0.48, 0.62, Math.PI + 0.26, -0.26, true);
+    sh.lineTo(2.25, 0.32);
+    const bg = new THREE.ExtrudeGeometry(sh, { depth: 1.76, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.1, bevelSegments: 4, curveSegments: 12 });
+    bg.translate(0, 0, -0.88); bg.rotateY(-Math.PI / 2); bg.computeVertexNormals(); bg.userData.dims = [2.04, 0.8, 4.84];
+    olAdd(body, bg, tc(color), 0, 0, 0);
+    const dark = tc(0x1d2a44), metal = tc(0xc8d0dc);
+    const lamp = toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.9 }), tail = toon('tail', { color: 0xff4d4d, emissive: 0xe2453c, emissiveIntensity: 0.9 });
+    const ws = olAdd(body, roundedBox(1.62, 0.55, 0.06, 0.03), toon('glass', { color: 0xbfe6ff, transparent: true, opacity: 0.55 }), 0, 1.12, 0.62); ws.rotation.x = -0.75;
+    olAdd(body, roundedBox(0.7, 0.55, 0.2, 0.08), dark, 0, 1.1, -0.85);
+    olAdd(body, roundedBox(0.34, 0.03, 1.4, 0.01), tc(0xf4f4f0), 0, 0.885, 1.5);
+    for (const sx of [-0.62, 0.62]) {
+      olAdd(body, roundedBox(0.46, 0.1, 0.08, 0.04), lamp, sx, 0.66, 2.33).rotation.y = sx > 0 ? -0.25 : 0.25;
+      olAdd(body, roundedBox(0.44, 0.1, 0.06, 0.03), tail, sx, 0.74, -2.38);
+      const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 10), metal); ex.rotation.x = Math.PI / 2; ex.position.set(sx * 0.6, 0.38, -2.42); body.add(ex);
+    }
+    olAdd(body, roundedBox(1.1, 0.16, 0.05, 0.03), dark, 0, 0.45, 2.36);
+    for (const sx of [-1, 1]) olAdd(body, roundedBox(0.07, 0.12, 2.0, 0.03), dark, sx * 1.0, 0.36, 0);
+    if (v.spoiler) { olAdd(body, roundedBox(1.9, 0.08, 0.5, 0.03), dark, 0, 1.2, -1.95); for (const sx of [-0.65, 0.65]) olAdd(body, roundedBox(0.08, 0.32, 0.12, 0.02), dark, sx, 1.0, -1.95); }
+    for (const [x, z] of [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]]) {
+      wheel(x, z, wr, 0.36);
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.38, 14), metal); rim.rotation.z = Math.PI / 2; wheels[wheels.length - 1].add(rim);
+    }
+    seat = [0, 0.02, -0.4];
   } else if (v.type === 'bike') {
     olAdd(body, roundedBox(0.36, 0.45, 1.8, 0.15), tc(color), 0, 0.78, 0);
     olAdd(body, roundedBox(0.55, 0.38, 0.75, 0.16), tc(color), 0, 1.05, 0.3);
@@ -2326,8 +2367,9 @@ function makeVehicle(v, color, driverLook) {
     seat = [0, 0.42, -0.4];
   } else {
     olAdd(body, roundedBox(0.42, 0.1, 1.3, 0.04), tc(color), 0, 0.3, 0);
-    olAdd(body, roundedBox(0.08, 1.15, 0.08, 0.03), tc(0xc8d0dc), 0, 0.9, 0.6).rotation.x = -0.15;
-    olAdd(body, roundedBox(0.75, 0.07, 0.07, 0.03), tc(0x2a2d34), 0, 1.45, 0.68);
+    olAdd(body, roundedBox(0.08, 1.32, 0.08, 0.03), tc(0xc8d0dc), 0, 0.95, 0.56).rotation.x = -0.08;
+    olAdd(body, roundedBox(0.8, 0.07, 0.07, 0.03), tc(0x2a2d34), 0, 1.58, 0.5);
+    for (const sx of [-0.36, 0.36]) olAdd(body, roundedBox(0.12, 0.09, 0.09, 0.04), tc(0x1d2a44), sx, 1.58, 0.5);
     wheel(0, 0.6, wr, 0.14); wheel(0, -0.6, wr, 0.14);
     seat = [0, 0.36, -0.15];
   }
@@ -2335,7 +2377,7 @@ function makeVehicle(v, color, driverLook) {
   root.userData.wheels = wheels; root.userData.tilt = tilt; root.userData.type = v.type;
   return root;
 }
-let chosenVehicle = (() => { const id = store.get('klotzwelt-fahrzeug', 'bike'); return VEHICLES.find(v => v.id === id && !v.admin) || VEHICLES[2]; })();
+let chosenVehicle = (() => { const id = store.get('klotzwelt-fahrzeug', 'kart'); return VEHICLES.find(v => v.id === id && !v.admin) || VEHICLES[0]; })();
 function seatPose(a) {
   const u = a.userData;
   u.legL.rotation.x = u.legR.rotation.x = -1.5;
@@ -2451,9 +2493,8 @@ function updateRace(dt) {
   const canW = V.type === 'bike' || V.type === 'scooter';
   if (canW && ctrl && (keys.KeyE || keys.TouchWheelie) && c.speed > 10 && !c.drifting) {
     c.wheelie = Math.min(1, c.wheelie + dt * 2.5); c.wTime += dt;
-    if (c.wTime > 5) { c.speed *= 0.3; c.wheelie = 0; c.wTime = 0; toast('Umgekippt!'); beep('bonk'); }
   } else {
-    if (c.wTime > 1.2) { toast('Wheelie ' + c.wTime.toFixed(1) + ' s!'); if (c.wTime > 2.5) earn(2); }
+    if (c.wTime > 1.5) { feed('Wheelie ' + c.wTime.toFixed(1) + ' s'); if (c.wTime > 3) earn(2); }
     c.wheelie = Math.max(0, c.wheelie - dt * 3); c.wTime = 0;
   }
   if (c.wheelie > 0.6) max += 4;
@@ -2547,9 +2588,158 @@ function finishRace() {
   const place = racePlace(), reward = [30, 20, 10, 5][place - 1] || 5;
   earn(reward);
   mode = 'win'; beep('win'); confetti(R.car.pos.clone().add(new V3(0, 2, 0)));
-  const bk = 'klotzwelt-bestzeit-' + lastGame + (lastGame === 'moto' ? '-' + R.car.veh.id : ''), best = store.get(bk, null), newBest = !best || R.time < best;
+  const bk = 'klotzwelt-bestzeit-race-' + R.car.veh.id, best = store.get(bk, null), newBest = !best || R.time < best;
   if (newBest) store.set(bk, R.time);
   showResult(place === 1 ? 'Platz 1!' : 'Platz ' + place, [['Platz', place + ' von ' + (R.bots.length + 1)], ['Zeit', fmt(R.time)], ['Münzen eingesammelt', game.coins], ['Verdient', '<i class="coin"></i> ' + game.earned], ['Bestzeit', newBest ? fmt(R.time) + ' (neu!)' : fmt(best)]]);
+}
+
+// ======================================================================
+// Skatepark
+// ======================================================================
+let skate = null;
+const RAMPS = [
+  { t: 'kick', x: 0, z: 22, a: Math.PI, w: 4, l: 4, h: 1.4, c: 0xff8a2b },
+  { t: 'kick', x: 22, z: 28, a: Math.PI, w: 5, l: 7, h: 3, c: 0xe2453c },
+  { t: 'kick', x: -18, z: -12, a: 0, w: 4, l: 4.5, h: 1.8, c: 0x3fb55e },
+  { t: 'kick', x: 20, z: -8, a: Math.PI, w: 4, l: 4, h: 1.5, c: 0xffd23f },
+  { t: 'box', x: -24, z: 22, a: Math.PI, w: 6, l: 10, h: 1.1, c: 0x8b5cd6 },
+  { t: 'qp', x: 0, z: -38, a: Math.PI, w: 34, r: 4.5, d: 2.5, c: 0x3b7de0 },
+  { t: 'qp', x: 0, z: 46, a: 0, w: 34, r: 4.5, d: 2.5, c: 0x3b7de0 },
+  { t: 'qp', x: -44, z: 4, a: -Math.PI / 2, w: 30, r: 4, d: 2.5, c: 0x6fd0f0 },
+  { t: 'qp', x: 44, z: 4, a: Math.PI / 2, w: 30, r: 4, d: 2.5, c: 0x6fd0f0 }
+];
+function rampH(r, x, z) {
+  const fx = Math.sin(r.a), fz = Math.cos(r.a), dx = x - r.x, dz = z - r.z;
+  const u = dx * fx + dz * fz, v = dx * fz - dz * fx;
+  if (Math.abs(v) > r.w / 2 || u < 0) return 0;
+  if (r.t === 'kick') return u <= r.l ? r.h * u / r.l : 0;
+  if (r.t === 'box') { const k = 2.5; if (u > r.l) return 0; if (u < k) return r.h * u / k; if (u > r.l - k) return r.h * (r.l - u) / k; return r.h; }
+  if (u < r.r) return r.r - Math.sqrt(Math.max(0, r.r * r.r - u * u));
+  return u <= r.r + r.d ? r.r : 0;
+}
+const skH = (x, z) => { let h = 0; for (const r of RAMPS) { const v = rampH(r, x, z); if (v > h) h = v; } return h; };
+function rampMesh(r) {
+  let pts;
+  if (r.t === 'kick') pts = [[0, 0], [r.l, r.h], [r.l, 0]];
+  else if (r.t === 'box') pts = [[0, 0], [2.5, r.h], [r.l - 2.5, r.h], [r.l, 0]];
+  else { pts = []; for (let i = 0; i <= 18; i++) { const u = r.r * i / 18 * 0.995; pts.push([u, r.r - Math.sqrt(r.r * r.r - u * u)]); } pts.push([r.r, r.r], [r.r + r.d, r.r], [r.r + r.d, 0]); }
+  const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: r.w, bevelEnabled: false, curveSegments: 4 });
+  g.translate(0, 0, -r.w / 2); g.rotateY(-Math.PI / 2); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, tc(r.c)); m.position.set(r.x, 0, r.z); m.rotation.y = r.a; m.castShadow = m.receiveShadow = true; world.add(m);
+  if (r.t !== 'kick') { // Metallkante oben
+    const cp = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, r.w, 10), tc(0xc8d0dc)); cp.rotation.z = Math.PI / 2;
+    const at = r.t === 'qp' ? r.r : 2.5, y = r.t === 'qp' ? r.r : r.h;
+    const grp = new THREE.Group(); grp.position.set(r.x, 0, r.z); grp.rotation.y = r.a; cp.position.set(0, y + 0.05, at); grp.add(cp); world.add(grp);
+  }
+}
+function makeBoard() {
+  const g = new THREE.Group(), deck = new THREE.Group(); g.add(deck);
+  olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(0xff6b3d), 0, 0.2, 0);
+  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(0x2a2d34), 0, 0.245, 0);
+  for (const z of [-0.65, 0.65]) for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 10), tc(0xffd23f)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.08, z); deck.add(w); }
+  g.userData.deck = deck;
+  return g;
+}
+function buildSkate() {
+  clearWorld();
+  addClouds(4);
+  addBox(0, -0.5, 0, 112, 1, 112, 0xb8c2cf);
+  // Farbige Bodenstreifen und eine niedrige Mauer rundherum
+  for (const [x, z, w, d, c] of [[0, 8, 3, 30, 0xffd23f], [-14, 4, 10, 2, 0xff6fae], [14, 14, 2, 14, 0x6fd0f0]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), tc(c)); m.position.set(x, 0.011, z); m.receiveShadow = true; world.add(m); }
+  for (const [x, z, w, d] of [[0, -56, 112, 1], [0, 56, 112, 1], [-56, 0, 1, 112], [56, 0, 1, 112]]) olAdd(world, roundedBox(w, 1.2, d, 0.2), tc(0x8a8f99), x, 0.6, z);
+  for (const r of RAMPS) rampMesh(r);
+  // Münzen über den Absprüngen
+  for (const r of RAMPS) {
+    const fx = Math.sin(r.a), fz = Math.cos(r.a);
+    if (r.t === 'kick') addCoin(r.x + fx * (r.l + 3), r.h + 2.4, r.z + fz * (r.l + 3));
+    if (r.t === 'box') addCoin(r.x + fx * r.l / 2, r.h + 2.2, r.z + fz * r.l / 2);
+    if (r.t === 'qp') for (const o of [-8, 8]) addCoin(r.x + fx * (r.r - 0.6) + fz * o, r.r + 2.5, r.z + fz * (r.r - 0.6) - fx * o);
+  }
+  const board = makeBoard(); world.add(board);
+  skate = { h: Math.PI, speed: 0, vy: 0, air: false, vert: false, spin: 0, flips: 0, flipT: 0, airT: 0, score: 0, best: '', bestPts: 0, time: 120, stun: 0, board, trickHeld: false, slope: 0 };
+  P.pos.set(0, 0, 36); P.vel.set(0, 0, 0); P.facing = Math.PI;
+  cam.yaw = 0; cam.pitch = 0.32; cam.dist = 8; camTarget.set(0, 1.4, 36);
+}
+function updateSkate(dt) {
+  const S = skate; if (!S) return;
+  const live = mode === 'skate';
+  if (live) { S.time -= dt; if (S.time <= 0) { S.time = 0; return finishSkate(); } }
+  S.stun = Math.max(0, S.stun - dt);
+  let push = 0, steer = 0;
+  if (live && S.stun <= 0) {
+    push = Math.max(-1, Math.min(1, (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y));
+    steer = Math.max(-1, Math.min(1, (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x));
+  }
+  const trick = live && (keys.ShiftLeft || keys.ShiftRight || keys.KeyK || keys.TouchDrift);
+  const fx = Math.sin(S.h), fz = Math.cos(S.h);
+  if (!S.air) {
+    if (push > 0 && S.speed < 15) S.speed += 9 * push * dt;
+    if (push < 0) S.speed -= Math.sign(S.speed) * Math.min(Math.abs(S.speed), 14 * -push * dt);
+    S.speed -= S.speed * 0.12 * dt;
+    S.h -= steer * 2.3 * dt;
+    const x = P.pos.x, z = P.pos.z;
+    const gx = (skH(x + 0.05, z) - skH(x - 0.05, z)) / 0.1, gz = (skH(x, z + 0.05) - skH(x, z - 0.05)) / 0.1;
+    const slope = gx * fx + gz * fz; S.slope = slope;
+    S.speed -= 24 * slope / Math.sqrt(1 + slope * slope) * dt; // bergauf langsamer, bergab schneller
+    const nx = x + fx * S.speed * dt, nz = z + fz * S.speed * dt, nH = skH(nx, nz);
+    if (jumpPressed && live && S.stun <= 0) { jumpPressed = false; S.air = true; S.vy = 8.5 + Math.max(0, slope) * Math.abs(S.speed) * 0.3; S.airT = 0; beep('jump'); }
+    else if (nH > P.pos.y + 0.6) {
+      if (Math.abs(slope) > 1.6) { S.air = true; S.vert = true; S.vy = Math.abs(S.speed) * 0.95; S.airT = 0; } // oben aus der Quarterpipe raus
+      else { S.speed *= -0.3; beep('bonk'); } // seitlich gegen eine Rampe
+    } else if (nH < P.pos.y - 0.25) { S.air = true; S.vy = Math.max(0, slope * S.speed); S.airT = 0; P.pos.x = nx; P.pos.z = nz; } // über die Kante gesprungen
+    else P.pos.set(nx, nH, nz);
+    jumpPressed = false;
+  } else {
+    S.airT += dt; S.vy -= 26 * dt;
+    if (!S.vert) { P.pos.x += fx * S.speed * dt; P.pos.z += fz * S.speed * dt; }
+    P.pos.y += S.vy * dt;
+    if (Math.abs(steer) > 0.3) S.spin -= steer * 6.5 * dt;
+    if (trick && !S.trickHeld && S.flipT <= 0) { S.flipT = 0.45; S.flips++; }
+    S.flipT = Math.max(0, S.flipT - dt);
+    const g = skH(P.pos.x, P.pos.z);
+    if (P.pos.y <= g && S.vy < 0) {
+      // Landung
+      const k = Math.round(S.spin / Math.PI), off = Math.abs(S.spin - k * Math.PI);
+      const ok = off < 0.7 && S.flipT <= 0.08;
+      P.pos.y = g;
+      if (ok) {
+        if (k % 2) { S.h += Math.PI; S.speed = -S.speed; }
+        if (S.vert) { S.h += Math.PI; S.speed = Math.abs(S.vy) * 0.85; }
+        const deg = Math.abs(k) * 180, pts = Math.round(S.airT * 120) + deg * 2 + S.flips * 250;
+        const name = (S.flips ? (S.flips > 1 ? S.flips + 'x Kickflip' : 'Kickflip') : (deg ? '' : (S.airT > 0.5 ? 'Ollie' : ''))) + (deg ? ' ' + deg : '');
+        if (pts > 60 && name.trim()) { S.score += pts; feed(name.trim() + '  +' + pts); beep(pts > 400 ? 'check' : 'coin'); if (pts > S.bestPts) { S.bestPts = pts; S.best = name.trim(); } const c = Math.floor(pts / 200); if (c) earn(c); }
+      } else { S.stun = 1.2; S.speed = 0; oof(); feed('Hingefallen!'); if (S.vert) S.h += Math.PI; }
+      S.air = false; S.vert = false; S.spin = 0; S.flips = 0; S.flipT = 0; S.airT = 0; S.vy = 0;
+    }
+  }
+  S.trickHeld = trick;
+  if (Math.abs(P.pos.x) > 54.5 || Math.abs(P.pos.z) > 54.5) { P.pos.x = Math.max(-54.5, Math.min(54.5, P.pos.x)); P.pos.z = Math.max(-54.5, Math.min(54.5, P.pos.z)); S.speed *= -0.4; }
+  for (const co of coins) {
+    if (co.taken) continue;
+    co.mesh.rotation.z += dt * 3;
+    if (live && co.mesh.position.distanceTo(tmpV.set(P.pos.x, P.pos.y + 1, P.pos.z)) < 1.6) { co.taken = true; co.mesh.visible = false; game.coins++; earn(5); beep('coin'); }
+  }
+  // Brett und Figur (seitlich auf dem Brett)
+  const yaw = S.h + (S.air ? S.spin : 0), b = S.board;
+  b.position.set(P.pos.x, P.pos.y, P.pos.z); b.rotation.set(0, yaw, 0);
+  b.userData.deck.rotation.set(S.air ? 0 : -Math.atan(S.slope || 0), 0, S.flipT > 0 ? (1 - S.flipT / 0.45) * Math.PI * 2 : 0);
+  avatar.position.set(P.pos.x, P.pos.y + 0.26 + (S.flipT > 0 ? 0.25 : 0), P.pos.z); avatar.rotation.y = yaw + Math.PI / 2;
+  const u = avatar.userData;
+  u.legL.rotation.set(0, 0, 0.22); u.legR.rotation.set(0, 0, -0.22);
+  u.armL.rotation.set(0, 0, -1.0); u.armR.rotation.set(0, 0, 1.0);
+  if (S.stun > 0) avatar.rotation.z = Math.sin(tAll * 20) * 0.1; else avatar.rotation.z = 0;
+  P.facing = yaw; P.vel.set(fx * S.speed, S.vy, fz * S.speed); P.onGround = !S.air;
+  let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  if (!drags.size && !S.vert) cam.yaw += dy * Math.min(1, 3 * dt);
+  camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.4, P.pos.z), 1 - Math.exp(-dt * 10));
+}
+function finishSkate() {
+  const S = skate;
+  mode = 'win'; beep('win'); confetti(P.pos.clone().add(new V3(0, 2, 0)));
+  const best = store.get('klotzwelt-rekord-skate', 0), rec = S.score > best;
+  if (rec) store.set('klotzwelt-rekord-skate', S.score);
+  showResult('Zeit um!', [['Punkte', S.score], ['Bester Trick', S.best || '–'], ['Münzen eingesammelt', game.coins], ['Verdient', '<i class="coin"></i> ' + game.earned], ['Rekord', rec ? S.score + ' (neu!)' : best]]);
 }
 
 // ======================================================================
@@ -2711,7 +2901,7 @@ function showResult(title, rows) {
 
 // ---------- Spiele-Tab: Sperren und Postfach ----------
 function renderGames() {
-  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playMoto', 'moto', 'Fahren'], ['playHorror', 'horror', 'Spielen']]) {
+  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playSkate', 'skate', 'Skaten'], ['playHorror', 'horror', 'Spielen']]) {
     const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name);
     btn.disabled = banned; btn.textContent = banned ? 'Gesperrt' : label;
     let note = card.querySelector('.lock');
@@ -2993,6 +3183,8 @@ function renderStats() {
   const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
+  } else if (mode === 'skate' && skate) {
+    $('stats').innerHTML = adm + `<span class="pill">Punkte <b>${skate.score}</b></span><span class="pill">Zeit <b>${Math.ceil(skate.time)} s</b></span><span class="pill"><i class="coin"></i> <b>${profile.coins}</b></span>`;
   } else if (isRace(mode) && race) {
     $('stats').innerHTML = adm + `<span class="pill">Runde <b>${Math.min(LAPS, race.car.lap + 1)}/${LAPS}</b></span><span class="pill">Platz <b>${racePlace()}/${race.bots.length + 1}</b></span><span class="pill">Zeit <b>${fmt(race.time)}</b></span><span class="pill"><b>${Math.round(Math.abs(race.car.speed) * 4)}</b> km/h</span>`;
   } else if (mode === 'horror' && horror) {
@@ -3040,6 +3232,7 @@ function setTool(t) {
 // ---------- Modi ----------
 function showBest() { const b = store.get('klotzwelt-bestzeit', null); $('best').textContent = b ? 'Bestzeit: ' + fmt(b) : ''; }
 function showMenu() {
+  if (lastGame === 'skate' || isRace(lastGame)) { avatar.rotation.z = 0; rebuildAvatar(); }
   paused = false; $('pausePanel').hidden = true; setShiftLock(false);
   mode = 'menu';
   document.body.className = 'menu';
@@ -3069,13 +3262,19 @@ function enterPlay(m) {
     $('hint').textContent = isTouch ? 'Links tippen: Joystick · Sprung-Taste · rechts ziehen: Kamera · zwei Finger oder +/−: Zoom' : 'WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera · Mausrad: Zoom bis zur eigenen Sicht · Esc zurück';
     toast('Los geht’s!');
   } else if (isRace(m)) {
-    const veh = m === 'race' ? VEHICLES[0] : chosenVehicle;
+    const veh = chosenVehicle.admin && !isAdmin() ? VEHICLES[0] : chosenVehicle;
     buildRace(m, veh);
     $('wheelieBtn').hidden = !isTouch || !(veh.type === 'bike' || veh.type === 'scooter');
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
-    $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch;
+    $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Drift';
     $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
+  } else if (m === 'skate') {
+    buildSkate();
+    Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
+    $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Trick';
+    $('hint').textContent = isTouch ? 'Joystick: anschieben und lenken · Ollie zum Springen · in der Luft lenken = drehen, Trick-Knopf = Kickflip' : 'W anschieben · S bremsen · A/D lenken · Leertaste: Ollie · in der Luft A/D drehen, Shift: Kickflip · Esc: Pause';
+    toast('Los, skaten!');
   } else if (m === 'horror') {
     buildHorror();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
@@ -3096,7 +3295,6 @@ function enterPlay(m) {
 }
 $('playObby').onclick = () => enterPlay('obby');
 $('playBuild').onclick = () => enterPlay('build');
-$('playRace').onclick = () => enterPlay('race');
 function openVehPicker() {
   const list = $('vehList'); list.innerHTML = '';
   for (const v of VEHICLES) {
@@ -3109,9 +3307,10 @@ function openVehPicker() {
   }
   $('vehPanel').hidden = false;
 }
-$('playMoto').onclick = () => { if (isBanned('moto', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[2]; openVehPicker(); };
+$('playRace').onclick = () => { if (isBanned('race', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[0]; openVehPicker(); };
+$('playSkate').onclick = () => enterPlay('skate');
 $('vehCancel').onclick = () => { $('vehPanel').hidden = true; };
-$('vehGo').onclick = () => { $('vehPanel').hidden = true; enterPlay('moto'); };
+$('vehGo').onclick = () => { $('vehPanel').hidden = true; enterPlay('race'); };
 $('wheelieBtn').addEventListener('pointerdown', e => { e.preventDefault(); keys.TouchWheelie = true; $('wheelieBtn').setPointerCapture(e.pointerId); });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('wheelieBtn').addEventListener(ev, () => { keys.TouchWheelie = false; });
 $('playHorror').onclick = () => enterPlay('horror');
@@ -3290,6 +3489,8 @@ function frame(now) {
     for (const c of world.children) if (c.userData.cloud) c.position.x += dt * 0.6;
   } else if (isRace(playingGame())) {
     updateRace(dt);
+  } else if (playingGame() === 'skate') {
+    updateSkate(dt);
   } else {
     updatePlayer(dt);
     if (playingGame() === 'horror') updateHorror(dt);
@@ -3301,7 +3502,7 @@ function frame(now) {
   updateDebris(dt);
   updatePeers(dt);
   netSendState();
-  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && dead <= 0) P.facing = cam.yaw + Math.PI;
+  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && playingGame() !== 'skate' && dead <= 0) P.facing = cam.yaw + Math.PI;
   if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson() && !isRace(playingGame());
   if (race && race.car.mesh.userData.driver) race.car.mesh.userData.driver.visible = !firstPerson();
   placeCamera();
@@ -3330,7 +3531,7 @@ function applyDevice() {
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || isRace(playingGame());
-    $('driftBtn').hidden = !isTouch || !isRace(playingGame());
+    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || playingGame() === 'skate');
     renderAdminBar();
   }
 }
@@ -3355,7 +3556,8 @@ function applySettings() {
   st.style.width = st.style.height = px(settings.stick);
   const k = settings.stick ? Math.round(settings.stick * 0.4) : null;
   knob.style.width = knob.style.height = px(k); knob.style.margin = k ? (-k / 2) + 'px' : '';
-  for (const b of [$('jumpBtn'), $('driftBtn')]) { b.style.width = b.style.height = px(settings.jump); b.style.right = px(settings.jumpX); b.style.bottom = px(settings.jumpY); }
+  for (const b of [$('jumpBtn'), $('driftBtn')]) { b.style.width = b.style.height = px(settings.jump); b.style.right = px(settings.jumpX); b.style.bottom = px(settings.jumpY); b.style.left = b.style.top = ''; }
+  if (!st.classList.contains('held')) stickHome();
   const custom = settings.jump != null || settings.jumpX != null || settings.jumpY != null;
   const J = settings.jump ?? d.jump, JX = settings.jumpX ?? d.jumpX, JY = settings.jumpY ?? d.jumpY;
   $('downBtn').style.right = custom ? (JX + J + 14) + 'px' : ''; $('downBtn').style.bottom = custom ? JY + 'px' : '';
@@ -3391,7 +3593,43 @@ document.querySelectorAll('#genderSeg button, #genderSeg1 button').forEach(b => 
 document.querySelectorAll('#devSeg button').forEach(b => b.onclick = () => { device = b.dataset.d; store.set('klotzwelt-geraet', device); applyDevice(); syncSettingsUI(); });
 document.querySelectorAll('#stickModeSeg button').forEach(b => b.onclick = () => { settings.stickMode = b.dataset.sm; applySettings(); syncSettingsUI(); });
 document.querySelectorAll('#soundSeg button').forEach(b => b.onclick = () => { soundOn = b.dataset.snd === '1'; store.set('klotzwelt-ton', soundOn); soundLabel(); if (!soundOn) stopDrone(); else if (mode === 'horror') startDrone(); syncSettingsUI(); });
-$('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
+$('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = settings.stickX = settings.stickY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
+// Knöpfe mit dem Finger verschieben
+let editingLayout = false, layoutFromMenu = false;
+function startLayoutEdit() {
+  $('settingsPanel').hidden = true; $('pausePanel').hidden = true;
+  editingLayout = true; layoutFromMenu = mode === 'menu';
+  document.body.classList.add('editing');
+  $('hud').hidden = false; $('stick').hidden = false; $('jumpBtn').hidden = false; $('stickZone').hidden = true;
+  $('layoutBar').hidden = false;
+}
+function endLayoutEdit() {
+  editingLayout = false; document.body.classList.remove('editing'); $('layoutBar').hidden = true;
+  if (layoutFromMenu && mode === 'menu') $('hud').hidden = true;
+  else { $('stick').hidden = $('stickZone').hidden = !isTouch; $('jumpBtn').hidden = !isTouch || isRace(playingGame()); }
+  if (paused) $('pausePanel').hidden = false;
+  syncSettingsUI();
+}
+function dragEl(el, onDrop) {
+  el.addEventListener('pointerdown', e => {
+    if (!editingLayout) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const r = el.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
+    el.setPointerCapture(e.pointerId);
+    const move = ev => {
+      el.style.left = Math.max(0, Math.min(innerWidth - r.width, ev.clientX - ox)) + 'px';
+      el.style.top = Math.max(0, Math.min(innerHeight - r.height, ev.clientY - oy)) + 'px';
+      el.style.right = el.style.bottom = 'auto';
+    };
+    const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); onDrop(el.getBoundingClientRect()); applySettings(); };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  });
+}
+dragEl($('stick'), b => { settings.stickMode = 'fixed'; settings.stickX = Math.round(b.left); settings.stickY = Math.round(innerHeight - b.bottom); });
+dragEl($('jumpBtn'), b => { settings.jumpX = Math.round(innerWidth - b.right); settings.jumpY = Math.round(innerHeight - b.bottom); });
+$('setLayout').onclick = startLayoutEdit;
+$('layDone').onclick = endLayoutEdit;
+$('layReset').onclick = () => { settings.stickX = settings.stickY = settings.jumpX = settings.jumpY = null; settings.stickMode = 'float'; applySettings(); };
 $('setClose').onclick = () => { $('settingsPanel').hidden = true; };
 
 // Vollbild
@@ -3442,8 +3680,8 @@ function previewShot(setup, pos, look) {
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
 setPreview('prevObby', previewShot(() => { buildObby(); P.pos.set(-2, 0, -10); P.facing = Math.PI * 0.8; }, [9, 9, 0], [0, 3, -28]));
-setPreview('prevMoto', previewShot(() => { buildRace('moto', VEHICLES[4]); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x + t.x * 7 + t.z * 4, 3.5, c.pos.z + t.z * 7 - t.x * 4]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
-setPreview('prevRace', previewShot(() => { buildRace(); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
+setPreview('prevSkate', previewShot(() => { buildSkate(); P.pos.set(22, 3, 21); skate.air = true; skate.vy = 0; skate.h = Math.PI; updateSkate(0); }, [36, 9, 32], [16, 2, 12]));
+setPreview('prevRace', previewShot(() => { buildRace('race', VEHICLES[4]); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevHorror', previewShot(() => { buildHorror(); updateHorror(0); }, [-8, 20, -4], [-14, 0, -18]));
 setPreview('prevBuild', previewShot(() => { buildSandbox(); P.pos.set(2.5, 0, 6.5); P.facing = Math.PI * 1.1; }, [11, 8, 15], [1, 1.5, -1]));
 showMenu();
