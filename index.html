@@ -1863,6 +1863,7 @@ function hammerAction(cx, cy) {
   }
   if (!hit) { if (cx === undefined) toast('Niemand in der Nähe'); return; }
   if (hit.g.position.distanceTo(P.pos) > 30) { toast('Zu weit weg!'); return; }
+  if (hit.kind === 'peer' && hit.ref.look && hit.ref.look.role) { toast(hit.ref.look.role === 'creator' ? 'Den Erfinder kann man nicht bannen!' : 'Admins kann man nicht bannen!'); return; }
   explode(hit.kind === 'bot' ? botLook(hit.name) : peerLook(hit.ref), hit.g.position.clone(), hit.ref.facing || 0, hit.g.userData, new V3());
   if (hit.kind === 'bot') { world.remove(hit.g); bots.splice(bots.indexOf(hit.ref), 1); banFrom(game, hit.name); }
   else { hit.g.visible = false; hit.ref.target = null; netSend({ t: 'ban', name: hit.name, game }); }
