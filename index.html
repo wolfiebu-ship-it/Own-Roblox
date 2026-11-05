@@ -2379,7 +2379,7 @@ function makeVehicle(v, color, driverLook) {
   const tilt = new THREE.Group(); tilt.position.set(0, wr, rearZ); root.add(tilt);
   const body = new THREE.Group(); body.position.set(0, -wr, -rearZ); tilt.add(body);
   const wheel = (x, z, r, w) => { const wg = new THREE.Group(); wg.position.set(x, r, z); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 18), tc(0x1d2a44)); m.rotation.z = Math.PI / 2; m.castShadow = true; wg.add(m); const hub = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, r * 1.1, 0.12), tc(0xc8d0dc)); wg.add(hub); body.add(wg); wheels.push(wg); };
-  let seat;
+  let seat, grips = null;
   if (v.type === 'car') {
     // Seitenprofil mit Radkästen, in die Breite gezogen und abgerundet: flacher Roadster
     const sh = new THREE.Shape();
@@ -2414,20 +2414,33 @@ function makeVehicle(v, color, driverLook) {
     olAdd(body, roundedBox(0.36, 0.45, 1.8, 0.15), tc(color), 0, 0.78, 0);
     olAdd(body, roundedBox(0.55, 0.38, 0.75, 0.16), tc(color), 0, 1.05, 0.3);
     olAdd(body, roundedBox(0.42, 0.14, 0.8, 0.06), tc(0x2a2d34), 0, 1.06, -0.4);
-    olAdd(body, roundedBox(0.12, 0.85, 0.12, 0.04), tc(0xc8d0dc), 0, 0.85, 0.82).rotation.x = -0.35;
-    olAdd(body, roundedBox(0.95, 0.08, 0.08, 0.03), tc(0x2a2d34), 0, 1.3, 0.7);
-    olAdd(body, roundedBox(0.3, 0.2, 0.08, 0.05), toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.8 }), 0, 1.1, 1.0);
+    // Gabel vom Vorderrad schräg nach hinten hoch zum Lenker, der Lenker liegt in Armreichweite
+    for (const sx of [-0.13, 0.13]) olAdd(body, roundedBox(0.08, 1.24, 0.08, 0.03), tc(0xc8d0dc), sx, 0.975, 0.525).rotation.x = -0.555;
+    olAdd(body, roundedBox(0.9, 0.07, 0.07, 0.03), tc(0x2a2d34), 0, 1.5, 0.2);
+    for (const sx of [-0.4, 0.4]) olAdd(body, roundedBox(0.16, 0.1, 0.1, 0.04), tc(0x1d2a44), sx, 1.5, 0.2);
+    olAdd(body, roundedBox(0.3, 0.2, 0.08, 0.05), toon('lamp', { color: 0xfff1a8, emissive: 0xffe066, emissiveIntensity: 0.8 }), 0, 1.25, 0.62);
     wheel(0, 0.85, wr, 0.22); wheel(0, -0.85, wr, 0.24);
-    seat = [0, 0.42, -0.4];
+    seat = [0, 0.42, -0.4]; grips = [[-0.4, 1.5, 0.2], [0.4, 1.5, 0.2]];
   } else {
     olAdd(body, roundedBox(0.42, 0.1, 1.3, 0.04), tc(color), 0, 0.3, 0);
     olAdd(body, roundedBox(0.08, 1.32, 0.08, 0.03), tc(0xc8d0dc), 0, 0.95, 0.56).rotation.x = -0.08;
     olAdd(body, roundedBox(0.8, 0.07, 0.07, 0.03), tc(0x2a2d34), 0, 1.58, 0.5);
     for (const sx of [-0.36, 0.36]) olAdd(body, roundedBox(0.12, 0.09, 0.09, 0.04), tc(0x1d2a44), sx, 1.58, 0.5);
     wheel(0, 0.6, wr, 0.14); wheel(0, -0.6, wr, 0.14);
-    seat = [0, 0.36, -0.15];
+    seat = [0, 0.36, -0.15]; grips = [[-0.36, 1.58, 0.5], [0.36, 1.58, 0.5]];
   }
-  if (driverLook) { const d = makeAvatar(driverLook); d.position.set(...seat); riderPose(d, v.type); body.add(d); root.userData.driver = d; }
+  if (driverLook) {
+    const d = makeAvatar(driverLook); d.position.set(...seat); riderPose(d, v.type); body.add(d); root.userData.driver = d;
+    if (grips) {
+      // Arme genau auf die Lenkergriffe richten, egal wie groß die Figur ist
+      root.updateMatrixWorld(true);
+      [d.userData.armL, d.userData.armR].forEach((arm, i) => {
+        arm.rotation.set(0, 0, 0);
+        const t = body.localToWorld(new V3(...grips[i])); arm.parent.worldToLocal(t);
+        arm.quaternion.setFromUnitVectors(new V3(0, -1, 0), t.sub(arm.position).normalize());
+      });
+    }
+  }
   root.userData.wheels = wheels; root.userData.tilt = tilt; root.userData.type = v.type;
   return root;
 }
