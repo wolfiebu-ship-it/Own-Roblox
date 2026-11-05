@@ -122,7 +122,8 @@ input { -webkit-user-select: text; user-select: text; }
 #pausePanel { z-index: 24; }
 #pausePanel .btn { width: 100%; padding: 12px; font-size: 17px; }
 #settingsPanel { z-index: 26; width: min(440px, calc(100% - 32px)); }
-#crosshair { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); pointer-events: none; z-index: 4; }
+#crosshair.hit { background: var(--accent); transform: scale(1.8); }
+#crosshair { transition: transform .08s; position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); pointer-events: none; z-index: 4; }
 #topright .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .seg3 button { border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 6px; font-weight: 800; }
@@ -633,6 +634,9 @@ function beep(kind) {
       place: [[180, 'square', 0.04]],
       remove: [[120, 'square', 0.05]],
       bonk: [[180, 'square', 0.05], [90, 'square', 0.12]],
+      land: [[150, 'sawtooth', 0.04], [70, 'square', 0.09]],
+      whoosh: [[300, 'triangle', 0.03], [220, 'triangle', 0.04]],
+      pew: [[900, 'square', 0.03], [450, 'square', 0.04]],
       buy: [[660, 'triangle', 0.08], [880, 'triangle', 0.08], [1320, 'triangle', 0.2]],
       equip: [[520, 'triangle', 0.06]],
       win: [[523, 'triangle', 0.1], [659, 'triangle', 0.1], [784, 'triangle', 0.1], [1046, 'triangle', 0.3]]
@@ -1984,7 +1988,7 @@ let shiftLock = false;
 function setShiftLock(on) {
   shiftLock = !!on && mode !== 'menu' && !isRace(mode) && mode !== 'skate';
   $('slBtn').setAttribute('aria-pressed', String(shiftLock));
-  $('crosshair').hidden = !shiftLock || isTouch;
+  $('crosshair').hidden = !shiftLock || (isTouch && mode !== 'blaster');
   try {
     if (shiftLock && !isTouch && document.pointerLockElement !== cv && cv.requestPointerLock) { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); }
     if (!shiftLock && document.pointerLockElement) document.exitPointerLock();
@@ -2220,10 +2224,13 @@ function renderAdminTab() {
     </ul>
     ${msg}
     <div class="label">Admin hinzufügen</div>
-    <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Hinzufügen</button></form>
+    <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Admin hinzufügen</button></form>
+    ${creator ? `<div class="label">Admin löschen</div>
+    <form id="fDelAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="dName" class="field" placeholder="Benutzername" aria-label="Benutzername des Admins, der gelöscht wird" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Löschen</button></form>
+    <p class="small">Die Person ist danach wieder ein normaler Spieler. Du kannst sie jederzeit wieder als Admin hinzufügen.</p>` : ''}
     <div class="label">Admins</div>
-    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Entfernen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
-    ${creator ? '' : '<p class="small">Admins entfernen kann nur der Erfinder.</p>'}
+    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && a.role === 'admin' ? `<button class="btn" data-remove="${esc(a.name)}">Löschen</button>` : `<span class="small">${a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
+    ${creator ? '' : '<p class="small">Admins löschen kann nur der Erfinder.</p>'}
     <div class="label">Spieler aus einem Spiel bannen</div>
     <form id="fBan" class="sect">
       <input id="bName" class="field" placeholder="Benutzername" autocomplete="off" aria-label="Benutzername">
@@ -2237,7 +2244,8 @@ function renderAdminTab() {
       return `<div class="label">Gebannt aus ${gname}</div>` + (sv.length + bt.length ? `<ul class="adminList">${sv.join('')}${bt.join('')}</ul>` : '<p class="small">Niemand gebannt.</p>');
     }).join('')}`;
   el.innerHTML = h;
-  $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) netSend({ t: 'adminAdd', name: n }); };
+  $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n }); $('nName').value = ''; } };
+  if ($('fDelAdm')) $('fDelAdm').onsubmit = e => { e.preventDefault(); const n = $('dName').value.trim(); if (n) { netSend({ t: 'adminRemove', name: n }); $('dName').value = ''; } };
   $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
   el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => netSend({ t: 'adminRemove', name: b.dataset.remove }));
   el.querySelectorAll('[data-sunban]').forEach(b => b.onclick = () => { const [g, n] = b.dataset.sunban.split('|'); netSend({ t: 'unban', name: n, game: g }); });
@@ -2848,12 +2856,13 @@ const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
 // ======================================================================
 let fight = null, fightPunchReq = false;
 const RING = 6.2, RING_Y = 1.2;
+const JAB_T = 0.26, UPPER_T = 0.42;
 function makeFoe(round) {
   const names = BOT_NAMES.filter(n => !isBanned('fight', n));
   const name = names[(round - 1) % names.length] || 'Boxi', look = botLook(name);
   look.wear.hat = ['h-box-red', 'h-box-blue', 'h-box-black'][round % 3];
   const g = makeAvatar(look); addGloves(g, 0x3b7de0); world.add(g);
-  return { name, look, g, pos: new V3(0, RING_Y, -3.5), facing: 0, hp: 100, cool: 1, punchT: 0, arm: 0, block: 0, stun: 0, strafe: 1, power: 1 + (round - 1) * 0.15 };
+  return { name, look, g, pos: new V3(0, RING_Y, -3), facing: 0, hp: 100, state: 'move', t: 0, think: 1.2, arm: 1, hit: false, strafe: 1, walk: 0, recoil: 0, power: 1 + (round - 1) * 0.2 };
 }
 function buildFight() {
   clearWorld();
@@ -2862,7 +2871,7 @@ function buildFight() {
   plat(0, RING_Y, 0, RING * 2 + 1, RING * 2 + 1, 0x3b7de0, RING_Y);
   const mat2 = new THREE.Mesh(new THREE.BoxGeometry(RING * 2 - 0.4, 0.02, RING * 2 - 0.4), tc(0xf4f4f0)); mat2.position.y = RING_Y + 0.011; mat2.receiveShadow = true; world.add(mat2);
   for (const [x, z, c] of [[-1, -1, 0xe2453c], [1, 1, 0x3b7de0], [-1, 1, 0xf4f4f0], [1, -1, 0xf4f4f0]]) olAdd(world, gd(new THREE.CylinderGeometry(0.18, 0.18, 2.2, 12), 0.36, 2.2, 0.36), tc(c), x * (RING + 0.2), RING_Y + 1.1, z * (RING + 0.2));
-  for (const h of [0.6, 1.1, 1.6]) for (const [x, z, w, d] of [[0, -1, 1, 0], [0, 1, 1, 0], [-1, 0, 0, 1], [1, 0, 0, 1]]) {
+  for (const h of [0.6, 1.1, 1.6]) for (const [x, z, w] of [[0, -1, 1], [0, 1, 1], [-1, 0, 0], [1, 0, 0]]) {
     const len = RING * 2 + 0.4, r = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, len, 8), tc(0xe2453c));
     if (w) { r.rotation.z = Math.PI / 2; r.position.set(0, RING_Y + h, z * (RING + 0.2)); } else { r.rotation.x = Math.PI / 2; r.position.set(x * (RING + 0.2), RING_Y + h, 0); }
     world.add(r);
@@ -2877,15 +2886,14 @@ function buildFight() {
       for (let j = 0; j < 14; j++) { if (fr() < 0.3) continue; const fan = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.5), tc([0xff6b3d, 0x6fd0f0, 0xff6fae, 0xf4f4f0, 0xffd23f][Math.floor(fr() * 5)])); fan.position.set(-12 + j * 1.8, 0.6 * (row + 1) + 0.45, -12 - row * 2); grp.add(fan); } }
   }
   addGloves(avatar, 0xe2453c);
-  setSpawn(0, RING_Y, 3.5);
-  fight = { foe: makeFoe(1), round: 1, wins: 0, losses: 0, php: 100, cool: 0, punchT: 0, arm: 0, between: 0, prevPunch: false };
+  setSpawn(0, RING_Y, 3);
+  fight = { foe: makeFoe(1), round: 1, wins: 0, losses: 0, php: 100, pT: -1, pArm: 1, pDur: JAB_T, upper: false, pHit: false, combo: 0, comboT: 9, recoil: 0, dodge: 0, dodgeCool: 0, between: 0, prevPunch: false, sinceHurt: 9 };
 }
-function fightRespawnHook() { if (fight && fight.php <= 0) fight.php = 100; }
 function startNextRound() {
   const F = fight;
   if (F.foe.g.parent) world.remove(F.foe.g);
-  F.round++; F.foe = makeFoe(F.round); F.php = 100; F.between = 0;
-  P.pos.set(0, RING_Y, 3.5); P.vel.set(0, 0, 0);
+  F.round++; F.foe = makeFoe(F.round); F.php = 100; F.between = 0; F.pT = -1; F.combo = 0;
+  P.pos.set(0, RING_Y, 3); P.vel.set(0, 0, 0); P.facing = Math.PI; cam.yaw = 0;
   toast('Runde ' + F.round); beep('check');
 }
 function endFight(won) {
@@ -2893,72 +2901,138 @@ function endFight(won) {
   if (won) { earn(40); confetti(P.pos.clone().add(new V3(0, 2, 0))); }
   showResult(won ? 'Champion!' : 'Verloren', [['Siege', fight.wins], ['Niederlagen', fight.losses], ['Verdient', '<i class="coin"></i> ' + game.earned]]);
 }
+// Box-Haltung: Deckung, Block, Schlag (gerade oder Aufwärtshaken), Ausholen, Zurückweichen
+function boxPose(g, facing, st) {
+  const u = g.userData;
+  let twist = 0;
+  for (const [arm, side] of [[u.armL, -1], [u.armR, 1]]) {
+    let rx = -1.35, rz = -side * 0.38, pz = 0;
+    if (st.block) { rx = -2.45; rz = -side * 0.55; }
+    if (st.wind === side) { rx = -0.85; rz = -side * 0.2; pz = -0.18; twist += side * 0.18; }
+    if (st.arm === side && st.p >= 0 && st.p <= 1) {
+      const e = Math.sin(st.p * Math.PI);
+      if (st.upper) { rx = -1.0 - 1.7 * e; rz = -side * 0.3; pz = 0.25 * e; }
+      else { rx = -1.35 - 0.25 * e; rz = -side * (0.38 - 0.32 * e); pz = 0.5 * e; }
+      twist -= side * 0.3 * e;
+    }
+    arm.rotation.set(rx, 0, rz); arm.position.z = pz;
+  }
+  g.rotation.set(-0.35 * st.recoil, facing + twist, 0);
+}
+function playerPunch(F, foe) {
+  const dist = Math.hypot(foe.pos.x - P.pos.x, foe.pos.z - P.pos.z);
+  if (dist > 2.2 || angDiff(angTo(P.pos, foe.pos), P.facing) > 0.9) return;
+  const guarded = foe.state === 'block';
+  let dmg = guarded ? 1 : (F.upper ? 16 : 7) + Math.random() * 4;
+  if (hasHelm(foe.look)) dmg *= 0.75;
+  foe.hp = Math.max(0, foe.hp - Math.round(dmg));
+  if (guarded) { beep('bonk'); return; }
+  // Treffer unterbricht den Gegner, auch beim Ausholen (Konter!)
+  const a = angTo(P.pos, foe.pos), kb = F.upper ? 1.4 : 0.25;
+  foe.pos.x += Math.sin(a) * kb; foe.pos.z += Math.cos(a) * kb;
+  foe.state = 'stun'; foe.t = F.upper ? 0.8 : 0.28; foe.recoil = F.upper ? 1.3 : 0.8;
+  hitFx(foe.pos.clone().add(new V3(0, 1.9, 0))); beep('land');
+  if (F.upper) toast('Aufwärtshaken!');
+  if (foe.hp <= 0) { explode(foe.look, foe.pos.clone(), foe.facing, foe.g.userData, new V3(Math.sin(a) * 6, 0, Math.cos(a) * 6)); world.remove(foe.g); oof(); toast('K.O.!'); F.wins++; earn(10); F.between = 2.4; }
+}
 function updateFight(dt) {
   const F = fight; if (!F) return;
   const live = mode === 'fight' && dead <= 0;
   const foe = F.foe, myHelm = hasHelm(currentLook());
-  if (F.between > 0) { F.between -= dt; if (F.between <= 0) { if (F.wins >= 2) return endFight(true); if (F.losses >= 2) return endFight(false); startNextRound(); } }
+  if (F.between > 0) { F.between -= dt; if (F.between <= 0) { if (F.wins >= 2) return endFight(true); if (F.losses >= 2) return endFight(false); startNextRound(); return; } }
   if (dead <= 0 && F.php <= 0) F.php = 100;
-  // immer zum Gegner schauen
-  if (live && foe.hp > 0) { const want = angTo(P.pos, foe.pos); let d = want - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 10); avatar.rotation.y = P.facing; }
-  // Schlagen (Klick, J, Schlag-Knopf) und Blocken (K, Block-Knopf)
-  const punchKey = !!(keys.KeyJ || keys.TouchDrift);
-  const blocking = live && !!(keys.KeyK || keys.TouchWheelie);
-  F.cool = Math.max(0, F.cool - dt); F.punchT = Math.max(0, F.punchT - dt);
-  if (live && (fightPunchReq || (punchKey && !F.prevPunch)) && F.cool <= 0 && !blocking && foe.hp > 0 && F.between <= 0) {
-    F.cool = 0.35; F.punchT = 0.16; F.arm = 1 - F.arm; beep('bonk');
-    const dist = Math.hypot(foe.pos.x - P.pos.x, foe.pos.z - P.pos.z);
-    if (dist < 2.1 && angDiff(angTo(P.pos, foe.pos), P.facing) < 1.0) {
-      const dmg = Math.round((foe.block > 0 ? 2 : 9 + Math.random() * 5) * (hasHelm(foe.look) ? 0.75 : 1));
-      foe.hp = Math.max(0, foe.hp - dmg); foe.stun = 0.25;
-      const a = angTo(P.pos, foe.pos); foe.pos.x += Math.sin(a) * 0.7; foe.pos.z += Math.cos(a) * 0.7;
-      hitFx(foe.pos.clone().add(new V3(0, 1.85, 0)));
-      if (foe.hp <= 0) { explode(foe.look, foe.pos.clone(), foe.facing, foe.g.userData, new V3()); world.remove(foe.g); oof(); toast('K.O.!'); F.wins++; earn(10); F.between = 2.2; }
+  const foeUp = foe.hp > 0 && F.between <= 0;
+  // immer zum Gegner schauen, Kamera hinter dem Spieler
+  if (live && foeUp) {
+    let d = angTo(P.pos, foe.pos) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 12);
+    let cd = (P.facing + Math.PI) - cam.yaw; cd = Math.atan2(Math.sin(cd), Math.cos(cd)); cam.yaw += cd * Math.min(1, dt * (drags.size ? 0.8 : 4));
+  }
+  const blocking = live && !!(keys.KeyK || keys.TouchWheelie) && F.pT < 0;
+  // Ausweichen mit Sprung-Taste: schneller Schritt, kurz unverwundbar
+  if (F.dodge > 0 && live) { moveAxis('x', F.dvx * Math.min(dt, F.dodge)); moveAxis('z', F.dvz * Math.min(dt, F.dodge)); }
+  F.dodge = Math.max(0, F.dodge - dt); F.dodgeCool = Math.max(0, F.dodgeCool - dt);
+  if (live && P.jumpBuf > 0) {
+    P.jumpBuf = 0;
+    if (F.dodgeCool <= 0) {
+      let dx = P.vel.x, dz = P.vel.z, l = Math.hypot(dx, dz);
+      if (l < 1) { const a = P.facing + Math.PI; dx = Math.sin(a); dz = Math.cos(a); l = 1; }
+      F.dvx = dx / l * 13; F.dvz = dz / l * 13; F.dodge = 0.3; F.dodgeCool = 0.8; beep('jump');
     }
+  }
+  // Schlagen: Klick, J oder Schlag-Knopf. Der dritte Schlag in Folge wird ein Aufwärtshaken.
+  const punchKey = !!(keys.KeyJ || keys.TouchDrift);
+  F.comboT += dt;
+  if (live && foeUp && (fightPunchReq || (punchKey && !F.prevPunch)) && !blocking && (F.pT < 0 || F.pT > F.pDur * 0.75)) {
+    F.combo = F.comboT < 0.75 ? F.combo + 1 : 1; F.comboT = 0;
+    F.upper = F.combo >= 3; if (F.upper) F.combo = 0;
+    F.pArm = F.upper ? 1 : -F.pArm; F.pDur = F.upper ? UPPER_T : JAB_T; F.pT = 0; F.pHit = false; beep('whoosh');
+    if (foe.state === 'move' && Math.random() < 0.22 * foe.power) { foe.state = 'block'; foe.t = 0.45; }
   }
   fightPunchReq = false; F.prevPunch = punchKey;
-  // Arme: Deckung, Schlag
-  const u = avatar.userData;
-  if (live) {
-    u.armL.rotation.x = blocking ? -2.2 : -1.2; u.armR.rotation.x = blocking ? -2.2 : -1.2;
-    if (F.punchT > 0) (F.arm ? u.armR : u.armL).rotation.x = -1.65;
+  if (F.pT >= 0) {
+    F.pT += dt;
+    // beim Schlagen einen kleinen Schritt nach vorne
+    if (live && foeUp && F.pT < F.pDur * 0.5) { const fd = Math.hypot(foe.pos.x - P.pos.x, foe.pos.z - P.pos.z); if (fd > 1.45 && fd < 3) { const a = angTo(P.pos, foe.pos); moveAxis('x', Math.sin(a) * 3.5 * dt); moveAxis('z', Math.cos(a) * 3.5 * dt); } }
+    if (!F.pHit && F.pT > F.pDur * 0.45) { F.pHit = true; if (foeUp) playerPunch(F, foe); }
+    if (F.pT > F.pDur) F.pT = -1;
   }
-  // Gegner-KI
-  if (foe.hp > 0 && F.between <= 0) {
-    foe.cool = Math.max(0, foe.cool - dt); foe.punchT = Math.max(0, foe.punchT - dt); foe.block = Math.max(0, foe.block - dt); foe.stun = Math.max(0, foe.stun - dt);
-    const dx = P.pos.x - foe.pos.x, dz = P.pos.z - foe.pos.z, dist = Math.hypot(dx, dz);
-    foe.facing = Math.atan2(dx, dz);
-    if (foe.stun <= 0 && live) {
-      if (dist > 1.7) { const sp = 3.6 * foe.power; foe.pos.x += dx / dist * sp * dt; foe.pos.z += dz / dist * sp * dt; }
-      else {
-        foe.pos.x += -dz / dist * foe.strafe * 1.4 * dt; foe.pos.z += dx / dist * foe.strafe * 1.4 * dt;
-        if (Math.random() < dt * 0.6) foe.strafe *= -1;
-        if (F.punchT > 0 && Math.random() < 0.35 * foe.power && foe.block <= 0) foe.block = 0.5;
-        if (foe.cool <= 0 && foe.block <= 0 && Math.random() < dt * 2.2 * foe.power) {
-          foe.cool = 0.75 / foe.power; foe.punchT = 0.16; foe.arm = 1 - (foe.arm || 0); beep('bonk');
-          if (dist < 2.1) {
-            const dmg = Math.round((blocking ? 1.5 : 7 + Math.random() * 4) * foe.power * (myHelm ? 0.75 : 1));
-            F.php = Math.max(0, F.php - dmg); hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.85, 0)));
-            P.vel.x += dx / dist * 5; P.vel.z += dz / dist * 5;
-            if (F.php <= 0) { F.losses++; die(); F.between = 2.4; }
-          }
-        }
+  F.recoil = Math.max(0, F.recoil - dt * 4); F.sinceHurt += dt;
+  if (F.sinceHurt > 3 && F.php < 100 && live) F.php = Math.min(100, F.php + dt * 4);
+  if (live) {
+    boxPose(avatar, P.facing, { block: blocking, arm: F.pArm, p: F.pT >= 0 ? F.pT / F.pDur : -1, upper: F.upper, recoil: F.recoil, wind: 0 });
+    if (F.dodge > 0) avatar.rotation.z = Math.sin((0.3 - F.dodge) / 0.3 * Math.PI) * 0.35;
+    avatar.position.copy(P.pos);
+  }
+  if (!foeUp) return;
+  // Gegner: anlaufen, umkreisen, ausholen (gut zu sehen), zuschlagen, blocken
+  const dx = P.pos.x - foe.pos.x, dz = P.pos.z - foe.pos.z, dist = Math.hypot(dx, dz) || 0.001;
+  foe.facing = Math.atan2(dx, dz); foe.recoil = Math.max(0, foe.recoil - dt * 3);
+  foe.t -= dt; let moving = false;
+  if (!live) foe.state = 'move';
+  if (foe.state === 'move') {
+    const sp = (dist > 1.8 ? 3.2 : 1.6) * Math.min(1.5, foe.power);
+    if (dist > 1.8) { foe.pos.x += dx / dist * sp * dt; foe.pos.z += dz / dist * sp * dt; moving = true; }
+    else if (dist < 1.4) { foe.pos.x -= dx / dist * sp * dt; foe.pos.z -= dz / dist * sp * dt; moving = true; }
+    if (dist < 2.6) { foe.pos.x += -dz / dist * foe.strafe * 1.3 * dt; foe.pos.z += dx / dist * foe.strafe * 1.3 * dt; moving = true; }
+    if (Math.random() < dt * 0.7) foe.strafe *= -1;
+    if ((foe.think -= dt) <= 0 && live) {
+      foe.think = (0.5 + Math.random() * 0.6) / foe.power;
+      if (dist < 2.3 && Math.random() < 0.7) { foe.state = 'wind'; foe.t = 0.42 / Math.sqrt(foe.power); foe.arm = Math.random() < 0.5 ? -1 : 1; }
+    }
+  } else if (foe.state === 'wind') {
+    if (foe.t <= 0) { foe.state = 'punch'; foe.t = 0.24; foe.hit = false; beep('place'); }
+  } else if (foe.state === 'punch') {
+    if (!foe.hit && foe.t < 0.13) {
+      foe.hit = true;
+      if (live && dist < 2.1 && F.dodge <= 0) {
+        let dmg = (blocking ? 1 : 8 + Math.random() * 4) * foe.power;
+        if (myHelm) dmg *= 0.75;
+        F.php = Math.max(0, F.php - Math.round(dmg)); F.sinceHurt = 0;
+        if (!blocking) { F.recoil = 1; hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.9, 0))); P.vel.x += dx / dist * 6; P.vel.z += dz / dist * 6; F.pT = -1; beep('land'); }
+        else beep('bonk');
+        if (F.php <= 0) { F.losses++; die(); F.between = 2.4; }
       }
     }
-    if (dist < 1.3 && dist > 0.001) { const push = (1.3 - dist) / 2; foe.pos.x -= dx / dist * push; foe.pos.z -= dz / dist * push; P.pos.x += dx / dist * push; P.pos.z += dz / dist * push; }
-    foe.pos.x = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.x)); foe.pos.z = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.z));
-    const fu = foe.g.userData, moving = dist > 1.7 && foe.stun <= 0, sw = moving ? Math.sin(tAll * 9) * 0.6 : 0;
-    fu.legL.rotation.x = sw; fu.legR.rotation.x = -sw;
-    fu.armL.rotation.x = foe.block > 0 ? -2.2 : -1.2; fu.armR.rotation.x = foe.block > 0 ? -2.2 : -1.2;
-    if (foe.punchT > 0) (foe.arm ? fu.armR : fu.armL).rotation.x = -1.65;
-    foe.g.position.copy(foe.pos); foe.g.rotation.y = foe.facing;
+    if (foe.t <= 0) { foe.state = 'move'; }
+  } else if (foe.state === 'block' || foe.state === 'stun') {
+    if (foe.t <= 0) foe.state = 'move';
   }
+  // nicht ineinander stehen
+  if (dist < 1.25) { const push = (1.25 - dist) / 2; foe.pos.x -= dx / dist * push; foe.pos.z -= dz / dist * push; P.pos.x += dx / dist * push; P.pos.z += dz / dist * push; }
+  foe.pos.x = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.x)); foe.pos.z = Math.max(-RING + 0.6, Math.min(RING - 0.6, foe.pos.z));
+  const fu = foe.g.userData;
+  if (moving) foe.walk += dt * 9;
+  const sw = moving ? Math.sin(foe.walk) * 0.5 : 0;
+  fu.legL.rotation.x = sw; fu.legR.rotation.x = -sw;
+  boxPose(foe.g, foe.facing, { block: foe.state === 'block', wind: foe.state === 'wind' ? foe.arm : 0, arm: foe.arm, p: foe.state === 'punch' ? 1 - foe.t / 0.24 : -1, upper: false, recoil: foe.recoil });
+  foe.g.position.set(foe.pos.x, foe.pos.y + Math.abs(Math.sin(tAll * 5)) * 0.06, foe.pos.z);
 }
 
 // ======================================================================
 // Blaster-Arena
 // ======================================================================
 let arena = null;
+const ARENA_WIN = 15;
 function makeWeapon(id) {
   const it = ITEM[id] || ITEM['w-blaster'], w = it.weapon, g = new THREE.Group();
   olAdd(g, roundedBox(0.18, 0.55, 0.26, 0.06), tc(w.body), 0, -0.85, 0.05);
@@ -2966,6 +3040,7 @@ function makeWeapon(id) {
   if (w.mini) { const br = new THREE.Group(); br.position.set(0, -1.25, 0.05); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, c = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.75, 8), tc(0x8a8f99)); c.position.set(Math.cos(a) * 0.09, 0, Math.sin(a) * 0.09); br.add(c); } g.add(br); g.userData.barrel = br; }
   else { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 10), tc(0x8a8f99)); c.position.set(0, -1.3, 0.05); g.add(c); }
   const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: w.color })); tip.position.set(0, w.mini ? -1.62 : -1.56, 0.05); g.add(tip);
+  g.userData.tip = tip;
   return g;
 }
 const myWeaponId = () => (profile.wear.weapon && profile.owned.includes(profile.wear.weapon) && ITEM[profile.wear.weapon]) ? profile.wear.weapon : 'w-blaster';
@@ -2981,95 +3056,150 @@ function buildArena() {
     const w = 2 + Math.floor(r() * 4), d = 1 + Math.floor(r() * 3), h = 1.4 + Math.floor(r() * 2) * 0.9;
     addBox(x, h / 2, z, w, h, d, cols[k % 6]);
   }
-  const spots = [[-24, -24], [24, -24], [-24, 6], [24, 6], [0, -26], [-10, -8], [10, -12]];
+  const spots = [[-24, -24], [24, -24], [-24, 6], [24, 6], [0, -26], [-10, -8], [10, -12], [0, 22], [-26, 26], [26, 26]];
   const bots2 = [];
   BOT_NAMES.filter(n => !isBanned('blaster', n)).slice(0, 4).forEach((n, i) => {
-    const look = botLook(n), g = makeAvatar(look); g.userData.armR.add(makeWeapon('w-blaster')); world.add(g);
+    const look = botLook(n), g = makeAvatar(look), gun = makeWeapon('w-blaster'); g.userData.armR.add(gun); g.userData.gun = gun; world.add(g);
     const [x, z] = spots[i];
-    bots2.push({ name: n, look, g, pos: new V3(x, 0, z), facing: 0, hp: 60, cool: 1 + Math.random(), target: null, dead: 0, seeT: 0, sees: false });
+    bots2.push({ name: n, look, g, pos: new V3(x, 0, z), facing: 0, hp: 60, cool: 1.5 + Math.random(), burst: 0, target: null, dead: 0, seeT: Math.random() * 0.3, sees: false, strafe: 1, walk: 0, hitT: 0 });
   });
-  arena = { bots: bots2, shots: [], time: 120, kills: 0, php: 100, cool: 0, spots, spin: 0 };
+  arena = { bots: bots2, shots: [], time: 150, kills: 0, php: 100, cool: 0, spots, spin: 0, kick: 0, sinceHurt: 9 };
   setSpawn(0, 0, 22);
-  avatar.userData.armR.add(makeWeapon(myWeaponId())); avatar.userData.gun = avatar.userData.armR.children[avatar.userData.armR.children.length - 1];
+  const gun = makeWeapon(myWeaponId()); avatar.userData.armR.add(gun); avatar.userData.gun = gun;
 }
 function insideSolid(x, y, z, pad = 0) { for (const sd of solids) if (sd.box.min.x - pad < x && x < sd.box.max.x + pad && sd.box.min.y < y && y < sd.box.max.y && sd.box.min.z - pad < z && z < sd.box.max.z + pad) return sd; return null; }
-function shoot(from, dir, w, owner, dmg) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(owner === 'p' ? 0.12 : 0.14, 8, 6), new THREE.MeshBasicMaterial({ color: owner === 'p' ? w.color : 0xff3b8d }));
-  m.position.copy(from); world.add(m);
-  arena.shots.push({ m, v: dir.clone().multiplyScalar(owner === 'p' ? 46 : 30), owner, dmg, life: 1.6 });
+const shotGeo = new THREE.SphereGeometry(0.08, 8, 6);
+function shoot(from, dir, color, owner, dmg, speed) {
+  const m = new THREE.Mesh(shotGeo, new THREE.MeshBasicMaterial({ color }));
+  m.position.copy(from); m.scale.set(1, 1, 5); m.lookAt(from.clone().add(dir)); world.add(m);
+  arena.shots.push({ m, v: dir.clone().multiplyScalar(speed), owner, dmg, life: 1.6 });
+  // Mündungsfeuer
+  const f = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.9 }));
+  f.position.copy(from); world.add(f); particles.push({ m: f, v: new V3(), life: 0.06, smoke: true });
 }
+// trifft ein Schuss-Stück (von a nach b) eine Figur bei pos?
+function segHits(a, b, pos) {
+  const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.25));
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t;
+    if (Math.hypot(x - pos.x, z - pos.z) < 0.6 && y > pos.y && y < pos.y + 2.3) return true;
+  }
+  return false;
+}
+function hitMarker() { const c = $('crosshair'); c.classList.add('hit'); clearTimeout(hitMarker.t); hitMarker.t = setTimeout(() => c.classList.remove('hit'), 120); }
 function updateArena(dt) {
   const A = arena; if (!A) return;
   const live = mode === 'blaster' && dead <= 0;
-  if (mode === 'blaster') { A.time -= dt; if (A.time <= 0) { A.time = 0; mode = 'win'; beep('win'); showResult('Zeit um!', [['Treffer (K.O.)', A.kills], ['Erwischt', game.deaths], ['Verdient', '<i class="coin"></i> ' + game.earned]]); return; } }
+  if (mode === 'blaster') {
+    A.time -= dt;
+    if (A.time <= 0 || A.kills >= ARENA_WIN) {
+      const won = A.kills >= ARENA_WIN; A.time = Math.max(0, A.time); mode = 'win'; beep('win');
+      if (won) { earn(30); confetti(P.pos.clone().add(new V3(0, 2, 0))); }
+      showResult(won ? 'Gewonnen!' : 'Zeit um!', [['K.O.', A.kills + ' von ' + ARENA_WIN], ['Erwischt', game.deaths], ['Verdient', '<i class="coin"></i> ' + game.earned]]);
+      return;
+    }
+  }
   if (dead <= 0 && A.php <= 0) A.php = 100;
-  const it = ITEM[myWeaponId()], w = it.weapon, u = avatar.userData;
-  // Zielen: Figur schaut immer in Kamerarichtung, Waffe nach vorne
-  if (live) { u.armR.rotation.x = -1.5; u.armL.rotation.x = -1.3; }
+  A.sinceHurt += dt; if (live && A.sinceHurt > 4 && A.php < 100) A.php = Math.min(100, A.php + dt * 12);
+  const w = ITEM[myWeaponId()].weapon, u = avatar.userData;
+  // Zielhaltung: rechter Arm mit Waffe nach vorne, linker Arm stützt
+  A.kick = Math.max(0, A.kick - dt * 6);
+  if (live) { u.armR.rotation.set(-1.57 + A.kick * 0.35, 0, 0.06); u.armL.rotation.set(-1.4, 0, 0.55); }
   const firing = live && !!(keys.MouseFire || keys.KeyJ || keys.TouchDrift);
   A.cool = Math.max(0, A.cool - dt);
   if (w.mini && u.gun && u.gun.userData.barrel) { A.spin = Math.min(1, Math.max(0, A.spin + (firing ? dt * 3 : -dt * 2))); u.gun.userData.barrel.rotation.y += A.spin * dt * 30; }
   if (firing && A.cool <= 0 && (!w.mini || A.spin > 0.5)) {
-    A.cool = w.rate;
-    // Ziel: was in der Bildmitte liegt
-    ndc.set(firstPerson() ? 0 : 0, 0); raycaster.setFromCamera(ndc, camera); raycaster.far = 120;
-    const hits = raycaster.intersectObjects(solids.map(sd => sd.mesh).concat(A.bots.filter(b => b.dead <= 0).map(b => b.g)), true);
-    const target = hits.length ? hits[0].point : raycaster.ray.at(80, new V3());
-    const from = new V3(P.pos.x + Math.cos(P.facing) * -0.5 + Math.sin(P.facing) * 0.9, P.pos.y + 1.45, P.pos.z - Math.sin(P.facing) * -0.5 + Math.cos(P.facing) * 0.9);
+    A.cool = w.rate; A.kick = 1;
+    // Ziel: was in der Bildmitte liegt (am Handy hilft eine leichte Zielhilfe)
+    ndc.set(0, 0); raycaster.setFromCamera(ndc, camera); raycaster.far = 120;
+    const alive = A.bots.filter(b => b.dead <= 0);
+    let target = null;
+    {
+      let best = isTouch ? 0.14 : 0.06;
+      for (const b of alive) {
+        const c = b.pos.clone().add(new V3(0, 1.3, 0)), to = c.clone().sub(raycaster.ray.origin), d = to.length();
+        const ang = to.normalize().angleTo(raycaster.ray.direction);
+        if (ang < best && d < 45) { best = ang; target = c; }
+      }
+    }
+    if (!target) {
+      const hits = raycaster.intersectObjects(solids.slice(1).map(sd => sd.mesh).concat(alive.map(b => b.g)), true).filter(h => h.distance > cam.dist + 0.5);
+      target = hits.length ? hits[0].point : raycaster.ray.at(80, new V3());
+    }
+    avatar.updateMatrixWorld(true);
+    const from = u.gun && u.gun.userData.tip ? u.gun.userData.tip.getWorldPosition(new V3()) : P.pos.clone().add(new V3(0, 1.5, 0));
     for (let k = 0; k < w.count; k++) {
       const dir = target.clone().sub(from).normalize();
       dir.x += (Math.random() - 0.5) * w.spread * 2; dir.y += (Math.random() - 0.5) * w.spread * 2; dir.z += (Math.random() - 0.5) * w.spread * 2; dir.normalize();
-      shoot(from, dir, w, 'p', w.dmg);
+      shoot(from, dir, w.color, 'p', w.dmg, 70);
     }
-    beep(w.mini ? 'place' : 'jump');
+    beep('pew');
   }
   // Gegner
   for (const b of A.bots) {
-    if (b.dead > 0) { b.dead -= dt; if (b.dead <= 0) { const [x, z] = A.spots[Math.floor(Math.random() * A.spots.length)]; b.pos.set(x, 0, z); b.hp = 60; b.g.visible = true; } continue; }
-    const dx = P.pos.x - b.pos.x, dz = P.pos.z - b.pos.z, dist = Math.hypot(dx, dz);
+    if (b.dead > 0) { b.dead -= dt; if (b.dead <= 0) { const [x, z] = A.spots[Math.floor(Math.random() * A.spots.length)]; b.pos.set(x, 0, z); b.hp = 60; b.g.visible = true; b.cool = 1.5; } continue; }
+    const dx = P.pos.x - b.pos.x, dz = P.pos.z - b.pos.z, dist = Math.hypot(dx, dz) || 0.001;
     if ((b.seeT -= dt) <= 0) {
-      b.seeT = 0.3;
+      b.seeT = 0.25;
       const eye = b.pos.clone().add(new V3(0, 1.6, 0)), to = new V3(P.pos.x, P.pos.y + 1.4, P.pos.z), dir = to.clone().sub(eye);
       raycaster.set(eye, dir.clone().normalize()); raycaster.far = dir.length();
-      b.sees = live && dist < 28 && raycaster.intersectObjects(solids.map(sd => sd.mesh), false).length === 0;
+      b.sees = live && dist < 30 && raycaster.intersectObjects(solids.map(sd => sd.mesh), false).length === 0;
     }
+    let mx = 0, mz = 0;
     if (b.sees) {
       b.facing = Math.atan2(dx, dz);
-      if (dist > 9) { b.pos.x += dx / dist * 3 * dt; b.pos.z += dz / dist * 3 * dt; }
+      // Abstand halten und seitlich ausweichen
+      const want = dist > 13 ? 1 : dist < 7 ? -1 : 0;
+      mx = dx / dist * want + -dz / dist * b.strafe * 0.8; mz = dz / dist * want + dx / dist * b.strafe * 0.8;
+      if (Math.random() < dt * 0.8) b.strafe *= -1;
       if ((b.cool -= dt) <= 0) {
-        b.cool = 1.1 + Math.random() * 0.8;
-        const from = b.pos.clone().add(new V3(Math.sin(b.facing) * 0.9, 1.45, Math.cos(b.facing) * 0.9)), dir = new V3(P.pos.x, P.pos.y + 1.2, P.pos.z).sub(from).normalize();
-        dir.x += (Math.random() - 0.5) * 0.12; dir.z += (Math.random() - 0.5) * 0.12; dir.normalize();
-        shoot(from, dir, null, 'b', 8);
+        if (b.burst <= 0) b.burst = 2 + Math.floor(Math.random() * 2);
+        b.burst--; b.cool = b.burst > 0 ? 0.18 : 1.3 + Math.random() * 1.0;
+        b.g.updateMatrixWorld(true);
+        const from = b.g.userData.gun.userData.tip.getWorldPosition(new V3()), dir = new V3(P.pos.x, P.pos.y + 1.2, P.pos.z).sub(from).normalize();
+        const miss = 0.05 + Math.min(0.08, dist * 0.004);
+        dir.x += (Math.random() - 0.5) * miss * 2; dir.y += (Math.random() - 0.5) * miss; dir.z += (Math.random() - 0.5) * miss * 2; dir.normalize();
+        shoot(from, dir, 0xff3b8d, 'b', 7, 28);
       }
     } else {
       if (!b.target || Math.hypot(b.target.x - b.pos.x, b.target.z - b.pos.z) < 1) b.target = new V3((Math.random() - 0.5) * 56, 0, (Math.random() - 0.5) * 56);
       const tx = b.target.x - b.pos.x, tz = b.target.z - b.pos.z, td = Math.hypot(tx, tz) || 1;
-      const nx = b.pos.x + tx / td * 3.2 * dt, nz = b.pos.z + tz / td * 3.2 * dt;
-      if (insideSolid(nx, 0.5, nz, 0.4)) b.target = null; else { b.pos.x = nx; b.pos.z = nz; }
-      b.facing = Math.atan2(tx, tz);
+      mx = tx / td; mz = tz / td; b.facing = Math.atan2(tx, tz);
     }
-    const bu = b.g.userData, sw = Math.sin(tAll * 8 + b.hp) * 0.6;
-    bu.legL.rotation.x = sw; bu.legR.rotation.x = -sw; bu.armR.rotation.x = -1.5; bu.armL.rotation.x = -1.3;
-    b.g.position.copy(b.pos); b.g.rotation.y = b.facing;
+    const ml = Math.hypot(mx, mz);
+    if (ml > 0.05) {
+      const sp = b.sees ? 3.4 : 3.8, nx = b.pos.x + mx / ml * sp * dt, nz = b.pos.z + mz / ml * sp * dt;
+      if (insideSolid(nx, 0.5, nz, 0.45) || Math.abs(nx) > 34 || Math.abs(nz) > 34) { b.target = null; b.strafe *= -1; }
+      else { b.pos.x = nx; b.pos.z = nz; b.walk += dt * 9; }
+    }
+    b.hitT = Math.max(0, b.hitT - dt);
+    const bu = b.g.userData, sw = ml > 0.05 ? Math.sin(b.walk) * 0.6 : 0;
+    bu.legL.rotation.x = sw; bu.legR.rotation.x = -sw; bu.armR.rotation.set(-1.57, 0, 0.06); bu.armL.rotation.set(-1.4, 0, 0.55);
+    b.g.position.copy(b.pos); b.g.rotation.set(-b.hitT * 2.5, b.facing, 0);
   }
   // Schüsse
+  const prev = new V3();
   for (let i = A.shots.length - 1; i >= 0; i--) {
-    const s2 = A.shots[i]; s2.life -= dt; s2.m.position.addScaledVector(s2.v, dt);
-    const p2 = s2.m.position; let gone = s2.life <= 0 || !!insideSolid(p2.x, p2.y, p2.z);
+    const s2 = A.shots[i]; s2.life -= dt; prev.copy(s2.m.position); s2.m.position.addScaledVector(s2.v, dt);
+    const p2 = s2.m.position; let gone = s2.life <= 0 || !!insideSolid(p2.x, p2.y, p2.z) || p2.y < 0;
     if (!gone && s2.owner === 'p') for (const b of A.bots) {
-      if (b.dead > 0) continue;
-      if (Math.hypot(p2.x - b.pos.x, p2.z - b.pos.z) < 0.55 && p2.y > b.pos.y && p2.y < b.pos.y + 2.2) {
-        gone = true; b.hp -= s2.dmg; hitFx(p2.clone());
-        if (b.hp <= 0) { explode(b.look, b.pos.clone(), b.facing, b.g.userData, new V3()); b.g.visible = false; b.dead = 4; A.kills++; earn(3); oof(); feed(b.name + ' erwischt!'); }
-        break;
+      if (b.dead > 0 || !segHits(prev, p2, b.pos)) continue;
+      gone = true; b.hp -= s2.dmg; b.hitT = 0.12; hitFx(p2.clone()); hitMarker(); beep('bonk');
+      b.sees = true; b.facing = Math.atan2(P.pos.x - b.pos.x, P.pos.z - b.pos.z);
+      if (b.hp <= 0) { explode(b.look, b.pos.clone(), b.facing, b.g.userData, s2.v.clone().setLength(5)); b.g.visible = false; b.dead = 4; A.kills++; earn(3); oof(); feed(b.name + ' erwischt! (' + A.kills + '/' + ARENA_WIN + ')'); }
+      break;
+    }
+    if (!gone && s2.owner === 'b' && live && segHits(prev, p2, P.pos)) {
+      gone = true; A.php = Math.max(0, A.php - s2.dmg); A.sinceHurt = 0; hurtFlash(); hitFx(p2.clone());
+      if (A.php <= 0) {
+        // neu einsteigen an der Stelle, die am weitesten von den Gegnern weg ist
+        let best = null, bd = -1;
+        for (const [x, z] of A.spots) { const d = Math.min(...A.bots.filter(o => o.dead <= 0).map(o => Math.hypot(o.pos.x - x, o.pos.z - z)), 99); if (d > bd) { bd = d; best = [x, z]; } }
+        if (best) P.spawn.set(best[0], 0, best[1]);
+        die();
       }
     }
-    if (!gone && s2.owner === 'b' && live && Math.hypot(p2.x - P.pos.x, p2.z - P.pos.z) < 0.55 && p2.y > P.pos.y && p2.y < P.pos.y + 2.2) {
-      gone = true; A.php = Math.max(0, A.php - s2.dmg); hurtFlash(); hitFx(p2.clone());
-      if (A.php <= 0) die();
-    }
-    if (gone) { world.remove(s2.m); A.shots.splice(i, 1); }
+    if (gone) { world.remove(s2.m); s2.m.material.dispose(); A.shots.splice(i, 1); }
   }
 }
 
@@ -3609,18 +3739,18 @@ function enterPlay(m) {
   } else if (m === 'fight') {
     buildFight();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
-    cam.pitch = 0.35; cam.dist = 8;
+    cam.pitch = 0.3; cam.dist = 6.2; cam.yaw = 0;
     $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Schlag';
     $('wheelieBtn').hidden = !isTouch; $('wheelieBtn').textContent = 'Block';
-    $('hint').textContent = isTouch ? 'Joystick bewegen · Schlag-Knopf tippen · Block-Knopf halten' : 'WASD bewegen · Klick oder J: Schlag · K halten: Block · Leertaste: Sprung · Esc: Pause';
+    $('hint').textContent = isTouch ? 'Joystick laufen · Schlag tippen (3× schnell = Aufwärtshaken) · Block halten · Sprung-Knopf: ausweichen' : 'WASD laufen · Klick oder J: Schlag (3× schnell = Aufwärtshaken) · K halten: Block · Leertaste: ausweichen · Esc: Pause';
     toast('Runde 1');
   } else if (m === 'blaster') {
     buildArena();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
-    cam.pitch = 0.3; cam.dist = 7;
+    cam.pitch = 0.06; cam.dist = 6;
     $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Feuer';
-    $('hint').textContent = isTouch ? 'Joystick laufen · rechts ziehen: zielen · Feuer-Knopf halten' : 'WASD laufen · Maus zielen · Klick halten oder J: schießen · Leertaste: Sprung · Esc: Pause';
-    setShiftLock(true);
+    $('hint').textContent = isTouch ? 'Joystick laufen · rechts ziehen: zielen · Feuer halten · 15 K.O. gewinnt' : 'WASD laufen · Maus zielen · Klick halten oder J: schießen · Leertaste: Sprung · 15 K.O. gewinnt · Esc: Pause';
+    setShiftLock(true); $('crosshair').hidden = false;
     toast('Los!');
   } else if (m === 'skate') {
     buildSkate();
@@ -3736,7 +3866,7 @@ function updatePlayer(dt) {
     if (dead <= 0) { for (const d of debris) world.remove(d.o); debris = []; dead = 0; respawn(); avatar.visible = true; }
     return;
   }
-  const active = mode === 'obby' || mode === 'build' || mode === 'horror';
+  const active = mode === 'obby' || mode === 'build' || mode === 'horror' || mode === 'fight' || mode === 'blaster';
   let f = 0, r = 0;
   if (active) {
     f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
@@ -3753,14 +3883,14 @@ function updatePlayer(dt) {
   P.vel.x += (mx * spd - P.vel.x) * Math.min(1, accel * dt);
   P.vel.z += (mz * spd - P.vel.z) * Math.min(1, accel * dt);
   const flyVY = (((keys.Space || keys.TouchUp) ? 1 : 0) - ((keys.KeyC || keys.TouchDown) ? 1 : 0)) * 10;
-  if (ml > 0.1) {
+  if (ml > 0.1 && mode !== 'fight') {
     let d = Math.atan2(mx, mz) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d));
     P.facing += d * Math.min(1, 14 * dt);
     if (mode === 'obby' && !game.running && game.time === 0) game.running = true;
   }
   if (jumpPressed) { P.jumpBuf = 0.15; jumpPressed = false; }
   P.jumpBuf -= dt; P.coyote = P.onGround ? 0.1 : P.coyote - dt;
-  if (active && !flying && P.jumpBuf > 0 && P.coyote > 0) {
+  if (active && mode !== 'fight' && !flying && P.jumpBuf > 0 && P.coyote > 0) {
     P.vel.y = JUMP; P.jumpBuf = 0; P.coyote = 0; beep('jump');
     if (mode === 'obby' && !game.running && game.time === 0) game.running = true;
   }
@@ -3851,7 +3981,7 @@ function frame(now) {
     if (playingGame() === 'horror') updateHorror(dt);
     if (playingGame() === 'fight') updateFight(dt);
     if (playingGame() === 'blaster') updateArena(dt);
-    const so = shiftLock && !firstPerson() ? 1.1 : 0; // Shift-Lock: Kamera über die rechte Schulter
+    const so = (shiftLock || playingGame() === 'fight') && !firstPerson() ? 1.1 : 0; // Shift-Lock: Kamera über die rechte Schulter
     camTarget.lerp(tmpV.set(P.pos.x + Math.cos(cam.yaw) * so, P.pos.y + 1.6, P.pos.z - Math.sin(cam.yaw) * so), 1 - Math.exp(-dt * 12));
   }
   if (playingGame() === 'obby') updateObby(dt);

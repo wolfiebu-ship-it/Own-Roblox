@@ -327,12 +327,14 @@ function handle(c, m) {
       pushAdmins(); return notice(c, other.name + ' ist jetzt Admin.');
     }
     case 'adminRemove': {
-      if (roleOf(c.user) !== 'creator') return err(c, 'Admins entfernen kann nur der Erfinder.');
+      if (roleOf(c.user) !== 'creator') return err(c, 'Admins löschen kann nur der Erfinder.');
       const t = low(m.name), other = users[t];
-      if (!other || other.role !== 'admin') return;
+      if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
+      if (other.role === 'creator') return err(c, 'Den Erfinder kann man nicht löschen.');
+      if (other.role !== 'admin') return err(c, other.name + ' ist kein Admin.');
       delete other.role; db.save();
-      const oc = online.get(t); if (oc) send(oc, { t: 'me', me: meOf(t) });
-      return pushAdmins();
+      const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Admin mehr.'); }
+      pushAdmins(); return notice(c, other.name + ' ist kein Admin mehr.');
     }
     case 'ban': {
       if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
