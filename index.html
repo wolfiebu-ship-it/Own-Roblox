@@ -237,6 +237,7 @@ body.build #downBtn { bottom: max(140px, calc(env(safe-area-inset-bottom, 0px) +
   .grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
   #toast { font-size: 32px; }
 }
+body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(46%, 360px); }
 .gameList { display: flex; flex-direction: column; gap: 14px; }
 @media (max-width: 720px) {
   .gameList { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -2786,7 +2787,7 @@ function netHandle(m) {
   switch (m.t) {
     case 'auth':
       NET.me = m.me; store.set('klotzwelt-token', m.token); NET.msg = '';
-      applyServerProfile(m.me); feed('Angemeldet als ' + m.me.name);
+      applyServerProfile(m.me);
       if (mode !== 'menu' && mode !== 'win') netJoinGame(mode);
       renderFriendsIfOpen(); break;
     case 'loggedOut': NET.me = null; NET.social = null; store.set('klotzwelt-token', null); clearPeers(); updateFriendDot(); renderFriendsIfOpen(); break;
@@ -3041,7 +3042,7 @@ function showBest() { const b = store.get('klotzwelt-bestzeit', null); $('best')
 function showMenu() {
   paused = false; $('pausePanel').hidden = true; setShiftLock(false);
   mode = 'menu';
-  document.body.className = '';
+  document.body.className = 'menu';
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
   renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
   ghost.visible = false;
