@@ -122,6 +122,7 @@ input { -webkit-user-select: text; user-select: text; }
 #pausePanel { z-index: 24; }
 #pausePanel .btn { width: 100%; padding: 12px; font-size: 17px; }
 #settingsPanel { z-index: 26; width: min(440px, calc(100% - 32px)); }
+svg.inf { width: 1.55em; height: .8em; vertical-align: -.05em; display: inline-block; }
 #crosshair.hit { background: var(--accent); transform: scale(1.8); }
 #crosshair { transition: transform .08s; position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); pointer-events: none; z-index: 4; }
 #topright .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
@@ -825,9 +826,11 @@ const profile = (() => {
 let profileTimer = 0;
 // Nur der Haupt-Erfinder hat unendlich Münzen
 const infCoins = () => !!(NET && NET.me && NET.me.owner);
-const coinText = () => infCoins() ? '∞' : profile.coins;
+// Eigenes Unendlich-Zeichen als Grafik (kein Emoji), passend zur Schrift
+const INF_SVG = '<svg class="inf" viewBox="0 0 40 20" aria-label="unendlich" role="img"><path d="M20 10c-4-5-6.5-7-10-7a7 7 0 0 0 0 14c3.5 0 6-2 10-7s6.5-7 10-7a7 7 0 0 1 0 14c-3.5 0-6-2-10-7z" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const coinText = () => infCoins() ? INF_SVG : profile.coins;
 function saveProfile() {
-  store.set('klotzwelt-profil', profile); $('coinCount').textContent = coinText();
+  store.set('klotzwelt-profil', profile); $('coinCount').innerHTML = coinText();
   if (typeof NET !== 'undefined' && NET.me) { clearTimeout(profileTimer); profileTimer = setTimeout(() => netSend({ t: 'profile', profile: profilePayload() }), 800); }
 }
 
@@ -3513,7 +3516,7 @@ function netHandle(m) {
     case 'social': NET.social = m; updateFriendDot(); renderFriendsIfOpen(); break;
     case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
     case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
-    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); $('coinCount').textContent = coinText(); if (mode === 'menu' && currentTab === 'shop') renderShop(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
+    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); $('coinCount').innerHTML = coinText(); if (mode === 'menu' && currentTab === 'shop') renderShop(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
     case 'adminData': NET.admin = m; renderAdminIfOpen(); renderAdminBar(); if (!$('banPanel').hidden) openBanPanel(); break;
     case 'banned':
       if (NET.me) NET.me.bans = [...new Set([...(NET.me.bans || []), m.game])];
