@@ -2832,7 +2832,7 @@ function buildSkate() {
   }
   const board = makeBoard(); world.add(board);
   skate = { h: Math.PI, speed: 0, vy: 0, air: false, vert: false, spin: 0, spinV: 0, flip: null, flipKind: 'kick', flipT: 0, airT: 0, score: 0, best: '', bestPts: 0, time: 120, stun: 0, board, trickHeld: false, trickHoldT: 0, slope: 0,
-    steer: 0, crouch: 0.1, pushT: 0, pop: 0, land: 0, grab: false, grabT: 0, grind: null, grindT: 0, sparkT: 0, railCool: 0, comboN: 0, comboPts: 0, comboNames: [], comboT: 0 };
+    steer: 0, stance: 0, crouch: 0.1, pushT: 0, pop: 0, land: 0, grab: false, grabT: 0, grind: null, grindT: 0, sparkT: 0, railCool: 0, comboN: 0, comboPts: 0, comboNames: [], comboT: 0 };
   P.pos.set(0, 0, 36); P.vel.set(0, 0, 0); P.facing = Math.PI;
   cam.yaw = 0; cam.pitch = 0.32; cam.dist = 8; camTarget.set(0, 1.4, 36);
 }
@@ -2897,6 +2897,10 @@ function updateSkate(dt) {
     }
   } else if (!S.air) {
     // ---------- Fahren ----------
+    // Immer in Fahrtrichtung schauen: rollt man rückwärts, dreht sich die Figur um (kein Fakie mehr)
+    if (S.speed < -0.5) { S.h += Math.PI; S.stance -= Math.PI; S.speed = -S.speed; }
+    // Im Stand mit W: dorthin losfahren, wohin die Kamera schaut
+    if (push > 0 && Math.abs(S.speed) < 2) { let d = (cam.yaw + Math.PI) - S.h; d = Math.atan2(Math.sin(d), Math.cos(d)); S.h += d * Math.min(1, dt * 6); }
     if (push > 0 && S.speed < 17) { S.speed += 8 * push * dt; S.pushT += dt * 5; } else S.pushT = 0;
     if (push < 0) S.speed -= Math.sign(S.speed) * Math.min(Math.abs(S.speed), 16 * -push * dt);
     S.speed -= S.speed * 0.08 * dt;
@@ -2945,8 +2949,8 @@ function updateSkate(dt) {
       P.pos.y = g;
       if (ok) {
         if (S.flipT > 0) { addTrick(S, TRICKS[S.flip][0], TRICKS[S.flip][1]); S.flipT = 0; }
-        if (k % 2) { S.h += Math.PI; S.speed = -S.speed; }
-        if (S.vert) { S.h += Math.PI; S.speed = Math.abs(S.vy) * 0.85; }
+        if (k % 2) S.stance += Math.PI; // nach 180: Figur bleibt so stehen, gefahren wird trotzdem vorwärts
+        if (S.vert) { S.h += Math.PI; S.stance -= Math.PI; S.speed = Math.abs(S.vy) * 0.85; }
         if (k) addTrick(S, Math.abs(k) * 180 + '', Math.abs(k) * 360);
         if (S.grabT > 0.2) addTrick(S, 'Indy Grab', Math.round(S.grabT * 260));
         if (!S.comboN && S.airT > 0.55) addTrick(S, 'Ollie', Math.round(S.airT * 120));
@@ -2966,7 +2970,7 @@ function updateSkate(dt) {
   poseSkater(S, dt, push);
   P.facing = S.h; P.vel.set(fx * S.speed, S.vy, fz * S.speed); P.onGround = !S.air;
   let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-  if (!drags.size && !S.vert) cam.yaw += dy * Math.min(1, 2.5 * dt);
+  if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, 2.5 * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
 }
 function startFlip(S, kind) { S.flip = kind; S.flipT = 0.42; S.flipKind = kind; beep('whoosh'); }
@@ -2996,7 +3000,7 @@ function bail(S) {
 // Figur und Brett: seitlich stehen, Knie gebeugt, Arme locker zum Balancieren
 function poseSkater(S, dt, push) {
   const b = S.board, d = b.userData.deck;
-  const yaw = S.h + ((S.air && !S.grind) ? S.spin : 0);
+  const yaw = S.h + S.stance + ((S.air && !S.grind) ? S.spin : 0);
   b.position.set(P.pos.x, P.pos.y, P.pos.z); b.rotation.set(0, yaw, 0);
   // Brett: beim Ollie Nase hoch, Flips drehen das Brett unter den Füßen, in Kurven kippt es leicht
   const p = S.flipT > 0 ? 1 - S.flipT / 0.42 : 0, kind = S.flipKind;
@@ -3738,6 +3742,7 @@ function netSendState() {
   const s = { x: r2(P.pos.x), y: r2(P.pos.y), z: r2(P.pos.z), f: r2(P.facing), m: Math.hypot(P.vel.x, P.vel.z) > 1 ? 1 : 0, a: P.onGround ? 0 : 1, d: dead > 0 ? 1 : 0 };
   if (fight && playingGame() === 'fight') s.p = fight.blocking ? 3 : fight.pT >= 0 ? (fight.upper ? 4 : fight.pArm < 0 ? 1 : 2) : 0;
   if (arena && playingGame() === 'blaster') s.p = 5;
+  if (skate && playingGame() === 'skate') { s.f = r2(skate.h + skate.stance + (skate.air && !skate.grind ? skate.spin : 0)); if (!avatar.visible) s.d = 1; s.p = skate.grind ? 9 : skate.flipT > 0 ? 8 : skate.air ? 7 : 6; }
   if (race && isRace(playingGame())) { s.c = r2(race.car.h); s.v = VEHICLES.indexOf(race.car.veh); s.w = r2(race.car.wheelie || 0); }
   netSend({ t: 'state', s });
 }
@@ -3764,6 +3769,7 @@ function removePeer(id) {
   const pr = NET.peers.get(id); if (!pr) return;
   if (pr.g && pr.g.parent) pr.g.parent.remove(pr.g);
   if (pr.car && pr.car.parent) pr.car.parent.remove(pr.car);
+  if (pr.board && pr.board.parent) pr.board.parent.remove(pr.board);
   NET.peers.delete(id);
 }
 function clearPeers() { for (const id of [...NET.peers.keys()]) removePeer(id); }
@@ -3775,6 +3781,7 @@ function updatePeers(dt) {
     if (!st || mode === 'menu') { pr.g.visible = false; continue; }
     if (pr.g.parent !== world) world.add(pr.g);
     if (pr.car && pr.car.parent !== world) world.add(pr.car);
+    if (pr.board && playingGame() !== 'skate' && pr.board.parent) pr.board.parent.remove(pr.board);
     if (!pr.init) { pr.pos.set(st.x, st.y, st.z); pr.facing = st.f; pr.init = true; }
     pr.pos.x += (st.x - pr.pos.x) * k; pr.pos.y += (st.y - pr.pos.y) * k; pr.pos.z += (st.z - pr.pos.z) * k;
     let df = st.f - pr.facing; df = Math.atan2(Math.sin(df), Math.cos(df)); pr.facing += df * k;
@@ -3791,7 +3798,20 @@ function updatePeers(dt) {
       const sw = st.m ? Math.sin(pr.walk += dt * 9) * 0.7 : 0;
       u.legL.rotation.x = st.a ? 0.3 : sw; u.legR.rotation.x = st.a ? -0.3 : -sw;
       u.armL.rotation.x = st.a ? -2.6 : -sw; u.armR.rotation.x = st.a ? -2.6 : sw;
-      if (playingGame() === 'fight') {
+      if (playingGame() === 'skate') {
+        // Mitspieler auf dem Skateboard
+        if (!pr.board) { pr.board = makeBoard(); }
+        if (pr.board.parent !== world) world.add(pr.board);
+        const p = st.p || 6, air = p >= 7 && p <= 8;
+        pr.board.position.copy(pr.pos); pr.board.rotation.set(0, pr.facing, 0);
+        pr.board.userData.deck.rotation.set(0, 0, p === 8 ? (tAll * 15) % (Math.PI * 2) : 0);
+        pr.board.userData.deck.position.y = p === 8 ? 0.25 : 0;
+        pr.g.rotation.set(0, pr.facing + Math.PI / 2, 0); pr.g.position.y = pr.pos.y + 0.22 + (air ? 0.15 : 0);
+        const tuck = air ? 0.4 : 0;
+        u.legL.rotation.set(-tuck, 0, 0.26); u.legR.rotation.set(-tuck, 0, -0.26);
+        const a = air || p === 9 ? 0.75 : 0.32;
+        u.armL.rotation.set(0.12, 0, -a); u.armR.rotation.set(-0.12, 0, a);
+      } else if (playingGame() === 'fight') {
         if (!u.gloves) { addGloves(pr.g, 0x3fb55e); u.gloves = true; }
         const p = st.p || 0;
         boxPose(pr.g, pr.facing, { block: p === 3, arm: p === 1 ? -1 : 1, p: p === 1 || p === 2 || p === 4 ? 0.5 : -1, upper: p === 4, recoil: 0, wind: 0 });
