@@ -1954,13 +1954,14 @@ const joy = { x: 0, y: 0 };
 const KEY_ACTIONS = [
   ['KeyW', 'Vorwärts / Gas'], ['KeyS', 'Rückwärts / Bremse'], ['KeyA', 'Links'], ['KeyD', 'Rechts'],
   ['Space', 'Springen · Ollie · Ausweichen · Drift'], ['ShiftLeft', 'Shift-Lock · Drift · Kickflip · Turbo'],
+  ['Mouse0', 'Linksklick: Schlagen · Schießen'], ['Mouse2', 'Rechtsklick: Blocken'],
   ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
   ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
   ['KeyF', 'Admin: Fliegen · Frontflip (Skaten)'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
   ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
 ];
 let keyBinds = store.get('klotzwelt-tasten', {}) || {};
-const keyName = c => !c ? '–' : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
+const keyName = c => !c ? '–' : /^Mouse/.test(c) ? ({ Mouse0: 'Linksklick', Mouse1: 'Mausrad-Klick', Mouse2: 'Rechtsklick' })[c] || 'Maustaste ' + (Number(c.slice(5)) + 1) : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
   c.startsWith('Key') ? c.slice(3) : c.startsWith('Digit') ? c.slice(5) : c.startsWith('Numpad') ? 'Num ' + c.slice(6) : ({ ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' })[c] || c;
 // gedrückte Taste -> Standard-Taste der Aktion (der Rest des Spiels kennt nur die Standard-Tasten)
 function virtKey(code) {
@@ -1970,8 +1971,27 @@ function virtKey(code) {
   return code;
 }
 let keyWait = null;
+function bindTo(code) {
+  const old = keyBinds[keyWait] || keyWait;
+  for (const [def] of KEY_ACTIONS) if (def !== keyWait && (keyBinds[def] || def) === code) keyBinds[def] = old; // tauschen, falls schon belegt
+  keyBinds[keyWait] = code; store.set('klotzwelt-tasten', keyBinds); beep('equip'); keyWait = null; renderKeyList();
+}
+addEventListener('mousedown', e => { if (!keyWait || (e.target.dataset && e.target.dataset.key === keyWait && e.button === 0)) return; e.preventDefault(); e.stopPropagation(); bindTo('Mouse' + e.button); }, true);
+addEventListener('contextmenu', e => { if (keyWait || mode !== 'menu') e.preventDefault(); }, true);
+// gedrückte Aktion auslösen (gilt für Tasten und Maustasten)
+function actionDown(vc, e0) {
+  if (vc === 'Mouse0') { if (mode === 'blaster') keys.MouseFire = true; if (mode === 'fight') fightPunchReq = true; return; }
+  if (vc === 'Mouse2') { if (mode === 'fight') keys.MouseBlock = true; return; }
+  keys[vc] = true;
+  if (vc === 'Space') jumpPressed = true;
+}
+function actionUp(vc) {
+  if (vc === 'Mouse0') { keys.MouseFire = false; return; }
+  if (vc === 'Mouse2') { keys.MouseBlock = false; return; }
+  keys[vc] = false;
+}
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.8';
+const BUILD = '2026-11-06.10';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -1990,12 +2010,8 @@ addEventListener('keydown', e => {
   // neue Taste für eine Aktion festlegen
   if (keyWait) {
     e.preventDefault(); e.stopPropagation();
-    if (e.code !== 'Escape') {
-      const old = keyBinds[keyWait] || keyWait;
-      for (const [def] of KEY_ACTIONS) if (def !== keyWait && (keyBinds[def] || def) === e.code) keyBinds[def] = old; // tauschen, falls schon belegt
-      keyBinds[keyWait] = e.code; store.set('klotzwelt-tasten', keyBinds); beep('equip');
-    }
-    keyWait = null; renderKeyList(); return;
+    if (e.code !== 'Escape') bindTo(e.code); else { keyWait = null; renderKeyList(); }
+    return;
   }
 }, true);
 addEventListener('keydown', e0 => {
@@ -2003,6 +2019,7 @@ addEventListener('keydown', e0 => {
   if (e0.code === 'Escape') { if (mode !== 'menu') { if (paused) resumeGame(); else openPause(); } return; }
   if (mode === 'menu') return;
   const vc = virtKey(e0.code); if (!vc) return;
+  if (vc === 'Mouse0' || vc === 'Mouse2') { if (!e0.repeat) actionDown(vc); return; }
   const e = { code: vc, repeat: e0.repeat, preventDefault: () => e0.preventDefault() };
   if (['Space', 'Tab'].includes(e0.code) || e0.code.startsWith('Arrow')) e0.preventDefault();
   keys[e.code] = true;
@@ -2023,7 +2040,7 @@ addEventListener('keydown', e0 => {
     if (e.code === 'KeyR') setTool(tool === 'place' ? 'remove' : 'place');
   }
 });
-addEventListener('keyup', e => { const vc = virtKey(e.code); if (vc) keys[vc] = false; });
+addEventListener('keyup', e => { const vc = virtKey(e.code); if (vc) actionUp(vc); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 const cv = renderer.domElement;
@@ -2033,9 +2050,9 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
   // Bei Shift-Lock (Maus gefangen) geht setPointerCapture nicht, darf aber nichts kaputt machen
   try { cv.setPointerCapture(e.pointerId); } catch (err) {}
-  if (mode === 'blaster' && e.pointerType === 'mouse' && e.button === 0) keys.MouseFire = true;
-  if (mode === 'fight' && e.pointerType === 'mouse') { if (e.button === 0) fightPunchReq = true; if (e.button === 2) keys.MouseBlock = true; }
-  drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button });
+  const mc = e.pointerType === 'mouse' && mode !== 'menu' && !keyWait ? virtKey('Mouse' + e.button) : null;
+  if (mc) actionDown(mc);
+  drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button, mc });
 });
 cv.addEventListener('pointermove', e => {
   const d = drags.get(e.pointerId);
@@ -2059,8 +2076,9 @@ cv.addEventListener('pointermove', e => {
 });
 let pinchLast = 0;
 function endDrag(e) {
-  if (e.pointerType === 'mouse') { keys.MouseFire = false; if (e.button === 2 || e.type !== 'pointerup') keys.MouseBlock = false; }
   const d = drags.get(e.pointerId);
+  if (e.pointerType === 'mouse' && d && d.mc) actionUp(d.mc);
+  if (e.pointerType === 'mouse' && !d) { keys.MouseFire = false; keys.MouseBlock = false; }
   drags.delete(e.pointerId);
   if (drags.size < 2) pinchLast = 0;
   if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
@@ -3002,6 +3020,8 @@ function updateSkate(dt) {
     }
   } else if (!S.air) {
     // ---------- Fahren ----------
+    S.stance = Math.atan2(Math.sin(S.stance), Math.cos(S.stance));
+    S.stance += -S.stance * Math.min(1, dt * 7);
     // Rollt man rückwärts, ohne S zu halten (z. B. eine Rampe runter), dreht sich die Fahrtrichtung um
     if (S.speed < -0.5 && push >= 0) { S.h += Math.PI; S.stance -= Math.PI; S.speed = -S.speed; }
     // Im Stand mit W: dorthin losfahren, wohin die Kamera schaut
@@ -3095,7 +3115,7 @@ function updateSkate(dt) {
   poseSkater(S, dt, push);
   P.facing = S.h; P.vel.set(fx * S.speed, S.vy, fz * S.speed); P.onGround = !S.air;
   let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-  if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, 2.5 * dt);
+  if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, (Math.abs(dy) > 1.5 ? 7 : 4.5) * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
 }
 // Stößt man unterhalb der Stange gegen eine Rail?
@@ -3169,7 +3189,7 @@ function poseSkater(S, dt, push) {
   S.pushHold = Math.max(0, (S.pushHold || 0) - dt);
   const pbT = !S.air && !S.grind && (S.pushT > 0 || S.pushHold > 0) ? 1 : 0;
   S.pb = (S.pb || 0) + (pbT - (S.pb || 0)) * Math.min(1, dt * (pbT ? 6 : S.air ? 12 : 3));
-  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.21 * S.pb;
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.1 * S.pb;
   avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.08 : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
@@ -3185,7 +3205,7 @@ function poseSkater(S, dt, push) {
     u.legL.rotation.set(0, 0, 0);
     if (S.pushT > 0) {
       const ph = S.pushT, sw = ph < 0.75 ? -0.55 + 1.2 * (ph / 0.75) : 0.65 - 1.2 * ((ph - 0.75) / 0.25);
-      u.legR.rotation.set(sw, 0, 0.08);
+      u.legR.rotation.set(sw, 0, -0.04);
       u.armL.rotation.set(-sw * 0.5, 0, -0.1); u.armR.rotation.set(sw * 0.5, 0, 0.1);
     } else { u.legR.rotation.set(0.3, 0, -0.32); } // rollen: hinterer Fuß wieder aufs Brett
   } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
