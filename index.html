@@ -1965,6 +1965,7 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   if (mode === 'blaster' && e.pointerType === 'mouse' && e.button === 0) keys.MouseFire = true;
+  if (mode === 'fight' && e.pointerType === 'mouse') { if (e.button === 0) fightPunchReq = true; if (e.button === 2) keys.MouseBlock = true; }
   drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button });
 });
 cv.addEventListener('pointermove', e => {
@@ -1989,13 +1990,13 @@ cv.addEventListener('pointermove', e => {
 });
 let pinchLast = 0;
 function endDrag(e) {
-  if (e.pointerType === 'mouse') keys.MouseFire = false;
+  if (e.pointerType === 'mouse') { keys.MouseFire = false; if (e.button === 2 || e.type !== 'pointerup') keys.MouseBlock = false; }
   const d = drags.get(e.pointerId);
   drags.delete(e.pointerId);
   if (drags.size < 2) pinchLast = 0;
   if (!d || d.moved || e.type !== 'pointerup' || mode === 'menu') return;
   const locked = document.pointerLockElement === cv, px = locked ? innerWidth / 2 : e.clientX, py = locked ? innerHeight / 2 : e.clientY;
-  if (mode === 'fight') { fightPunchReq = true; return; }
+  if (mode === 'fight') { if (e.pointerType !== 'mouse') fightPunchReq = true; return; }
   if (mode === 'blaster') return;
   if (isMain() && powers.hammer) { hammerAction(px, py); return; }
   if (canBuild()) buildAction(px, py, d.button === 2 || e.shiftKey);
@@ -2617,7 +2618,7 @@ function updateRace(dt) {
   }
   // Driften: Drift-Taste halten und lenken. Je länger der Drift, desto stärker der Turbo danach.
   const V0 = c.veh || VEHICLES[0];
-  const driftKey = ctrl && (keys.ShiftLeft || keys.ShiftRight || (keys.Space && !V0.admin) || keys.TouchDrift);
+  const driftKey = ctrl && (keys.ShiftLeft || keys.ShiftRight || keys.Space || keys.TouchDrift);
   if (driftKey && !c.drifting && !c.flying && Math.abs(steer) > 0.2 && c.speed > 12) { c.drifting = true; c.driftDir = Math.sign(steer); c.charge = 0; beep('jump'); }
   if (c.drifting && (!driftKey || c.speed < 8)) {
     c.drifting = false;
@@ -2638,7 +2639,7 @@ function updateRace(dt) {
   if (c.wheelie > 0.6) max += 4;
   // Hyperwagen (nur Admins): E oder Flieg-Knopf halten = abheben und fliegen, in der Luft Drift-Taste = Raketen-Turbo
   if (V.admin) {
-    const up = ctrl && (keys.KeyE || keys.Space || keys.TouchWheelie);
+    const up = ctrl && (keys.KeyC || keys.KeyE || keys.TouchWheelie);
     c.vy = (c.vy || 0) + (up ? 26 : c.flying ? -8 : -15) * dt; c.vy = Math.max(-9, Math.min(10, c.vy));
     c.alt = (c.alt || 0) + c.vy * dt;
     if (c.alt <= 0) { if (c.vy < -6) { beep('land'); for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), new THREE.MeshBasicMaterial({ color: 0xdfe6ee, transparent: true, opacity: 0.8 })); m.position.set(c.pos.x + (Math.random() - 0.5) * 3, 0.3, c.pos.z + (Math.random() - 0.5) * 3); world.add(m); particles.push({ m, v: new V3((Math.random() - 0.5) * 4, 1, (Math.random() - 0.5) * 4), life: 0.5, smoke: true }); } } c.alt = 0; c.vy = Math.max(0, c.vy); }
@@ -2915,13 +2916,14 @@ function updateSkate(dt) {
       if (Math.abs(slope) > 1.6) { S.air = true; S.vert = true; S.vy = Math.abs(S.speed) * 0.95; S.airT = 0; S.spinV = 0; }
       else { S.speed *= -0.3; beep('bonk'); }
     } else if (nH < P.pos.y - 0.25) { S.air = true; S.vy = Math.max(0, slope * S.speed); S.airT = 0; S.spinV = 0; P.pos.x = nx; P.pos.z = nz; }
+    else if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y)) { S.speed *= -0.15; beep('bonk'); }
     else P.pos.set(nx, nH, nz);
     // Kombo endet, wenn man eine Weile ohne Trick fährt
     if (S.comboN && (S.comboT -= dt) <= 0) bankCombo(S);
   } else {
     // ---------- In der Luft ----------
     S.airT += dt; S.vy -= 26 * dt; S.pop = Math.max(0, S.pop - dt);
-    if (!S.vert) { P.pos.x += fx * S.speed * dt; P.pos.z += fz * S.speed * dt; }
+    if (!S.vert) { const nx = P.pos.x + fx * S.speed * dt, nz = P.pos.z + fz * S.speed * dt; if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y)) S.speed *= -0.15; else { P.pos.x = nx; P.pos.z = nz; } }
     P.pos.y += S.vy * dt;
     S.spinV += (-steer * 7 - S.spinV) * Math.min(1, dt * 6); S.spin += S.spinV * dt;
     if (want && S.flipT <= 0) startFlip(S, want);
@@ -2942,7 +2944,10 @@ function updateSkate(dt) {
       S.grind = { r, dir }; S.air = false; S.vert = false; S.spin = 0; S.spinV = 0; S.grindT = 0; S.sparkT = 0; S.speed = Math.max(7, Math.abs(S.speed));
       beep('land'); break;
     }
-    const g = skH(P.pos.x, P.pos.z);
+    const yawB = S.h + S.stance + S.spin, bx = Math.sin(yawB) * 0.95, bz = Math.cos(yawB) * 0.95;
+    const gN = skH(P.pos.x + bx, P.pos.z + bz), gT = skH(P.pos.x - bx, P.pos.z - bz);
+    S.airPitch = P.pos.y - Math.max(gN, gT) < 1.2 ? -Math.atan2(gN - gT, 1.9) : 0;
+    const g = Math.max(skH(P.pos.x, P.pos.z), (gN + gT) / 2);
     if (!S.grind && P.pos.y <= g && S.vy < 0) {
       const k = Math.round(S.spin / Math.PI), off = Math.abs(S.spin - k * Math.PI);
       const ok = off < 0.75 && S.flipT <= 0.1;
@@ -2973,6 +2978,16 @@ function updateSkate(dt) {
   if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, 2.5 * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
 }
+// Stößt man unterhalb der Stange gegen eine Rail?
+function railBlocks(x0, z0, x1, z1, y) {
+  for (const r of RAILS) {
+    if (y > r.h - 0.12) continue;
+    const a = railInfo(r, x0, z0), b = railInfo(r, x1, z1);
+    if (b.t < -0.3 || b.t > b.L + 0.3) continue;
+    if (Math.abs(b.lat) < 0.32 || Math.sign(a.lat) !== Math.sign(b.lat)) return true;
+  }
+  return false;
+}
 function startFlip(S, kind) { S.flip = kind; S.flipT = 0.42; S.flipKind = kind; beep('whoosh'); }
 function addTrick(S, name, pts) {
   S.comboN++; S.comboPts += pts; S.comboT = 1.4;
@@ -2989,13 +3004,11 @@ function bankCombo(S) {
   S.comboN = 0; S.comboPts = 0; S.comboNames = [];
 }
 function bail(S) {
-  S.stun = 1.4; S.speed = 0; oof();
+  S.stun = 0.75; S.fall = 0.75; S.speed *= 0.2; beep('bonk');
   if (S.comboN) feed('Hingefallen! Kombo weg');
   else feed('Hingefallen!');
   S.comboN = 0; S.comboPts = 0; S.comboNames = [];
-  explode(currentLook(), P.pos.clone(), S.h + Math.PI / 2, avatar.userData, new V3(Math.sin(S.h) * 4, 0, Math.cos(S.h) * 4));
-  avatar.visible = false;
-  if (S.vert) S.h += Math.PI;
+  if (S.vert) { S.h += Math.PI; S.stance -= Math.PI; }
 }
 // Figur und Brett: seitlich stehen, Knie gebeugt, Arme locker zum Balancieren
 function poseSkater(S, dt, push) {
@@ -3006,7 +3019,8 @@ function poseSkater(S, dt, push) {
   const p = S.flipT > 0 ? 1 - S.flipT / 0.42 : 0, kind = S.flipKind;
   const ease = p * p * (3 - 2 * p);
   const popPitch = S.pop > 0 ? -0.45 * Math.sin((1 - S.pop / 0.18) * Math.PI) : 0;
-  const pitch = (S.air || S.grind) ? popPitch : -Math.atan(S.slope || 0);
+  S.airPitchS = (S.airPitchS || 0) + ((S.air ? (S.airPitch || 0) : 0) - (S.airPitchS || 0)) * Math.min(1, dt * 10);
+  const pitch = S.grind ? 0 : S.air ? popPitch + S.airPitchS : -Math.atan(S.slope || 0);
   const roll = S.flipT > 0 && kind !== 'shove' ? TRICKS[kind][2] * ease * Math.PI * 2 : 0;
   const shove = S.flipT > 0 && kind === 'shove' ? ease * Math.PI : 0;
   d.rotation.set(pitch, shove, roll + (S.air ? 0 : S.steer * 0.12));
@@ -3017,7 +3031,10 @@ function poseSkater(S, dt, push) {
   const bob = S.land > 0 ? Math.sin(S.land / 0.2 * Math.PI) * 0.15 : 0; S.land = Math.max(0, (S.land || 0) - dt);
   const tuck = S.air ? (S.grab ? 0.75 : S.flipT > 0 ? 0.55 : 0.3) : 0;
   avatar.position.set(P.pos.x, P.pos.y + 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? 0.3 : 0) + tuck * 0.25, P.pos.z);
-  avatar.rotation.set(lean, yaw + Math.PI / 2, 0);
+  // Stolpern: kurz nach vorne kippen und wieder aufrichten
+  S.fall = Math.max(0, (S.fall || 0) - dt);
+  const fallTilt = S.fall > 0 ? Math.sin((1 - S.fall / 0.75) * Math.PI) * 0.9 : 0;
+  avatar.rotation.set(lean + fallTilt, yaw + Math.PI / 2, Math.sin(tAll * 25) * 0.08 * (S.fall > 0 ? 1 : 0));
   // Beine: Füße auf dem Brett, beim Anschieben tritt der hintere Fuß
   const spread = 0.24 + S.crouch * 0.12;
   const kick = S.pushT > 0 && !S.air ? Math.max(0, Math.sin(S.pushT)) * 0.7 : 0;
@@ -3025,8 +3042,8 @@ function poseSkater(S, dt, push) {
   // Arme: locker und leicht nach außen, schwingen beim Lenken; in der Luft zum Balancieren hoch; beim Grab greift die Hand zum Brett
   const sway = Math.sin(tAll * 2.2) * 0.05;
   if (S.grab) { u.armL.rotation.set(-0.35, 0, 0.15); u.armR.rotation.set(-0.9, 0, -0.9); }
-  else if (S.air || S.grind) { const a = 0.75 + Math.sin(tAll * 7) * (S.grind ? 0.15 : 0.05); u.armL.rotation.set(0.15, 0, -a); u.armR.rotation.set(-0.15, 0, a); }
-  else { u.armL.rotation.set(0.12 + sway, 0, -0.32 - S.steer * 0.25); u.armR.rotation.set(-0.12 - sway, 0, 0.32 - S.steer * 0.25); }
+  else if (S.air || S.grind) { const a = (S.grind ? 0.5 : 0.35) + Math.sin(tAll * 7) * (S.grind ? 0.1 : 0.03); u.armL.rotation.set(0.2, 0, -a); u.armR.rotation.set(-0.2, 0, a); }
+  else { u.armL.rotation.set(0.1 + sway, 0, -0.1 - Math.max(0, S.steer) * 0.12); u.armR.rotation.set(-0.1 - sway, 0, 0.1 - Math.min(0, S.steer) * 0.12); }
 }
 function finishSkate() {
   const S = skate;
@@ -3195,7 +3212,7 @@ function updateFight(dt) {
     let d = angTo(P.pos, tgt) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 5);
     let cd = (P.facing + Math.PI) - cam.yaw; cd = Math.atan2(Math.sin(cd), Math.cos(cd)); cam.yaw += cd * Math.min(1, dt * (drags.size ? 0.6 : 2.5));
   }
-  const blocking = live && !!(keys.KeyK || keys.TouchWheelie) && F.pT < 0; F.blocking = blocking;
+  const blocking = live && !!(keys.KeyK || keys.TouchWheelie || keys.MouseBlock) && F.pT < 0; F.blocking = blocking;
   // Ausweichen mit Sprung-Taste: schneller Schritt, kurz unverwundbar
   if (F.dodge > 0 && live) { moveAxis('x', F.dvx * Math.min(dt, F.dodge)); moveAxis('z', F.dvz * Math.min(dt, F.dodge)); }
   F.dodge = Math.max(0, F.dodge - dt); F.dodgeCool = Math.max(0, F.dodgeCool - dt);
@@ -4020,16 +4037,16 @@ function enterPlay(m) {
     $('wheelieBtn').textContent = veh.admin ? 'Fliegen' : 'Wheelie';
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
     $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Drift';
-    $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + (veh.admin ? (isTouch ? ' · Fliegen-Knopf halten = abheben, in der Luft Drift = Raketen-Turbo' : ' · Leertaste oder E halten: FLIEGEN · in der Luft Shift: Raketen-Turbo') : '') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
+    $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + (veh.admin ? (isTouch ? ' · Fliegen-Knopf halten = abheben, in der Luft Drift = Raketen-Turbo' : ' · C halten: FLIEGEN · in der Luft Shift: Raketen-Turbo') : '') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
-    if (veh.admin) setTimeout(() => feed(isTouch ? '🚀 Fliegen-Knopf halten zum Abheben!' : '🚀 Leertaste oder E halten zum Fliegen!'), 3500);
+    if (veh.admin) setTimeout(() => feed(isTouch ? '🚀 Fliegen-Knopf halten zum Abheben!' : '🚀 C halten zum Fliegen!'), 3500);
   } else if (m === 'fight') {
     buildFight();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
     cam.pitch = 0.3; cam.dist = 6.2; cam.yaw = 0;
     $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Schlag';
     $('wheelieBtn').hidden = !isTouch; $('wheelieBtn').textContent = 'Block';
-    $('hint').textContent = isTouch ? 'Joystick laufen · Schlag tippen (3× schnell = Aufwärtshaken) · Block halten · Sprung-Knopf: ausweichen' : 'WASD laufen · Klick oder J: Schlag (3× schnell = Aufwärtshaken) · K halten: Block · Leertaste: ausweichen · Esc: Pause';
+    $('hint').textContent = isTouch ? 'Joystick laufen · Schlag tippen (3× schnell = Aufwärtshaken) · Block halten · Sprung-Knopf: ausweichen' : 'WASD laufen · Linksklick oder J: Schlag (3× schnell = Aufwärtshaken) · Rechtsklick oder K halten: Block · Leertaste: ausweichen · Esc: Pause';
     toast('Runde 1');
   } else if (m === 'blaster') {
     buildArena();
