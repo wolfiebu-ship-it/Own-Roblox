@@ -141,6 +141,7 @@ body.editing #stick, body.editing #jumpBtn { pointer-events: auto !important; op
 body.editing #stickZone { display: none; }
 .game.skate { background: #d5f0ff; }
 .game.fight { background: #ffd0d0; }
+.mgArt { font-size: 54px; line-height: 1; height: 92px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(255,255,255,.55); border: 3px solid var(--ink); margin-bottom: 6px; }
 .game.blaster { background: #e3f7c8; }
 #hurt { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 55%, rgba(226,69,60,.55)); opacity: 0; transition: opacity .25s; z-index: 3; }
 .lp { display: inline-block; width: 70px; height: 9px; border-radius: 5px; background: rgba(29,42,68,.18); vertical-align: middle; margin-left: 4px; overflow: hidden; }
@@ -331,6 +332,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
         <p>Ab 10 Jahren. Energie-Blaster-Duell in der Arena gegen 4 Gegner. Neue Waffen wie die Minigun gibt es im Shop.</p>
         <button class="btn primary" id="playBlaster">Spielen</button>
       </div>
+      <div id="miniCards" style="display:contents"></div>
       <div class="game horror">
         <img class="preview" id="prevHorror" alt="Vorschau: Gruselvilla" hidden>
         <h3>Gruselvilla</h3>
@@ -867,12 +869,13 @@ const adminData = (() => {
 })();
 function saveAdmin() { store.set('klotzwelt-admin', adminData); }
 // Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
-const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla' };
+const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla',
+  lava: 'Lava-Flucht', colors: 'Farb-Stopp', rush: 'Münzrausch', tag: 'Fangen', fall: 'Fallende Felder', tower: 'Himmelsturm', maze: 'Labyrinth', sumo: 'Schubs-Arena', soccer: 'Klotz-Fußball' };
 // Mindestalter pro Spiel. Admins dürfen alles spielen.
 const GAME_AGE = { horror: 8, fight: 8, blaster: 10 };
 const isRace = m => m === 'race' || m === 'moto';
 function normBans(b) {
-  const out = { obby: [], build: [], race: [], moto: [], skate: [], fight: [], blaster: [], horror: [] };
+  const out = { obby: [], build: [], race: [], moto: [], skate: [], fight: [], blaster: [], horror: [], lava: [], colors: [], rush: [], tag: [], fall: [], tower: [], maze: [], sumo: [], soccer: [] };
   if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
@@ -1995,7 +1998,7 @@ addEventListener('mousedown', e => { if (!keyWait || (e.target.dataset && e.targ
 addEventListener('contextmenu', e => { if (keyWait || mode !== 'menu') e.preventDefault(); }, true);
 // gedrückte Aktion auslösen (gilt für Tasten und Maustasten)
 function actionDown(vc, e0) {
-  if (vc === 'Mouse0') { if (mode === 'blaster') keys.MouseFire = true; if (mode === 'fight') fightPunchReq = true; return; }
+  if (vc === 'Mouse0') { if (mode === 'blaster') keys.MouseFire = true; if (mode === 'fight') fightPunchReq = true; if (mode === 'sumo' || mode === 'soccer') dashReq = true; return; }
   if (vc === 'Mouse2') { if (mode === 'fight') keys.MouseBlock = true; return; }
   keys[vc] = true;
   if (vc === 'Space') jumpPressed = true;
@@ -2006,7 +2009,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.13';
+const BUILD = '2026-11-06.14';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2509,7 +2512,7 @@ function makeCar(color, driverLook) {
   for (const s of [-1, 1]) olAdd(g, roundedBox(0.1, 0.4, 0.1, 0.03), tc(0x2a2d34), s * 0.7, 0.95, -1.5);
   const wheels = [];
   for (const [x, z] of [[-1, 1.1], [1, 1.1], [-1, -1.1], [1, -1.1]]) {
-    const wg = new THREE.Group(); wg.position.set(x, 0.42, z);
+    const wg = new THREE.Group(); wg.rotation.order = 'YXZ'; wg.position.set(x, 0.42, z);
     const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.35, 16), tc(0x1d2a44)); w.rotation.z = Math.PI / 2; w.castShadow = true; wg.add(w);
     const hub = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.5, 0.12), tc(0xc8d0dc)); wg.add(hub);
     g.add(wg); wheels.push(wg);
@@ -2540,7 +2543,7 @@ function makeVehicle(v, color, driverLook) {
   const rearZ = v.type === 'car' ? -1.4 : v.type === 'bike' ? -0.85 : -0.6, wr = v.type === 'car' ? 0.48 : v.type === 'bike' ? 0.45 : 0.25;
   const tilt = new THREE.Group(); tilt.position.set(0, wr, rearZ); root.add(tilt);
   const body = new THREE.Group(); body.position.set(0, -wr, -rearZ); tilt.add(body);
-  const wheel = (x, z, r, w) => { const wg = new THREE.Group(); wg.position.set(x, r, z); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 18), tc(0x1d2a44)); m.rotation.z = Math.PI / 2; m.castShadow = true; wg.add(m); const hub = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, r * 1.1, 0.12), tc(0xc8d0dc)); wg.add(hub); body.add(wg); wheels.push(wg); };
+  const wheel = (x, z, r, w) => { const wg = new THREE.Group(); wg.rotation.order = 'YXZ'; wg.position.set(x, r, z); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 18), tc(0x1d2a44)); m.rotation.z = Math.PI / 2; m.castShadow = true; wg.add(m); const hub = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, r * 1.1, 0.12), tc(0xc8d0dc)); wg.add(hub); body.add(wg); wheels.push(wg); };
   let seat, grips = null;
   if (v.type === 'car') {
     // Seitenprofil mit Radkästen, in die Breite gezogen und abgerundet: flacher Roadster
@@ -2717,6 +2720,7 @@ function placeCars() {
 // Lenkung im Rennen: in den Einstellungen wählbar
 const STEER_MODES = { sanft: { rate: 6, k: 0.85 }, normal: { rate: 10, k: 1 }, direkt: { rate: 16, k: 1.2 } };
 let steerMode = store.get('klotzwelt-lenkung', 'normal');
+let trailGeo = null;
 function updateRace(dt) {
   const R = race; if (!R) return;
   const c = R.car;
@@ -2777,13 +2781,13 @@ function updateRace(dt) {
     if (c.flying) max += 12;
     if (c.rocket) { max += 28; c.speed += 40 * dt; }
     // Regenbogen-Spur und Raketenflammen
-    if ((c.trailT = (c.trailT || 0) - dt) <= 0 && Math.abs(c.speed) > 6) {
-      c.trailT = 0.03;
-      const hue = (tAll * 0.6) % 1, col = new THREE.Color().setHSL(hue, 0.9, 0.6);
-      for (const sd of [-0.6, 0.6]) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(c.rocket ? 0.45 : 0.28, 8, 6), new THREE.MeshBasicMaterial({ color: c.rocket ? (Math.random() < 0.5 ? 0xff8a2b : 0xffd23f) : col, transparent: true, opacity: 0.85 }));
-        m.position.set(c.pos.x - Math.sin(c.h) * 2.5 + Math.cos(c.h) * sd, c.alt + 0.6, c.pos.z - Math.cos(c.h) * 2.5 - Math.sin(c.h) * sd);
-        world.add(m); particles.push({ m, v: new V3(-Math.sin(c.h) * 3, 0.3, -Math.cos(c.h) * 3), life: c.rocket ? 0.35 : 0.6, smoke: true });
+    if (c.rocket && (c.trailT = (c.trailT || 0) - dt) <= 0) {
+      c.trailT = 0.06;
+      if (!trailGeo) trailGeo = new THREE.SphereGeometry(0.22, 6, 4);
+      for (const sd of [-0.5, 0.5]) {
+        const m = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: Math.random() < 0.5 ? 0xff8a2b : 0xffd23f, transparent: true, opacity: 0.85 }));
+        m.position.set(c.pos.x - Math.sin(c.h) * 2.9 + Math.cos(c.h) * sd, c.alt + 0.78, c.pos.z - Math.cos(c.h) * 2.9 - Math.sin(c.h) * sd);
+        world.add(m); particles.push({ m, v: new V3(-Math.sin(c.h) * 2, 0, -Math.cos(c.h) * 2), life: 0.22, smoke: true });
       }
     }
   }
@@ -2854,13 +2858,13 @@ function updateRace(dt) {
     }
     for (const w of b.mesh.userData.wheels) w.rotation.x += (b.curSpeed || 0) * dt / 0.42;
   }
-  for (const w of c.mesh.userData.wheels) w.rotation.x += c.speed * dt / 0.42;
-  if ((c.veh || VEHICLES[0]).type === 'kart' || (c.veh || {}).type === 'car') c.mesh.userData.wheels[0].rotation.y = c.mesh.userData.wheels[1].rotation.y = -steer * 0.4;
+  for (const w of c.mesh.userData.wheels) w.rotation.x += (c.flying ? c.speed * 0.3 : c.speed) * dt / 0.42;
+  if ((c.veh || VEHICLES[0]).type === 'kart' || (c.veh || {}).type === 'car') c.mesh.userData.wheels[0].rotation.y = c.mesh.userData.wheels[1].rotation.y = c.flying ? 0 : -steer * 0.4;
   placeCars();
   P.pos.copy(c.pos);
   let dy = (c.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size) cam.yaw += dy * Math.min(1, 4 * dt);
-  camTarget.lerp(tmpV.set(c.pos.x, 1.4 + (c.alt || 0), c.pos.z), 1 - Math.exp(-dt * 10));
+  camTarget.lerp(tmpV.set(c.pos.x, 1.4 + (c.alt || 0) * 0.92, c.pos.z), 1 - Math.exp(-dt * 6));
 }
 // Hält das Kart zwischen den Banden. Man prallt ab und wird in Fahrtrichtung gelenkt, statt stecken zu bleiben.
 function keepOnTrack(o) {
@@ -3158,7 +3162,7 @@ function startFlip(S, kind) {
     if (S.airT < 0.25) S.vy = Math.max(S.vy, 0) + 3; beep('whoosh'); return;
   }
   if (S.flipT > 0) return;
-  S.flip = kind; S.flipT = 0.42; S.flipKind = kind; beep('whoosh');
+  S.flip = kind; S.flipT = 0.46; S.flipKind = kind; beep('whoosh');
 }
 function addTrick(S, name, pts) {
   S.comboN++; S.comboPts += pts; S.comboT = 1.4;
@@ -3192,7 +3196,7 @@ function poseSkater(S, dt, push) {
   b.position.set(P.pos.x - fwx * Math.sin(phi), cy - Math.cos(phi), P.pos.z - fwz * Math.sin(phi)); b.rotation.set(phi, yaw, 0);
   for (const w of b.userData.wheels || []) w.rotation.x += (S.air ? 0 : S.speed) * dt / 0.08;
   // Brett: beim Ollie Nase hoch, Flips drehen das Brett unter den Füßen, in Kurven kippt es leicht
-  const p = S.flipT > 0 ? 1 - S.flipT / 0.42 : 0, kind = S.flipKind;
+  const p = S.flipT > 0 ? 1 - S.flipT / 0.46 : 0, kind = S.flipKind;
   const ease = p * p * (3 - 2 * p);
   const popPitch = S.pop > 0 ? -0.45 * Math.sin((1 - S.pop / 0.18) * Math.PI) : 0;
   S.airPitchS = (S.airPitchS || 0) + ((S.air ? (S.airPitch || 0) : 0) - (S.airPitchS || 0)) * Math.min(1, dt * 10);
@@ -3200,19 +3204,19 @@ function poseSkater(S, dt, push) {
   const roll = S.flipT > 0 && kind !== 'shove' ? TRICKS[kind][2] * ease * Math.PI * 2 : 0;
   const shove = S.flipT > 0 && kind === 'shove' ? ease * Math.PI : 0;
   d.rotation.set(pitch, shove, roll + (S.air ? 0 : S.steer * 0.12));
-  d.position.y = 0.2 + (S.flipT > 0 ? Math.sin(p * Math.PI) * 0.35 : 0);
+  d.position.y = 0.2 + (S.flipT > 0 ? Math.sin(p * Math.PI) * 0.28 : 0);
   const u = avatar.userData;
   avatar.rotation.order = 'YXZ';
   const lean = S.air ? 0 : -S.steer * 0.22 * Math.min(1, Math.abs(S.speed) / 8);
   const bob = S.land > 0 ? Math.sin(S.land / 0.2 * Math.PI) * 0.15 : 0; S.land = Math.max(0, (S.land || 0) - dt);
   const tuck = S.air ? (S.grab ? 0.75 : S.flipT > 0 ? 0.55 : 0.3) : 0;
-  const off = 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? 0.3 : 0) + tuck * 0.25 - 1.0; // Füße relativ zur Körpermitte
+  const off = 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? Math.sin(p * Math.PI) * 0.32 + 0.05 : 0) + tuck * 0.25 - 1.0; // Füße relativ zur Körpermitte
   // Anschiebe-Haltung ein- und ausblenden: nach dem letzten Tritt bleibt man noch kurz so, dann dreht man sich seitlich
   S.pushHold = Math.max(0, (S.pushHold || 0) - dt);
   const pbT = !S.air && !S.grind && (S.pushT > 0 || S.pushHold > 0) ? 1 : 0;
   S.pb = (S.pb || 0) + (pbT - (S.pb || 0)) * Math.min(1, dt * (pbT ? 6 : S.air ? 12 : 3));
   const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.1 * S.pb;
-  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.08 : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
+  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.16 * S.pb : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
   S.wobble = Math.max(0, (S.wobble || 0) - dt);
@@ -3226,8 +3230,8 @@ function poseSkater(S, dt, push) {
     // vorderer (linker) Fuß steht auf dem Brett, der rechte schiebt neben dem Brett am Boden an
     u.legL.rotation.set(0, 0, 0);
     if (S.pushT > 0) {
-      const ph = S.pushT, sw = ph < 0.75 ? -0.55 + 1.2 * (ph / 0.75) : 0.65 - 1.2 * ((ph - 0.75) / 0.25);
-      u.legR.rotation.set(sw, 0, -0.04);
+      const ph = S.pushT, sw = ph < 0.7 ? -0.6 + 1.35 * (ph / 0.7) : 0.75 - 1.35 * ((ph - 0.7) / 0.3);
+      u.legR.rotation.set(sw, 0, -0.04); u.legL.rotation.set(-0.12, 0, 0);
       u.armL.rotation.set(-sw * 0.5, 0, -0.1); u.armR.rotation.set(sw * 0.5, 0, 0.1);
     } else { u.legR.rotation.set(0.3, 0, -0.32); } // rollen: hinterer Fuß wieder aufs Brett
   } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
@@ -3683,6 +3687,540 @@ function updateArena(dt) {
 }
 
 // ======================================================================
+// Neue Spiele (Lava-Flucht, Farb-Stopp, Münzrausch, Fangen, Fallende Felder, Himmelsturm, Labyrinth, Schubs-Arena, Klotz-Fußball)
+// ======================================================================
+let mg = null, dashReq = false;
+const rnd = (() => { let s = 1; return { seed(v) { s = v || 1; }, next() { s = (s * 9301 + 49297) % 233280; return s / 233280; } }; })();
+const mgRand = () => Math.random();
+function npcMake(name, x, y, z) {
+  const look = botLook(name), g = makeAvatar(look); world.add(g);
+  return { name, look, g, pos: new V3(x, y, z), vel: new V3(), vy: 0, facing: 0, walk: 0, alive: true, t: 0, target: null };
+}
+function npcAnim(n, moving, dt, air) {
+  const u = n.g.userData;
+  if (moving) n.walk += dt * 9;
+  const sw = moving ? Math.sin(n.walk) * 0.7 : 0;
+  u.legL.rotation.x = air ? 0.3 : sw; u.legR.rotation.x = air ? -0.3 : -sw;
+  u.armL.rotation.x = air ? -2.6 : -sw; u.armR.rotation.x = air ? -2.6 : sw;
+  n.g.position.copy(n.pos); n.g.rotation.y = n.facing;
+}
+function npcStep(n, tx, tz, sp, dt) {
+  const dx = tx - n.pos.x, dz = tz - n.pos.z, d = Math.hypot(dx, dz);
+  if (d < 0.15) return false;
+  const st = Math.min(d, sp * dt);
+  n.pos.x += dx / d * st; n.pos.z += dz / d * st; n.facing = Math.atan2(dx, dz);
+  return true;
+}
+function hideSolid(sd) { sd.mesh.visible = false; sd.box.makeEmpty(); }
+function showSolid(sd) { sd.mesh.visible = true; updateBox(sd); }
+function mgCoin(x, y, z) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 18), coinMat); m.rotation.x = Math.PI / 2; m.position.set(x, y, z); m.castShadow = true; world.add(m); return { m, x, y, z, taken: false }; }
+function mgCoins(list, dt, live, val = 5) {
+  for (const c of list) {
+    if (c.taken) continue;
+    c.m.rotation.z += dt * 3; c.m.position.y = c.y + Math.sin(tAll * 3 + c.x) * 0.15;
+    if (live && Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 1.2 && Math.abs(c.y - (P.pos.y + 1)) < 1.6) { c.taken = true; c.m.visible = false; game.coins++; earn(val); beep('coin'); }
+  }
+}
+function mgEnd(won, title, rows, coinsWon) {
+  if (mode !== mg.key) return;
+  mode = 'win'; beep(won ? 'win' : 'die');
+  if (won) { if (coinsWon) earn(coinsWon); confetti(P.pos.clone().add(new V3(0, 2, 0))); }
+  showResult(title, rows.concat([['Verdient', '<i class="coin"></i> ' + game.earned]]));
+}
+const pill = (label, val) => `<span class="pill">${label} <b>${val}</b></span>`;
+const npcNames = n => BOT_NAMES.filter(b => !isBanned(mg ? mg.key : 'obby', b)).slice(0, n);
+
+const MINI = {
+  // ---------------- Lava-Flucht ----------------
+  lava: {
+    name: 'Lava-Flucht', emoji: '🌋', color: '#ffd8c2', solo: true,
+    desc: 'Die Lava steigt! Spring von Plattform zu Plattform nach oben, bevor sie dich erwischt. Oben wartet das goldene Ziel.',
+    hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · schnell nach oben!' : 'WASD laufen · Leertaste springen · schnell nach oben, die Lava steigt!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(3);
+      plat(0, 0, 0, 16, 16, 0x8a8f99);
+      const P0 = [];
+      let a = 0, y = 0;
+      const cols = [0x3b7de0, 0x3fb55e, 0xffd23f, 0x8b5cd6, 0xff6fae, 0x6fd0f0];
+      for (let i = 0; i < 46; i++) {
+        a += 0.72 + Math.random() * 0.2; y += 1.25 + Math.random() * 0.45;
+        const r = 7 + Math.sin(i * 0.7) * 1.2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+        plat(x, y, z, 3.2, 3.2, cols[i % 6]); P0.push([x, y, z]);
+      }
+      // Säule in der Mitte
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.8, y + 6, 16), tc(0x5a4a6a)); col.position.y = (y + 6) / 2 - 1; col.castShadow = true; world.add(col);
+      const top = P0[P0.length - 1];
+      const goal = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), goalMat); goal.position.set(top[0], top[1] + 0.1, top[2]); world.add(goal);
+      const lava = new THREE.Mesh(new THREE.BoxGeometry(70, 1, 70), lavaMat); lava.position.y = -3; world.add(lava);
+      const coinsL = P0.filter((_, i) => i % 4 === 2).map(([x, y, z]) => mgCoin(x, y + 1.3, z));
+      setSpawn(0, 0, 6.5);
+      return { lava, lavaY: -3, top, coins: coinsL, best: 0, speed: 0.5, wait: 4 };
+    },
+    update(dt) {
+      const M = mg, live = mode === 'lava';
+      if (live) { game.time += dt; M.wait -= dt; if (M.wait <= 0) { M.lavaY += M.speed * dt; M.speed = Math.min(1.3, M.speed + dt * 0.006); } }
+      M.lava.position.y = M.lavaY - 0.5; M.lava.position.x = Math.sin(tAll) * 0.1;
+      M.best = Math.max(M.best, P.pos.y);
+      mgCoins(M.coins, dt, live);
+      if (live && P.pos.y < M.lavaY + 0.1 && !isGod()) return mgEnd(false, 'Die Lava war schneller!', [['Höhe', Math.round(M.best) + ' m'], ['Zeit', fmt(game.time)]]);
+      if (live && isGod() && P.pos.y < M.lavaY) { P.pos.y = M.lavaY + 0.5; P.vel.y = 14; }
+      if (live && Math.hypot(P.pos.x - M.top[0], P.pos.z - M.top[2]) < 1.6 && Math.abs(P.pos.y - M.top[1]) < 0.5) mgEnd(true, 'Geschafft!', [['Zeit', fmt(game.time)], ['Höhe', Math.round(M.best) + ' m']], 40);
+    },
+    stats: () => pill('Höhe', Math.round(Math.max(0, mg.best)) + ' m') + pill('Lava', Math.max(0, Math.round(mg.lavaY)) + ' m') + pill('Zeit', fmt(game.time)) + (mg.wait > 0 ? pill('Lava kommt in', Math.ceil(mg.wait) + ' s') : '')
+  },
+
+  // ---------------- Farb-Stopp ----------------
+  colors: {
+    name: 'Farb-Stopp', emoji: '🎨', color: '#f3d7ff',
+    desc: 'Eine Farbe wird angesagt. Lauf schnell auf ein Feld in dieser Farbe, denn alle anderen verschwinden! Wer am längsten oben bleibt, gewinnt.',
+    hint: () => isTouch ? 'Joystick laufen · schnell auf die richtige Farbe!' : 'WASD laufen · Leertaste springen · schnell auf die richtige Farbe!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(5);
+      const N = 8, S2 = 3.6, tiles = [];
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const x = (i - (N - 1) / 2) * S2, z = (j - (N - 1) / 2) * S2;
+        const sd = plat(x, 0, z, S2 - 0.08, S2 - 0.08, 0xffffff, 0.6); tiles.push({ sd, x, z, c: 0 });
+      }
+      const M = { tiles, N, S2, round: 0, phase: 'wait', t: 3, want: 0, npcs: [], out: 0, alive: 1 };
+      npcNames(5).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, (k - 2) * 3.6 + 0.3, 0, -5.4), { react: 0.4 + Math.random() * 0.9, skill: 0.75 + Math.random() * 0.22 })));
+      M.alive = 1 + M.npcs.length;
+      setSpawn(0, 0, 5);
+      mg = M; MINI.colors.paint();
+      return M;
+    },
+    paint() { for (const t of mg.tiles) { t.c = Math.floor(Math.random() * MG_COLORS.length); t.sd.mesh.material = tc(MG_COLORS[t.c][0]); showSolid(t.sd); } },
+    tileAt(x, z) { const M = mg, h = M.S2 / 2 + 0.05; return M.tiles.find(t => (t.sd.mesh.visible || true) && Math.abs(x - t.x) < h && Math.abs(z - t.z) < h && t.sd.mesh.visible) || M.tiles.find(t => Math.abs(x - t.x) < h && Math.abs(z - t.z) < h); },
+    update(dt) {
+      const M = mg, live = mode === 'colors';
+      if (live) game.time += dt;
+      M.t -= dt;
+      if (M.phase === 'wait' && M.t <= 0) { M.phase = 'call'; M.round++; M.want = Math.floor(Math.random() * MG_COLORS.length); M.t = Math.max(1.6, 4.2 - M.round * 0.22); toast(MG_COLORS[M.want][1] + '!'); beep('check'); for (const n of M.npcs) n.t = n.react; }
+      else if (M.phase === 'call' && M.t <= 0) { M.phase = 'gone'; M.t = 2.2; for (const t of M.tiles) if (t.c !== M.want) hideSolid(t.sd); beep('remove'); }
+      else if (M.phase === 'gone' && M.t <= 0) { M.phase = 'wait'; M.t = 1.2; MINI.colors.paint(); }
+      // Computer-Spieler
+      for (const n of M.npcs) {
+        if (!n.alive) continue;
+        let moving = false;
+        if (M.phase === 'call') {
+          n.t -= dt;
+          if (n.t <= 0) {
+            if (!n.target || n.target.c !== M.want) { let best = null, bd = 1e9; for (const t of M.tiles) if (t.c === M.want) { const d = Math.hypot(t.x - n.pos.x, t.z - n.pos.z) + (Math.random() > n.skill ? 6 : 0); if (d < bd) { bd = d; best = t; } } n.target = best; }
+            if (n.target) moving = npcStep(n, n.target.x, n.target.z, 7.5, dt);
+          }
+        } else if (M.phase === 'wait' && Math.random() < dt * 0.6) n.target = M.tiles[Math.floor(Math.random() * M.tiles.length)];
+        else if (M.phase === 'wait' && n.target) moving = npcStep(n, n.target.x, n.target.z, 3, dt);
+        const t = MINI.colors.tileAt(n.pos.x, n.pos.z), ground = t && t.sd.mesh.visible && n.pos.y > -0.5;
+        if (!ground || n.vy !== 0) { n.vy -= 30 * dt; n.pos.y += n.vy * dt; if (ground && n.pos.y <= 0 && n.vy < 0) { n.pos.y = 0; n.vy = 0; } }
+        if (n.pos.y < -10) { n.alive = false; n.g.visible = false; M.alive--; feed(n.name + ' ist raus!'); }
+        npcAnim(n, moving, dt, n.vy !== 0);
+      }
+      if (live && P.pos.y < -6) { if (isGod()) { P.pos.set(0, 1, 0); P.vel.set(0, 0, 0); } else return mgEnd(false, 'Runtergefallen!', [['Runden geschafft', Math.max(0, M.round - 1)], ['Platz', M.alive + ' von ' + (1 + M.npcs.length)]]); }
+      if (live && (M.alive <= 1 || M.round > 14)) mgEnd(true, M.alive <= 1 ? 'Gewonnen! Du bist der Letzte!' : 'Alle Runden geschafft!', [['Runden', M.round], ['Übrig', M.alive]], 35);
+    },
+    stats: () => pill('Runde', mg.round) + pill('Übrig', mg.alive) + (mg.phase === 'call' ? `<span class="pill">Lauf auf <b style="color:${hexStr(MG_COLORS[mg.want][0])}">■ ${MG_COLORS[mg.want][1]}</b> · ${Math.ceil(mg.t)} s</span>` : '')
+  },
+
+  // ---------------- Münzrausch ----------------
+  rush: {
+    name: 'Münzrausch', emoji: '💰', color: '#fff3b0',
+    desc: 'Sammle in 90 Sekunden mehr Münzen als die anderen! In der Klotzstadt tauchen ständig neue Münzen auf.',
+    hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · sammle mehr als die anderen!' : 'WASD laufen · Leertaste springen · sammle mehr als die anderen!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(6);
+      plat(0, 0, 0, 64, 64, 0x9ad07a);
+      for (const [x, z, w, d] of [[0, -32.5, 64, 1], [0, 32.5, 64, 1], [-32.5, 0, 1, 64], [32.5, 0, 1, 64]]) addBox(x, 1, z, w, 2, d, 0x5a6a88);
+      const cols = [0xe2453c, 0x3b7de0, 0xffd23f, 0x8b5cd6, 0xff8a2b, 0x6fd0f0];
+      for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { if (!i && !j) continue; const h = 2 + Math.floor(Math.random() * 4) * 1.2; addBox(i * 11 + (Math.random() - 0.5) * 2, h / 2, j * 11 + (Math.random() - 0.5) * 2, 4 + Math.random() * 2, h, 4 + Math.random() * 2, cols[(i + j + 10) % 6]); }
+      const M = { list: [], time: 90, npcs: [], mine: 0 };
+      mg = M;
+      for (let k = 0; k < 22; k++) MINI.rush.spawn();
+      npcNames(4).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, Math.cos(k * 1.6) * 6, 0, Math.sin(k * 1.6) * 6), { score: 0, sp: 6.2 + Math.random() * 1.6 })));
+      setSpawn(0, 0, 0);
+      return M;
+    },
+    spawn() {
+      for (let tries = 0; tries < 20; tries++) {
+        const x = (Math.random() - 0.5) * 58, z = (Math.random() - 0.5) * 58;
+        if (!insideSolid(x, 0.5, z, 0.8)) { mg.list.push(mgCoin(x, 1, z)); return; }
+      }
+    },
+    update(dt) {
+      const M = mg, live = mode === 'rush';
+      if (live) { M.time -= dt; game.time += dt; }
+      for (const c of M.list) {
+        if (c.taken) continue;
+        c.m.rotation.z += dt * 3;
+        if (live && Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 1.3 && P.pos.y < 2.5) { c.taken = true; c.m.visible = false; M.mine++; earn(1); beep('coin'); MINI.rush.spawn(); }
+      }
+      for (const n of M.npcs) {
+        if (!n.target || n.target.taken) { let best = null, bd = 1e9; for (const c of M.list) if (!c.taken) { const d = Math.hypot(c.x - n.pos.x, c.z - n.pos.z) + Math.random() * 6; if (d < bd) { bd = d; best = c; } } n.target = best; }
+        let moving = false;
+        if (n.target && live) {
+          const ox = n.pos.x, oz = n.pos.z;
+          moving = npcStep(n, n.target.x, n.target.z, n.sp, dt);
+          if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.4)) { n.pos.x = ox + (Math.random() - 0.5) * 0.6; n.pos.z = oz + (Math.random() - 0.5) * 0.6; if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.4)) { n.pos.x = ox; n.pos.z = oz; } n.target = null; }
+          if (n.target && Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 1) { n.target.taken = true; n.target.m.visible = false; n.score++; n.target = null; MINI.rush.spawn(); }
+        }
+        npcAnim(n, moving, dt);
+      }
+      if (live && M.time <= 0) {
+        const place = 1 + M.npcs.filter(n => n.score > M.mine).length;
+        mgEnd(place === 1, place === 1 ? 'Du hast am meisten!' : 'Platz ' + place, [['Deine Münzen', M.mine], ['Bester Gegner', Math.max(...M.npcs.map(n => n.score))], ['Platz', place + ' von ' + (M.npcs.length + 1)]], place === 1 ? 20 : 0);
+      }
+    },
+    stats: () => pill('Deine Münzen', mg.mine) + pill('Beste Gegner', Math.max(0, ...mg.npcs.map(n => n.score))) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+  },
+
+  // ---------------- Fangen ----------------
+  tag: {
+    name: 'Fangen', emoji: '🏃', color: '#d3f5d0',
+    desc: 'Du bist der Fänger! Fang alle 6 Klotzis, bevor die Zeit um ist. Sie rennen weg und schlagen Haken.',
+    hint: () => isTouch ? 'Joystick laufen · berühre die anderen, um sie zu fangen' : 'WASD laufen · Leertaste springen · berühre die anderen, um sie zu fangen',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(4);
+      plat(0, 0, 0, 56, 56, 0x8fd16f);
+      for (const [x, z, w, d] of [[0, -28.5, 56, 1], [0, 28.5, 56, 1], [-28.5, 0, 1, 56], [28.5, 0, 1, 56]]) addBox(x, 1, z, w, 2, d, 0x7a5a3a);
+      for (let k = 0; k < 14; k++) { const x = (Math.random() - 0.5) * 44, z = (Math.random() - 0.5) * 44; if (Math.hypot(x, z) < 5) continue; addBox(x, 1.5, z, 1, 3, 1, 0x7a5a3a); const top = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), tc(0x3fb55e)); top.position.set(x, 3.8, z); top.castShadow = true; world.add(top); }
+      const M = { npcs: [], time: 100, caught: 0 };
+      npcNames(6).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, Math.cos(k) * 16, 0, Math.sin(k) * 16), { sp: 6.6 + Math.random() * 1.6, jT: 0, caught: false })));
+      setSpawn(0, 0, 0);
+      return M;
+    },
+    update(dt) {
+      const M = mg, live = mode === 'tag';
+      if (live) { M.time -= dt; game.time += dt; }
+      for (const n of M.npcs) {
+        let moving = false;
+        if (!n.caught && live) {
+          const dx = n.pos.x - P.pos.x, dz = n.pos.z - P.pos.z, d = Math.hypot(dx, dz) || 1;
+          let tx = n.pos.x, tz = n.pos.z;
+          if (d < 14) { tx += dx / d * 5; tz += dz / d * 5; n.jT -= dt; if (n.jT <= 0) { n.jT = 0.6 + Math.random(); n.side = Math.random() < 0.5 ? -1 : 1; } tx += -dz / d * 3 * n.side; tz += dx / d * 3 * n.side; }
+          else if (!n.target || Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 1) n.target = { x: (Math.random() - 0.5) * 44, z: (Math.random() - 0.5) * 44 };
+          if (d >= 14 && n.target) { tx = n.target.x; tz = n.target.z; }
+          // nicht aus der Wiese und nicht in die Bäume
+          tx = Math.max(-25, Math.min(25, tx)); tz = Math.max(-25, Math.min(25, tz));
+          const ox = n.pos.x, oz = n.pos.z;
+          moving = npcStep(n, tx, tz, d < 14 ? n.sp : 3.2, dt);
+          if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.4)) { n.pos.x = ox; n.pos.z = oz; n.side = -(n.side || 1); }
+          if (d < 1.3 && Math.abs(P.pos.y - n.pos.y) < 1.5) { n.caught = true; M.caught++; beep('check'); feed(n.name + ' gefangen! (' + M.caught + '/' + M.npcs.length + ')'); earn(3); }
+        }
+        npcAnim(n, moving, dt);
+        if (n.caught) { n.g.userData.armL.rotation.x = n.g.userData.armR.rotation.x = -2.8; }
+      }
+      if (live && M.caught === M.npcs.length) mgEnd(true, 'Alle gefangen!', [['Zeit', fmt(game.time)]], 30);
+      else if (live && M.time <= 0) mgEnd(false, 'Zeit um!', [['Gefangen', M.caught + ' von ' + M.npcs.length]]);
+    },
+    stats: () => pill('Gefangen', mg.caught + '/' + mg.npcs.length) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+  },
+
+  // ---------------- Fallende Felder ----------------
+  fall: {
+    name: 'Fallende Felder', emoji: '🟨', color: '#ffe9a8',
+    desc: 'Jedes Feld, auf dem jemand steht, fällt kurz danach runter. Drei Etagen übereinander. Wer zuletzt noch oben ist, gewinnt!',
+    hint: () => isTouch ? 'Joystick laufen · nicht stehen bleiben!' : 'WASD laufen · Leertaste springen · nicht stehen bleiben!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(7);
+      const tiles = [], N = 9, S2 = 2.6, cols = [0xffd23f, 0xff8a2b, 0xe2453c];
+      for (let L = 0; L < 3; L++) for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const x = (i - (N - 1) / 2) * S2, z = (j - (N - 1) / 2) * S2, y = -L * 7;
+        tiles.push({ sd: plat(x, y, z, S2 - 0.12, S2 - 0.12, cols[L], 0.5), x, z, y, t: -1, gone: false });
+      }
+      const M = { tiles, S2, npcs: [], alive: 1, time: 0 };
+      npcNames(5).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, (k - 2) * 2.6, 0, -6), { wander: 0 })));
+      M.alive = 1 + M.npcs.length;
+      setSpawn(0, 0, 6);
+      return M;
+    },
+    tileAt(x, z, yTop) { const h = mg.S2 / 2 + 0.05; return mg.tiles.find(t => !t.gone && Math.abs(x - t.x) < h && Math.abs(z - t.z) < h && Math.abs(t.y - yTop) < 0.3); },
+    touch(t) { if (t && t.t < 0) t.t = 0.45; },
+    update(dt) {
+      const M = mg, live = mode === 'fall';
+      if (live) game.time += dt;
+      for (const t of M.tiles) {
+        if (t.gone || t.t < 0) continue;
+        t.t -= dt; t.sd.mesh.position.x = t.x + Math.sin(tAll * 60) * 0.05;
+        if (t.t <= 0) { t.gone = true; hideSolid(t.sd); }
+      }
+      if (live && P.onGround) MINI.fall.touch(MINI.fall.tileAt(P.pos.x, P.pos.z, P.pos.y));
+      for (const n of M.npcs) {
+        if (!n.alive) continue;
+        let moving = false;
+        const under = MINI.fall.tileAt(n.pos.x, n.pos.z, n.pos.y);
+        if (under && n.vy === 0) {
+          MINI.fall.touch(under);
+          if (live && (!n.target || n.target.gone || n.target.t >= 0 || Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 0.3)) {
+            // nächstes gutes Feld auf derselben Etage
+            const opts = M.tiles.filter(t => !t.gone && t.t < 0 && Math.abs(t.y - n.pos.y) < 0.3 && Math.hypot(t.x - n.pos.x, t.z - n.pos.z) < 4.5);
+            n.target = opts.length ? opts[Math.floor(Math.random() * opts.length)] : null;
+          }
+          if (n.target) moving = npcStep(n, n.target.x, n.target.z, 4.2, dt);
+        }
+        if (!MINI.fall.tileAt(n.pos.x, n.pos.z, n.pos.y) || n.vy !== 0) {
+          n.vy -= 30 * dt; const ny = n.pos.y + n.vy * dt;
+          const land = M.tiles.find(t => !t.gone && Math.abs(n.pos.x - t.x) < M.S2 / 2 && Math.abs(n.pos.z - t.z) < M.S2 / 2 && t.y <= n.pos.y + 0.01 && t.y >= ny);
+          if (land && n.vy < 0) { n.pos.y = land.y; n.vy = 0; } else n.pos.y = ny;
+        }
+        if (n.pos.y < -24) { n.alive = false; n.g.visible = false; M.alive--; feed(n.name + ' ist raus!'); }
+        npcAnim(n, moving, dt, n.vy !== 0);
+      }
+      if (live && P.pos.y < -20) { if (isGod()) { P.pos.set(0, 2, 0); P.vel.set(0, 0, 0); for (const t of M.tiles) if (t.y === 0) { t.gone = false; t.t = -1; showSolid(t.sd); } } else return mgEnd(false, 'Runtergefallen!', [['Zeit', fmt(game.time)], ['Platz', M.alive + ' von ' + (1 + M.npcs.length)]]); }
+      if (live && M.alive <= 1) mgEnd(true, 'Gewonnen! Du bist der Letzte!', [['Zeit', fmt(game.time)]], 35);
+    },
+    stats: () => pill('Übrig', mg.alive) + pill('Zeit', fmt(game.time)) + pill('Etage', P.pos.y > -3 ? 1 : P.pos.y > -10 ? 2 : 3)
+  },
+
+  // ---------------- Himmelsturm ----------------
+  tower: {
+    name: 'Himmelsturm', emoji: '🗼', color: '#cfe8ff', solo: true,
+    desc: 'Ein riesiger Turm aus schwebenden Klötzen. Wie hoch kommst du in 3 Minuten? Alle 15 Stufen gibt es einen Checkpoint.',
+    hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · immer höher!' : 'WASD laufen · Leertaste springen · immer höher!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(9);
+      plat(0, 0, 0, 10, 10, 0x8a8f99);
+      const steps = [], cps = [];
+      let x = 0, y = 0, z = 0, dir = 0;
+      const cols = [0xff6fae, 0x6fd0f0, 0xffd23f, 0x3fdc7a, 0x8b5cd6, 0xff8a2b];
+      for (let i = 1; i <= 120; i++) {
+        dir += (Math.random() - 0.5) * 1.6;
+        const dist = 3.6 + Math.random() * 1.4 + Math.min(1.2, i * 0.01);
+        x += Math.cos(dir) * dist; z += Math.sin(dir) * dist; y += 1.1 + Math.random() * 0.5;
+        if (Math.hypot(x, z) > 22) { dir += Math.PI; x *= 0.8; z *= 0.8; }
+        const cp = i % 15 === 0, w = cp ? 4 : Math.max(1.6, 3 - i * 0.012);
+        plat(x, y, z, w, w, cp ? 0x3fb55e : cols[i % 6]);
+        if (cp) { const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.12, 18), padMat); pad.position.set(x, y + 0.07, z); world.add(pad); cps.push([x, y, z]); }
+        steps.push([x, y, z]);
+      }
+      const coinsT = steps.filter((_, i) => i % 6 === 3).map(([a, b, c]) => mgCoin(a, b + 1.3, c));
+      setSpawn(0, 0, 2);
+      return { steps, cps, cp: -1, best: 0, time: 180, coins: coinsT };
+    },
+    update(dt) {
+      const M = mg, live = mode === 'tower';
+      if (live) { M.time -= dt; game.time += dt; }
+      M.best = Math.max(M.best, P.pos.y);
+      mgCoins(M.coins, dt, live, 3);
+      M.cps.forEach(([x, y, z], i) => { if (i > M.cp && Math.hypot(P.pos.x - x, P.pos.z - z) < 2 && Math.abs(P.pos.y - y) < 0.5) { M.cp = i; P.spawn.set(x, y, z); toast('Checkpoint!'); beep('check'); earn(5); } });
+      if (live && M.time <= 0) mgEnd(true, 'Zeit um!', [['Höhe', Math.round(M.best) + ' m'], ['Checkpoints', M.cp + 1]], Math.round(M.best / 4));
+    },
+    stats: () => pill('Höhe', Math.round(Math.max(0, mg.best)) + ' m') + pill('Checkpoint', mg.cp + 1) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+  },
+
+  // ---------------- Labyrinth ----------------
+  maze: {
+    name: 'Labyrinth', emoji: '🧩', color: '#e0e6f5', solo: true,
+    desc: 'Jedes Mal ein neues Labyrinth! Finde den goldenen Ausgang so schnell wie möglich. Unterwegs liegen Münzen.',
+    hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Mausrad: Zoom (ganz nah = eigene Sicht) · finde den goldenen Ausgang',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(2);
+      const G2 = 11, C = 4.4, off = -(G2 * C) / 2;
+      plat(0, 0, 0, G2 * C + 2, G2 * C + 2, 0xd9d2c0);
+      // Labyrinth mit Tiefensuche
+      const wallsH = Array.from({ length: G2 + 1 }, () => Array(G2).fill(true)), wallsV = Array.from({ length: G2 }, () => Array(G2 + 1).fill(true));
+      const seen = Array.from({ length: G2 }, () => Array(G2).fill(false)), stack = [[0, 0]]; seen[0][0] = true;
+      while (stack.length) {
+        const [i, j] = stack[stack.length - 1];
+        const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [i + a, j + b, a, b]).filter(([a, b]) => a >= 0 && b >= 0 && a < G2 && b < G2 && !seen[a][b]);
+        if (!nb.length) { stack.pop(); continue; }
+        const [a, b, da, db] = nb[Math.floor(Math.random() * nb.length)];
+        if (da) wallsV[j][Math.max(i, a)] = false; else wallsH[Math.max(j, b)][i] = false;
+        seen[a][b] = true; stack.push([a, b]);
+      }
+      const wc = 0x5a6a88, H = 3.2;
+      for (let j = 0; j <= G2; j++) for (let i = 0; i < G2; i++) if (wallsH[j][i]) addBox(off + i * C + C / 2, H / 2, off + j * C, C + 0.4, H, 0.4, wc);
+      for (let j = 0; j < G2; j++) for (let i = 0; i <= G2; i++) if (wallsV[j][i]) addBox(off + i * C, H / 2, off + j * C + C / 2, 0.4, H, C + 0.4, wc);
+      const ex = off + (G2 - 0.5) * C, ez = off + (G2 - 0.5) * C;
+      const goal = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), goalMat); goal.position.set(ex, 0.1, ez); world.add(goal);
+      const coinsM = [];
+      for (let k = 0; k < 14; k++) coinsM.push(mgCoin(off + (Math.floor(Math.random() * G2) + 0.5) * C, 1, off + (Math.floor(Math.random() * G2) + 0.5) * C));
+      setSpawn(off + C / 2, 0, off + C / 2);
+      return { ex, ez, coins: coinsM };
+    },
+    update(dt) {
+      const M = mg, live = mode === 'maze';
+      if (live) game.time += dt;
+      mgCoins(M.coins, dt, live);
+      if (live && Math.hypot(P.pos.x - M.ex, P.pos.z - M.ez) < 1.5) {
+        const best = store.get('klotzwelt-labyrinth', 0), rec = !best || game.time < best; if (rec) store.set('klotzwelt-labyrinth', game.time);
+        mgEnd(true, 'Ausgang gefunden!', [['Zeit', fmt(game.time)], ['Bestzeit', rec ? fmt(game.time) + ' (neu!)' : fmt(best)], ['Münzen', game.coins]], 25);
+      }
+    },
+    stats: () => pill('Zeit', fmt(game.time)) + pill('Münzen', game.coins + '/' + mg.coins.length)
+  },
+
+  // ---------------- Schubs-Arena ----------------
+  sumo: {
+    name: 'Schubs-Arena', emoji: '💥', color: '#ffd0e4',
+    desc: 'Schubs alle anderen von der Plattform! Mit einem Sprint-Stoß fliegen sie weit. Aber pass auf, sie schubsen zurück.',
+    hint: () => isTouch ? 'Joystick laufen · Schubs-Knopf: Stoß nach vorne' : 'WASD laufen · Linksklick oder J: Stoß nach vorne · Leertaste springen',
+    btn: 'Schubs',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(6);
+      plat(0, 0, 0, 22, 22, 0xff6fae, 1.2);
+      const ring = new THREE.Mesh(new THREE.BoxGeometry(22.2, 0.05, 22.2), tc(0xffffff)); ring.position.y = 0.02; world.add(ring);
+      const inner = new THREE.Mesh(new THREE.BoxGeometry(20, 0.06, 20), tc(0xff6fae)); inner.position.y = 0.04; world.add(inner);
+      const M = { npcs: [], alive: 1, dashT: 0, dashCool: 0, time: 0 };
+      npcNames(5).forEach((n, k) => { const a = k / 5 * Math.PI * 2; M.npcs.push(Object.assign(npcMake(n, Math.cos(a) * 7, 0, Math.sin(a) * 7), { cool: 1 + Math.random() * 2, dash: 0, mass: 0.85 + Math.random() * 0.4 })); });
+      M.alive = 1 + M.npcs.length;
+      setSpawn(0, 0, 0);
+      return M;
+    },
+    update(dt) {
+      const M = mg, live = mode === 'sumo';
+      if (live) game.time += dt;
+      M.dashCool = Math.max(0, M.dashCool - dt); M.dashT = Math.max(0, M.dashT - dt);
+      const want = live && (dashReq || (keys.KeyJ && !M.jHeld) || (keys.TouchDrift && !M.tHeld)); M.jHeld = !!keys.KeyJ; M.tHeld = !!keys.TouchDrift; dashReq = false;
+      if (want && M.dashCool <= 0) { M.dashCool = 0.9; M.dashT = 0.3; M.kbx = (M.kbx || 0) + Math.sin(P.facing) * 15; M.kbz = (M.kbz || 0) + Math.cos(P.facing) * 15; beep('whoosh'); }
+      // Stöße wirken auf den Spieler über einen eigenen Schwung (sonst bremst die normale Steuerung sie sofort)
+      if (M.kbx || M.kbz) { moveAxis('x', (M.kbx || 0) * dt); moveAxis('z', (M.kbz || 0) * dt); const f = Math.exp(-dt * 3.2); M.kbx *= f; M.kbz *= f; if (Math.hypot(M.kbx, M.kbz) < 0.3) M.kbx = M.kbz = 0; }
+      const edge = 11;
+      const others = [{ isP: true, pos: P.pos }].concat(M.npcs.filter(n => n.alive));
+      for (const n of M.npcs) {
+        if (!n.alive) continue;
+        n.cool -= dt; n.dash = Math.max(0, n.dash - dt);
+        // Ziel: der nächste andere, am liebsten jemand am Rand
+        let tgt = null, bd = 1e9;
+        for (const o of others) { if (o === n) continue; const d = Math.hypot(o.pos.x - n.pos.x, o.pos.z - n.pos.z) - Math.max(Math.abs(o.pos.x), Math.abs(o.pos.z)) * 0.3; if (d < bd) { bd = d; tgt = o; } }
+        let moving = false;
+        const onP = Math.abs(n.pos.x) < edge && Math.abs(n.pos.z) < edge && n.pos.y > -0.5;
+        if (tgt && live && onP) {
+          const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, d = Math.hypot(dx, dz) || 1;
+          n.facing = Math.atan2(dx, dz);
+          // vom Rand weg bleiben
+          const cx = -n.pos.x * (Math.abs(n.pos.x) > 8 ? 0.6 : 0), cz = -n.pos.z * (Math.abs(n.pos.z) > 8 ? 0.6 : 0);
+          n.vel.x += (dx / d * 4.5 + cx) * dt * 3; n.vel.z += (dz / d * 4.5 + cz) * dt * 3; moving = true;
+          if (n.cool <= 0 && d < 4) { n.cool = 1.4 + Math.random() * 1.2; n.dash = 0.25; n.vel.x += dx / d * 13; n.vel.z += dz / d * 13; beep('whoosh'); }
+        }
+        n.vel.x -= n.vel.x * Math.min(1, dt * 2.2); n.vel.z -= n.vel.z * Math.min(1, dt * 2.2);
+        n.pos.x += n.vel.x * dt; n.pos.z += n.vel.z * dt;
+        if (!onP || n.vy !== 0) { n.vy -= 30 * dt; n.pos.y += n.vy * dt; if (onP && n.pos.y <= 0 && n.vy < 0) { n.pos.y = 0; n.vy = 0; } }
+        // Zusammenstöße: wer gerade stößt, schubst kräftig
+        for (const o of others) {
+          if (o === n) continue;
+          const dx = o.pos.x - n.pos.x, dz = o.pos.z - n.pos.z, d = Math.hypot(dx, dz);
+          if (d > 1.1 || d < 0.01 || Math.abs(o.pos.y - n.pos.y) > 1.5) continue;
+          const nx = dx / d, nz = dz / d, push = (1.1 - d) * 0.5;
+          n.pos.x -= nx * push; n.pos.z -= nz * push;
+          if (o.isP) {
+            P.pos.x += nx * push; P.pos.z += nz * push;
+            if (n.dash > 0 && !isGod()) { M.kbx = (M.kbx || 0) + nx * 14; M.kbz = (M.kbz || 0) + nz * 14; P.vel.y = 5; n.dash = 0; beep('bonk'); hurtFlash(); }
+            if (M.dashT > 0) { n.vel.x -= nx * 18 / n.mass; n.vel.z -= nz * 18 / n.mass; n.vy = 4; M.dashT = 0; M.kbx *= 0.3; M.kbz *= 0.3; beep('land'); hitFx(n.pos.clone().add(new V3(0, 1.4, 0))); }
+          } else if (n.dash > 0) { o.vel.x += nx * 13 / o.mass; o.vel.z += nz * 13 / o.mass; n.dash = 0; }
+        }
+        if (n.pos.y < -8) { n.alive = false; n.g.visible = false; M.alive--; feed(n.name + ' ist runtergefallen!'); earn(3); }
+        npcAnim(n, moving && n.vy === 0, dt, n.vy !== 0);
+      }
+      if (live && P.pos.y < -6) { if (isGod()) { P.pos.set(0, 1, 0); P.vel.set(0, 0, 0); } else return mgEnd(false, 'Runtergeschubst!', [['Platz', M.alive + ' von ' + (1 + M.npcs.length)], ['Zeit', fmt(game.time)]]); }
+      if (live && M.alive <= 1) mgEnd(true, 'Du bist der Schubs-König!', [['Zeit', fmt(game.time)]], 35);
+      if (M.dashT > 0) { avatar.userData.armL.rotation.x = avatar.userData.armR.rotation.x = -1.6; }
+    },
+    stats: () => pill('Übrig', mg.alive) + pill('Zeit', fmt(game.time)) + pill('Stoß', mg.dashCool > 0 ? 'lädt …' : 'bereit')
+  },
+
+  // ---------------- Klotz-Fußball ----------------
+  soccer: {
+    name: 'Klotz-Fußball', emoji: '⚽', color: '#c8f0d8',
+    desc: 'Du gegen das Klotz-Team! Lauf den Ball, schieß aufs Tor und wehr ihre Schüsse ab. Wer zuerst 3 Tore hat, gewinnt.',
+    hint: () => isTouch ? 'Joystick laufen · Schuss-Knopf: schießen · Ball berühren = dribbeln' : 'WASD laufen · Linksklick oder J: schießen · Ball berühren = dribbeln',
+    btn: 'Schuss',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(5);
+      const L = 44, W = 26;
+      plat(0, 0, 0, L + 10, W + 10, 0x3fa34d);
+      for (let k = -5; k <= 5; k++) { const st = new THREE.Mesh(new THREE.BoxGeometry(4, 0.02, W), tc(k % 2 ? 0x46b356 : 0x3fa34d)); st.position.set(k * 4, 0.012, 0); world.add(st); }
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, W), tc(0xffffff)); line.position.y = 0.02; world.add(line);
+      const circ = new THREE.Mesh(new THREE.TorusGeometry(4, 0.1, 6, 40), tc(0xffffff)); circ.rotation.x = Math.PI / 2; circ.position.y = 0.03; world.add(circ);
+      // Banden, Tore
+      for (const sz of [-1, 1]) addBox(0, 0.6, sz * (W / 2 + 0.5), L + 2, 1.2, 1, 0xf4f4f0);
+      const GW = 7;
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) addBox(sx * (L / 2 + 0.5), 0.6, sz * (W / 4 + GW / 4 + 0.25), 1, 1.2, W / 2 - GW / 2 + 0.5, 0xf4f4f0);
+        const col = sx < 0 ? 0x3b7de0 : 0xe2453c;
+        for (const sz of [-1, 1]) olAdd(world, gd(new THREE.CylinderGeometry(0.15, 0.15, 3, 10), 0.3, 3, 0.3), tc(0xffffff), sx * L / 2, 1.5, sz * GW / 2);
+        olAdd(world, gd(new THREE.CylinderGeometry(0.15, 0.15, GW, 10), 0.3, GW, 0.3), tc(0xffffff), sx * L / 2, 3, 0).rotation.x = Math.PI / 2;
+        const net = new THREE.Mesh(new THREE.BoxGeometry(2, 3, GW), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.25 })); net.position.set(sx * (L / 2 + 1), 1.5, 0); world.add(net);
+        addBox(sx * (L / 2 + 2.2), 1.5, 0, 0.4, 3, GW + 0.4, col);
+      }
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), tc(0xffffff)); ball.castShadow = true; world.add(ball);
+      for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), tc(0x1d2a44)); const a = k * 1.05; sp.position.set(Math.cos(a) * 0.5, Math.sin(a * 2) * 0.3, Math.sin(a) * 0.5); ball.add(sp); }
+      const M = { L, W, GW, ball, bp: new V3(0, 0.6, 0), bv: new V3(), me: 0, them: 0, pause: 0, time: 180, npcs: [], kickCool: 0 };
+      const nm = npcNames(2);
+      M.npcs.push(Object.assign(npcMake(nm[0] || 'Kicker', 8, 0, 0), { role: 'striker', cool: 0 }));
+      M.npcs.push(Object.assign(npcMake(nm[1] || 'Torwart', L / 2 - 1.5, 0, 0), { role: 'keeper', cool: 0 }));
+      for (const n of M.npcs) n.look.wear.shirt = 's-red';
+      for (const n of M.npcs) { world.remove(n.g); n.g = makeAvatar(n.look); world.add(n.g); }
+      setSpawn(-8, 0, 0);
+      return M;
+    },
+    reset(who) { const M = mg; M.bp.set(0, 0.6, 0); M.bv.set(0, 0, 0); P.pos.set(-8, 0, 0); P.vel.set(0, 0, 0); M.npcs[0].pos.set(8, 0, 0); M.npcs[1].pos.set(M.L / 2 - 1.5, 0, 0); M.pause = 1.2; },
+    kick(fromX, fromZ, power, dirX, dirZ, up) {
+      const M = mg; let dx = dirX, dz = dirZ; const d = Math.hypot(dx, dz) || 1;
+      M.bv.x = dx / d * power; M.bv.z = dz / d * power; M.bv.y = up; beep('land');
+    },
+    update(dt) {
+      const M = mg, live = mode === 'soccer';
+      if (live && M.pause <= 0) { M.time -= dt; game.time += dt; }
+      M.pause = Math.max(0, M.pause - dt); M.kickCool = Math.max(0, M.kickCool - dt);
+      // Ball
+      M.bv.y -= 25 * dt; M.bp.addScaledVector(M.bv, dt);
+      if (M.bp.y < 0.6) { M.bp.y = 0.6; M.bv.y = Math.abs(M.bv.y) > 2 ? -M.bv.y * 0.45 : 0; }
+      const fr = M.bp.y <= 0.61 ? 1.2 : 0.2; M.bv.x -= M.bv.x * Math.min(1, fr * dt); M.bv.z -= M.bv.z * Math.min(1, fr * dt);
+      const hw = M.W / 2 - 0.6, hl = M.L / 2 - 0.6;
+      if (Math.abs(M.bp.z) > hw) { M.bp.z = Math.sign(M.bp.z) * hw; M.bv.z *= -0.7; }
+      // Tor?
+      if (Math.abs(M.bp.x) > hl) {
+        if (Math.abs(M.bp.z) < M.GW / 2 - 0.4 && M.bp.y < 2.8 && M.pause <= 0) {
+          const mine = M.bp.x > 0;
+          if (mine) { M.me++; toast('TOR!'); beep('win'); earn(10); confetti(M.bp.clone()); } else { M.them++; toast('Gegentor!'); beep('die'); }
+          if (live && (M.me >= 3 || M.them >= 3)) return mgEnd(M.me >= 3, M.me >= 3 ? 'Gewonnen!' : 'Verloren', [['Ergebnis', M.me + ' : ' + M.them]], M.me >= 3 ? 30 : 0);
+          MINI.soccer.reset();
+        } else { M.bp.x = Math.sign(M.bp.x) * hl; M.bv.x *= -0.7; }
+      }
+      M.ball.position.copy(M.bp); M.ball.rotation.x += M.bv.z * dt * 1.6; M.ball.rotation.z -= M.bv.x * dt * 1.6;
+      // Spieler: dribbeln und schießen
+      if (live && M.pause <= 0) {
+        const dx = M.bp.x - P.pos.x, dz = M.bp.z - P.pos.z, d = Math.hypot(dx, dz);
+        const shoot = dashReq || (keys.KeyJ && !M.jHeld) || (keys.TouchDrift && !M.tHeld);
+        if (shoot && d < 2.2 && M.kickCool <= 0) { M.kickCool = 0.4; MINI.soccer.kick(P.pos.x, P.pos.z, 24, Math.sin(P.facing), Math.cos(P.facing), 4); }
+        else if (d < 1.2 && M.bp.y < 1.4) { const sp = Math.hypot(P.vel.x, P.vel.z); M.bv.x = dx / (d || 1) * Math.max(sp * 1.25, 3); M.bv.z = dz / (d || 1) * Math.max(sp * 1.25, 3); }
+      }
+      M.jHeld = !!keys.KeyJ; M.tHeld = !!keys.TouchDrift; dashReq = false;
+      if (P.pos.x < -M.L / 2 - 3) P.pos.x = -M.L / 2 - 3;
+      // Gegner
+      for (const n of M.npcs) {
+        let moving = false; n.cool = Math.max(0, n.cool - dt);
+        if (live && M.pause <= 0) {
+          if (n.role === 'keeper') {
+            const tz = Math.max(-M.GW / 2 + 0.8, Math.min(M.GW / 2 - 0.8, M.bp.z));
+            const tx = M.bp.x > M.L / 2 - 8 ? Math.max(M.bp.x, M.L / 2 - 4) : M.L / 2 - 1.5;
+            moving = npcStep(n, tx, tz, 6.5, dt);
+          } else {
+            // hinter den Ball laufen (auf der Seite zum eigenen Tor) und Richtung Spieler-Tor schießen
+            const gx = -M.L / 2, ax = M.bp.x - gx, az = M.bp.z, ad = Math.hypot(ax, az) || 1;
+            const bx = M.bp.x + ax / ad * 1.3, bz = M.bp.z + az / ad * 1.3;
+            const far = Math.hypot(bx - n.pos.x, bz - n.pos.z) > 1;
+            moving = npcStep(n, far ? bx : M.bp.x, far ? bz : M.bp.z, 7.4, dt);
+          }
+          const dx = M.bp.x - n.pos.x, dz = M.bp.z - n.pos.z, d = Math.hypot(dx, dz);
+          if (d < 1.5 && n.cool <= 0) {
+            n.cool = 0.8;
+            const tx = -M.L / 2 - n.pos.x, tz = (Math.random() - 0.5) * M.GW * 0.8 - n.pos.z;
+            MINI.soccer.kick(n.pos.x, n.pos.z, n.role === 'keeper' ? 22 : 17 + Math.random() * 5, tx, tz, n.role === 'keeper' ? 6 : 3);
+          }
+          // nicht in den Spieler laufen
+          const px = n.pos.x - P.pos.x, pz = n.pos.z - P.pos.z, pd = Math.hypot(px, pz);
+          if (pd < 1.1 && pd > 0.01) { n.pos.x += px / pd * (1.1 - pd); n.pos.z += pz / pd * (1.1 - pd); }
+        }
+        npcAnim(n, moving, dt);
+      }
+    },
+    stats: () => `<span class="pill">Du <b>${mg.me} : ${mg.them}</b> Klotz-Team</span>` + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+  }
+};
+const MG_COLORS = [[0xe2453c, 'Rot'], [0x3b7de0, 'Blau'], [0xffd23f, 'Gelb'], [0x3fb55e, 'Grün'], [0x8b5cd6, 'Lila'], [0xff8a2b, 'Orange']];
+const hexStr = c => '#' + c.toString(16).padStart(6, '0');
+for (const [k, g] of Object.entries(MINI)) g.key = k;
+
+// ======================================================================
 // Gruselvilla
 // ======================================================================
 let horror = null, drone = null;
@@ -3841,7 +4379,7 @@ function showResult(title, rows) {
 
 // ---------- Spiele-Tab: Sperren und Postfach ----------
 function renderGames() {
-  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playSkate', 'skate', 'Skaten'], ['playFight', 'fight', 'Kämpfen'], ['playBlaster', 'blaster', 'Spielen'], ['playHorror', 'horror', 'Spielen']]) {
+  for (const [id, g, label] of [['playObby', 'obby', 'Spielen'], ['playBuild', 'build', 'Bauen'], ['playRace', 'race', 'Fahren'], ['playSkate', 'skate', 'Skaten'], ['playFight', 'fight', 'Kämpfen'], ['playBlaster', 'blaster', 'Spielen'], ['playHorror', 'horror', 'Spielen'], ...Object.keys(MINI).map(k => ['play_' + k, k, 'Spielen'])]) {
     const btn = $(id), card = btn.closest('.game'), banned = isBanned(g, profile.name), young = !ageOk(g);
     btn.disabled = banned || young; btn.textContent = banned ? 'Gesperrt' : young ? 'Ab ' + GAME_AGE[g] : label;
     let note = card.querySelector('.lock');
@@ -4179,6 +4717,8 @@ function renderStats() {
     $('stats').innerHTML = adm + `<span class="pill">Punkte <b>${skate.score}</b></span>${skate.comboN ? `<span class="pill">Kombo${skate.comboN > 1 ? ` <b>×${1 + (skate.comboN - 1) * 0.5}</b>` : ''} · <b>${skate.comboPts}</b></span>` : ''}<span class="pill">Zeit <b>${Math.ceil(skate.time)} s</b></span><span class="pill"><i class="coin"></i> <b>${coinText()}</b></span>`;
   } else if (isRace(mode) && race) {
     $('stats').innerHTML = adm + `<span class="pill">Runde <b>${Math.min(LAPS, race.car.lap + 1)}/${LAPS}</b></span><span class="pill">Platz <b>${racePlace()}/${race.bots.length + 1}</b></span><span class="pill">Zeit <b>${fmt(race.time)}</b></span><span class="pill"><b>${Math.round(Math.abs(race.car.speed) * 4)}</b> km/h</span>`;
+  } else if (MINI[mode] && mg && mg.key === mode) {
+    $('stats').innerHTML = adm + MINI[mode].stats();
   } else if (mode === 'horror' && horror) {
     $('stats').innerHTML = adm + `<span class="pill">Schlüssel <b>${horror.keys}/3</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Erwischt <b>${game.deaths}</b></span>`;
   } else if (mode === 'build') {
@@ -4285,6 +4825,13 @@ function enterPlay(m) {
     $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Trick';
     $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
     toast('Los, skaten!');
+  } else if (MINI[m]) {
+    mg = { key: m };
+    mg = MINI[m].build(); mg.key = m;
+    Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
+    $('hint').textContent = MINI[m].hint();
+    if (MINI[m].btn) { $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = MINI[m].btn; }
+    toast(MINI[m].name + '!');
   } else if (m === 'horror') {
     buildHorror();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
@@ -4320,6 +4867,9 @@ function openVehPicker() {
 }
 $('playRace').onclick = () => { if (isBanned('race', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[0]; openVehPicker(); };
 $('playSkate').onclick = () => enterPlay('skate');
+// Karten der neuen Spiele
+$('miniCards').innerHTML = Object.entries(MINI).map(([k, g]) => `<div class="game" style="background:${g.color}"><div class="mgArt" aria-hidden="true">${g.emoji}</div><h3>${g.name}</h3><p>${g.desc}${g.solo ? '' : ' Mit Freunden noch lustiger!'}</p><button class="btn primary" id="play_${k}">Spielen</button></div>`).join('');
+for (const k of Object.keys(MINI)) $('play_' + k).onclick = () => enterPlay(k);
 $('playFight').onclick = () => enterPlay('fight');
 $('playBlaster').onclick = () => enterPlay('blaster');
 $('vehCancel').onclick = () => { $('vehPanel').hidden = true; };
@@ -4397,7 +4947,7 @@ function updatePlayer(dt) {
     if (dead <= 0) { for (const d of debris) world.remove(d.o); debris = []; dead = 0; respawn(); avatar.visible = true; }
     return;
   }
-  const active = mode === 'obby' || mode === 'build' || mode === 'horror' || mode === 'fight' || mode === 'blaster' || (mode === 'skate' && isAdmin() && powers.fly);
+  const active = mode === 'obby' || mode === 'build' || mode === 'horror' || mode === 'fight' || mode === 'blaster' || !!MINI[mode] || (mode === 'skate' && isAdmin() && powers.fly);
   if (mode === 'skate' && skate && !skate.wasFly) { skate.wasFly = true; skate.board.visible = false; rebuildAvatar(); }
   let f = 0, r = 0;
   if (active) {
@@ -4513,6 +5063,7 @@ function frame(now) {
   } else {
     updatePlayer(dt);
     if (playingGame() === 'horror') updateHorror(dt);
+    if (MINI[playingGame()] && mg && mg.key === playingGame()) MINI[playingGame()].update(dt);
     if (playingGame() === 'fight') updateFight(dt);
     if (playingGame() === 'blaster') updateArena(dt);
     const so = (shiftLock || playingGame() === 'fight') && !firstPerson() ? 1.1 : 0; // Shift-Lock: Kamera über die rechte Schulter
@@ -4552,7 +5103,7 @@ function applyDevice() {
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || isRace(playingGame());
-    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || ['skate', 'fight', 'blaster'].includes(playingGame()));
+    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || ['skate', 'fight', 'blaster'].includes(playingGame()) || !!(MINI[playingGame()] && MINI[playingGame()].btn));
     renderAdminBar();
   }
 }
