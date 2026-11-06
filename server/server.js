@@ -84,12 +84,24 @@ const D = () => db.data;
 const low = n => String(n || '').trim().toLowerCase();
 const now = () => Date.now();
 const clients = new Set();
-const online = new Map();   // benutzername (klein) -> Verbindung
+// Angemeldete Verbindungen: ein Konto darf auf mehreren Geräten gleichzeitig angemeldet sein.
+// online.get(u) liefert alle Geräte eines Kontos zusammen: send() geht dann an alle.
+const online = {
+  m: new Map(),
+  get(u) {
+    const set = this.m.get(u); if (!set || !set.size) return undefined;
+    const all = [...set];
+    return { all, user: u, primary: all[all.length - 1], get room() { const x = all.find(a => a.room); return x ? x.room : null; }, get party() { const x = all.find(a => a.party); return x ? x.party : null; } };
+  },
+  add(u, c) { if (!this.m.has(u)) this.m.set(u, new Set()); this.m.get(u).add(c); },
+  remove(u, c) { const set = this.m.get(u); if (set) { set.delete(c); if (!set.size) this.m.delete(u); } },
+  *[Symbol.iterator]() { for (const u of this.m.keys()) yield [u, this.get(u)]; }
+};
 const rooms = new Map();    // raum-id -> { key, game, players: Set }
 const parties = new Map();  // gruppen-id -> { id, leader, members: Set, invited: Set }
 let nextId = 1;
 
-function send(c, msg) { if (c.ws.readyState === 1) c.ws.send(JSON.stringify(msg)); }
+function send(c, msg) { if (c.all) { for (const x of c.all) send(x, msg); return; } if (c.ws.readyState === 1) c.ws.send(JSON.stringify(msg)); }
 const err = (c, msg) => send(c, { t: 'error', msg });
 const notice = (c, msg) => send(c, { t: 'notice', msg });
 
@@ -187,9 +199,8 @@ setInterval(() => {
 
 // ---------- Anmelden ----------
 function loginAs(c, u) {
-  const old = online.get(u);
-  if (old && old !== c) { notice(old, 'Du wurdest abgemeldet, weil du dich woanders angemeldet hast.'); send(old, { t: 'kicked' }); logoutConn(old); }
-  c.user = u; online.set(u, c);
+  if (c.user && c.user !== u) logoutConn(c);
+  c.user = u; online.add(u, c); // andere Geräte bleiben angemeldet
   const token = crypto.randomBytes(24).toString('hex');
   D().tokens[token] = { u, exp: now() + TOKEN_DAYS * 864e5 };
   for (const [k, v] of Object.entries(D().tokens)) if (v.exp < now()) delete D().tokens[k];
@@ -203,7 +214,7 @@ function logoutConn(c) {
   const u = c.user;
   leaveRoom(c); leaveParty(c);
   for (const p of parties.values()) p.invited.delete(u);
-  if (online.get(u) === c) online.delete(u);
+  online.remove(u, c);
   c.user = null;
   pushFriends(u);
 }
@@ -377,7 +388,7 @@ function handle(c, m) {
       if (!D().bans[g].some(b => b.u === t)) D().bans[g].push({ u: t, by: users[c.user].name, at: now() });
       db.save();
       const oc = online.get(t);
-      if (oc) { send(oc, { t: 'banned', game: g, by: users[c.user].name }); send(oc, { t: 'me', me: meOf(t) }); if (oc.room && oc.room.game === g) leaveRoom(oc); }
+      if (oc) { send(oc, { t: 'banned', game: g, by: users[c.user].name }); send(oc, { t: 'me', me: meOf(t) }); for (const x of oc.all) if (x.room && x.room.game === g) leaveRoom(x); }
       pushAdmins(); return notice(c, other.name + ' wurde aus ' + GAMES[g] + ' gebannt.');
     }
     case 'unban': {
@@ -406,7 +417,7 @@ function handle(c, m) {
       const p = c.party;
       if (p && p.leader === c.user) for (const mu of p.members) {
         const mc = online.get(mu);
-        if (mu !== c.user && mc && (!mc.room || mc.room.key !== r.key)) send(mc, { t: 'partyGo', game: m.game, room: r.key, from: users[c.user].name });
+        if (mu !== c.user && mc && (!mc.room || mc.room.key !== r.key)) send(mc.primary, { t: 'partyGo', game: m.game, room: r.key, from: users[c.user].name });
       }
       return;
     }
