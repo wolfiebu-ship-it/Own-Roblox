@@ -464,6 +464,8 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
   </div>
   <button class="btn" id="setLayout" type="button">Knöpfe mit dem Finger verschieben</button>
   <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
+  <div class="label">Lenkung im Klotz-Rennen</div>
+  <div class="seg" id="steerSeg"><button type="button" data-st="sanft">Sanft</button><button type="button" data-st="normal">Normal</button><button type="button" data-st="direkt">Direkt</button></div>
   <div class="label">Tastenbelegung (Tastatur)</div>
   <p class="small" style="margin:0">Tippe auf eine Taste und drücke dann die neue Taste. Wird gleich gespeichert. Esc bricht ab.</p>
   <div id="keyList" class="keyList"></div>
@@ -474,6 +476,7 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
   <div class="seg" id="bloodSeg"><button type="button" data-b="0">Aus (Sterne)</button><button type="button" data-b="1">An</button></div>
   <div class="label">Ton</div>
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
+  <p class="small" id="verInfo" style="margin:0;opacity:.7"></p>
   <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
 </div>
 
@@ -1953,8 +1956,8 @@ const KEY_ACTIONS = [
   ['Space', 'Springen · Ollie · Ausweichen · Drift'], ['ShiftLeft', 'Shift-Lock · Drift · Kickflip · Turbo'],
   ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
   ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
-  ['KeyF', 'Admin: Fliegen'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
-  ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Bauen: Werkzeug wechseln']
+  ['KeyF', 'Admin: Fliegen · Frontflip (Skaten)'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
+  ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
 ];
 let keyBinds = store.get('klotzwelt-tasten', {}) || {};
 const keyName = c => !c ? '–' : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
@@ -1967,6 +1970,22 @@ function virtKey(code) {
   return code;
 }
 let keyWait = null;
+// Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
+const BUILD = '2026-11-06.4';
+async function checkUpdate() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const t = await (await fetch('index.html?v=' + Date.now(), { cache: 'no-store' })).text();
+    const m = t.match(/const BUILD = '([^']+)'/);
+    if (m && m[1] !== BUILD && !document.getElementById('updBar')) {
+      const bar = document.createElement('button'); bar.id = 'updBar'; bar.className = 'btn primary';
+      bar.textContent = 'Neue Version da – hier tippen zum Neuladen';
+      bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50';
+      bar.onclick = () => location.reload(); document.body.appendChild(bar);
+    }
+  } catch (e) {}
+}
+setTimeout(checkUpdate, 5000); setInterval(checkUpdate, 120000);
 addEventListener('keydown', e => {
   // neue Taste für eine Aktion festlegen
   if (keyWait) {
@@ -2660,6 +2679,9 @@ function placeCars() {
   if (c.mesh.userData.tilt) c.mesh.userData.tilt.rotation.x = -(c.wheelie || 0) * 0.55 - Math.max(-0.35, Math.min(0.35, (c.vy || 0) * 0.04));
   for (const b of race.bots) { b.pos.copy(trackAt(b.s, b.lane)); b.h = trackHeadingAt(b.s); b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h; }
 }
+// Lenkung im Rennen: in den Einstellungen wählbar
+const STEER_MODES = { sanft: { rate: 6, k: 0.85 }, normal: { rate: 10, k: 1 }, direkt: { rate: 16, k: 1.2 } };
+let steerMode = store.get('klotzwelt-lenkung', 'normal');
 function updateRace(dt) {
   const R = race; if (!R) return;
   const c = R.car;
@@ -2723,10 +2745,11 @@ function updateRace(dt) {
   if (c.speed < -12) c.speed = -12;
   const grip = Math.max(-1, Math.min(1, c.speed / 8));
   // Lenken: auf der Tastatur sanft einlenken, bei hohem Tempo weniger stark
-  c.steerS = (c.steerS || 0) + (steer - (c.steerS || 0)) * Math.min(1, dt * (Math.abs(steer) > Math.abs(c.steerS || 0) ? 9 : 12));
+  const SL = STEER_MODES[steerMode] || STEER_MODES.normal;
+  c.steerS = (c.steerS || 0) + (steer - (c.steerS || 0)) * Math.min(1, dt * (Math.abs(steer) > Math.abs(c.steerS || 0) ? SL.rate : SL.rate + 4));
   steer = c.steerS;
   const sp = Math.abs(c.speed), hiFade = sp > 28 ? Math.max(0.65, 1 - (sp - 28) / 90) : 1;
-  const TR = V.turn * (c.wheelie > 0.6 ? 0.6 : 1) * hiFade;
+  const TR = V.turn * (c.wheelie > 0.6 ? 0.6 : 1) * hiFade * SL.k;
   if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * TR * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
   else c.h -= steer * TR * dt * grip;
   c.lean = canW ? (c.lean || 0) + ((steer * 0.35 * Math.min(1, c.speed / 15)) - (c.lean || 0)) * Math.min(1, dt * 6) : 0;
@@ -2858,11 +2881,17 @@ function rampMesh(r) {
   }
 }
 function makeBoard() {
-  const g = new THREE.Group(), deck = new THREE.Group(); g.add(deck);
-  olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(0xff6b3d), 0, 0.2, 0);
-  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(0x2a2d34), 0, 0.245, 0);
-  for (const z of [-0.65, 0.65]) for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 10), tc(0xffd23f)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.08, z); deck.add(w); }
-  g.userData.deck = deck;
+  const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
+  const deckM = olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(0xff6b3d), 0, 0, 0);
+  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(0x2a2d34), 0, 0.045, 0);
+  // Nase und Heck leicht nach oben gebogen
+  for (const z of [-1, 1]) { const k = olAdd(deck, roundedBox(0.6, 0.07, 0.35, 0.03), tc(0xff6b3d), 0, 0.06, z * 1.12); k.rotation.x = -z * 0.35; }
+  const wheels = [];
+  for (const z of [-0.65, 0.65]) {
+    olAdd(deck, roundedBox(0.5, 0.05, 0.08, 0.02), tc(0xc8d0dc), 0, -0.07, z);
+    for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 12), tc(0xffd23f)); w.rotation.z = Math.PI / 2; w.position.set(x, -0.12, z); deck.add(w); wheels.push(w); }
+  }
+  g.userData.deck = deck; g.userData.wheels = wheels;
   return g;
 }
 function buildSkate() {
@@ -2927,8 +2956,10 @@ function updateSkate(dt) {
   let want = null;
   if (ctl && keys.KeyJ && !S.jHeld) want = 'heel';
   if (ctl && keys.KeyQ && !S.qHeld) want = 'shove';
-  if (trickDown) want = steer < -0.5 && isTouch ? 'heel' : steer > 0.5 && isTouch ? 'shove' : 'kick';
-  S.jHeld = !!keys.KeyJ; S.qHeld = !!keys.KeyQ;
+  if (ctl && keys.KeyR && !S.rHeld) want = 'back';
+  if (ctl && keys.KeyF && !S.fHeld) want = 'front';
+  if (trickDown) want = isTouch && joy.y < -0.5 ? 'front' : isTouch && joy.y > 0.5 ? 'back' : steer < -0.5 && isTouch ? 'heel' : steer > 0.5 && isTouch ? 'shove' : 'kick';
+  S.jHeld = !!keys.KeyJ; S.qHeld = !!keys.KeyQ; S.rHeld = !!keys.KeyR; S.fHeld = !!keys.KeyF;
   const fx = Math.sin(S.h), fz = Math.cos(S.h);
   const ollie = ctl && jumpPressed; jumpPressed = false;
   S.crouch += ((S.air ? 0.2 : S.grind ? 0.6 : Math.abs(S.steer) * 0.25 + 0.1) - S.crouch) * Math.min(1, dt * 8);
@@ -2955,13 +2986,20 @@ function updateSkate(dt) {
     }
   } else if (!S.air) {
     // ---------- Fahren ----------
-    // Immer in Fahrtrichtung schauen: rollt man rückwärts, dreht sich die Figur um (kein Fakie mehr)
-    if (S.speed < -0.5) { S.h += Math.PI; S.stance -= Math.PI; S.speed = -S.speed; }
+    // Rollt man rückwärts, ohne S zu halten (z. B. eine Rampe runter), dreht sich die Fahrtrichtung um
+    if (S.speed < -0.5 && push >= 0) { S.h += Math.PI; S.stance -= Math.PI; S.speed = -S.speed; }
     // Im Stand mit W: dorthin losfahren, wohin die Kamera schaut
     if (push > 0 && Math.abs(S.speed) < 2) { let d = (cam.yaw + Math.PI) - S.h; d = Math.atan2(Math.sin(d), Math.cos(d)); S.h += d * Math.min(1, dt * 6); }
-    if (push > 0 && S.speed < 17) { S.speed += 8 * push * dt; S.pushT += dt * 5; } else S.pushT = 0;
-    if (push < 0) S.speed -= Math.sign(S.speed) * Math.min(Math.abs(S.speed), 16 * -push * dt);
-    S.speed -= S.speed * 0.08 * dt;
+    // Anschieben wie echt: der hintere Fuß tritt in Stößen auf den Boden, danach rollt man einfach weiter
+    const pushing = (push > 0.2 && S.speed < 16) || (push < -0.2 && S.speed < 1 && S.speed > -8);
+    if (pushing || S.pushT > 0) {
+      const before = S.pushT; S.pushT += dt / 0.6;
+      if (before < 0.45 && S.pushT >= 0.45) { S.speed += push > 0 ? 3.4 : -2.6; beep('place'); } // der eigentliche Tritt
+      if (S.pushT >= 1) S.pushT = pushing ? S.pushT - 1 : 0;
+    }
+    // S beim Fahren = bremsen (Fuß schleift), im Stand = rückwärts anschieben
+    if (push < -0.2 && S.speed > 0.5) S.speed = Math.max(0, S.speed - 12 * -push * dt);
+    S.speed -= S.speed * 0.05 * dt;
     S.h -= S.steer * 2.1 * dt * Math.min(1, 0.4 + Math.abs(S.speed) / 8);
     const x = P.pos.x, z = P.pos.z;
     const gx = (skH(x + 0.05, z) - skH(x - 0.05, z)) / 0.1, gz = (skH(x, z + 0.05) - skH(x, z - 0.05)) / 0.1;
@@ -2983,7 +3021,8 @@ function updateSkate(dt) {
     if (!S.vert) { const nx = P.pos.x + fx * S.speed * dt, nz = P.pos.z + fz * S.speed * dt; if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y)) S.speed *= -0.15; else { P.pos.x = nx; P.pos.z = nz; } }
     P.pos.y += S.vy * dt;
     S.spinV += (-steer * 7 - S.spinV) * Math.min(1, dt * 6); S.spin += S.spinV * dt;
-    if (want && S.flipT <= 0) startFlip(S, want);
+    if (want) startFlip(S, want);
+    if (S.bf) { S.bf.t += dt; if (S.bf.t >= S.bf.dur) { addTrick(S, S.bf.name, 650); S.bf = null; } }
     if (S.flipT > 0) { S.flipT -= dt; if (S.flipT <= 0) { S.flipT = 0; addTrick(S, TRICKS[S.flip][0], TRICKS[S.flip][1]); } }
     // Grab: Trick-Taste nach dem Flip festhalten oder E
     S.grab = ctl && S.airT > 0.2 && S.flipT <= 0 && ((trick && S.trickHoldT > 0.3) || !!keys.KeyE);
@@ -2994,7 +3033,7 @@ function updateSkate(dt) {
       const ri = railInfo(r, P.pos.x, P.pos.z);
       if (ri.t < 0.3 || ri.t > ri.L - 0.3 || Math.abs(ri.lat) > 0.6 || P.pos.y < r.h - 0.25 || P.pos.y > r.h + 0.6) continue;
       const yaw = S.h + S.spin, al = Math.cos(yaw - ri.heading);
-      if (Math.abs(al) < 0.75 || S.flipT > 0.08) continue;
+      if (Math.abs(al) < 0.75 || S.flipT > 0.08 || S.bf) continue;
       if (S.grabT > 0.2) addTrick(S, 'Indy Grab', Math.round(S.grabT * 260)), S.grabT = 0;
       const k = Math.round(S.spin / Math.PI); if (k) addTrick(S, Math.abs(k) * 180 + '', Math.abs(k) * 360);
       const dir = Math.cos(S.h - ri.heading) >= 0 ? 1 : -1;
@@ -3007,7 +3046,11 @@ function updateSkate(dt) {
     const g = Math.max(skH(P.pos.x, P.pos.z), (gN + gT) / 2);
     if (!S.grind && P.pos.y <= g && S.vy < 0) {
       const k = Math.round(S.spin / Math.PI), off = Math.abs(S.spin - k * Math.PI);
-      const ok = (off < 0.75 && S.flipT <= 0.1) || isGod();
+      // Nachsichtig landen: fast fertige Tricks zählen, leicht schief = wackelig, nur ganz quer oder kopfüber = Sturz
+      const bfOk = !S.bf || S.bf.t > S.bf.dur * 0.72, flipOk = S.flipT <= 0.2;
+      const ok = (off < 1.15 && flipOk && bfOk) || isGod();
+      if (ok && S.bf) { addTrick(S, S.bf.name, 650); S.bf = null; }
+      if (ok && off > 0.6 && !isGod()) { feed('Wackelig gelandet!'); S.speed *= 0.75; S.fall = 0.3; }
       P.pos.y = g;
       if (ok) {
         if (S.flipT > 0) { addTrick(S, TRICKS[S.flip][0], TRICKS[S.flip][1]); S.flipT = 0; }
@@ -3019,7 +3062,7 @@ function updateSkate(dt) {
         S.comboPts += Math.round(S.airT * 60);
         S.comboT = 1.4; S.land = 0.2; beep('land');
       } else bail(S);
-      S.air = false; S.vert = false; S.spin = 0; S.spinV = 0; S.flip = null; S.flipT = 0; S.airT = 0; S.vy = 0; S.grab = false; S.grabT = 0;
+      S.air = false; S.vert = false; S.spin = 0; S.spinV = 0; S.flip = null; S.flipT = 0; S.airT = 0; S.vy = 0; S.grab = false; S.grabT = 0; S.bf = null;
     }
   }
   S.trickHeld = trick;
@@ -3045,7 +3088,16 @@ function railBlocks(x0, z0, x1, z1, y) {
   }
   return false;
 }
-function startFlip(S, kind) { S.flip = kind; S.flipT = 0.42; S.flipKind = kind; beep('whoosh'); }
+function startFlip(S, kind) {
+  if (kind === 'back' || kind === 'front') {
+    if (S.bf) return;
+    // Salto mit dem ganzen Körper: kurz extra Schwung nach oben, damit es reicht
+    S.bf = { dir: kind === 'front' ? 1 : -1, t: 0, dur: 0.72, name: kind === 'front' ? 'Frontflip' : 'Backflip' };
+    if (S.airT < 0.25) S.vy = Math.max(S.vy, 0) + 3; beep('whoosh'); return;
+  }
+  if (S.flipT > 0) return;
+  S.flip = kind; S.flipT = 0.42; S.flipKind = kind; beep('whoosh');
+}
 function addTrick(S, name, pts) {
   S.comboN++; S.comboPts += pts; S.comboT = 1.4;
   S.comboNames.push(name);
@@ -3071,7 +3123,12 @@ function bail(S) {
 function poseSkater(S, dt, push) {
   const b = S.board, d = b.userData.deck;
   const yaw = S.h + S.stance + ((S.air && !S.grind) ? S.spin : 0);
-  b.position.set(P.pos.x, P.pos.y, P.pos.z); b.rotation.set(0, yaw, 0);
+  // Salto (Back-/Frontflip): Brett und Figur drehen sich zusammen um die Körpermitte
+  const bfp = S.bf ? Math.min(1, S.bf.t / S.bf.dur) : 0, bfe = bfp * bfp * (3 - 2 * bfp), phi = S.bf ? S.bf.dir * bfe * Math.PI * 2 : 0;
+  const fwx = Math.sin(yaw), fwz = Math.cos(yaw), cy = P.pos.y + 1.0;
+  b.rotation.order = 'YXZ';
+  b.position.set(P.pos.x - fwx * Math.sin(phi), cy - Math.cos(phi), P.pos.z - fwz * Math.sin(phi)); b.rotation.set(phi, yaw, 0);
+  for (const w of b.userData.wheels || []) w.rotation.x += (S.air ? 0 : S.speed) * dt / 0.08;
   // Brett: beim Ollie Nase hoch, Flips drehen das Brett unter den Füßen, in Kurven kippt es leicht
   const p = S.flipT > 0 ? 1 - S.flipT / 0.42 : 0, kind = S.flipKind;
   const ease = p * p * (3 - 2 * p);
@@ -3081,21 +3138,28 @@ function poseSkater(S, dt, push) {
   const roll = S.flipT > 0 && kind !== 'shove' ? TRICKS[kind][2] * ease * Math.PI * 2 : 0;
   const shove = S.flipT > 0 && kind === 'shove' ? ease * Math.PI : 0;
   d.rotation.set(pitch, shove, roll + (S.air ? 0 : S.steer * 0.12));
-  d.position.y = S.flipT > 0 ? Math.sin(p * Math.PI) * 0.35 : 0;
+  d.position.y = 0.2 + (S.flipT > 0 ? Math.sin(p * Math.PI) * 0.35 : 0);
   const u = avatar.userData;
   avatar.rotation.order = 'YXZ';
   const lean = S.air ? 0 : -S.steer * 0.22 * Math.min(1, Math.abs(S.speed) / 8);
   const bob = S.land > 0 ? Math.sin(S.land / 0.2 * Math.PI) * 0.15 : 0; S.land = Math.max(0, (S.land || 0) - dt);
   const tuck = S.air ? (S.grab ? 0.75 : S.flipT > 0 ? 0.55 : 0.3) : 0;
-  avatar.position.set(P.pos.x, P.pos.y + 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? 0.3 : 0) + tuck * 0.25, P.pos.z);
+  const off = 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? 0.3 : 0) + tuck * 0.25 - 1.0; // Füße relativ zur Körpermitte
+  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi), cy + off * Math.cos(phi), P.pos.z + fwz * off * Math.sin(phi));
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
   const fallTilt = S.fall > 0 ? Math.sin((1 - S.fall / 0.75) * Math.PI) * 0.9 : 0;
-  avatar.rotation.set(lean + fallTilt, yaw + Math.PI / 2, Math.sin(tAll * 25) * 0.08 * (S.fall > 0 ? 1 : 0));
+  avatar.rotation.set(lean + fallTilt, yaw + Math.PI / 2, phi + Math.sin(tAll * 25) * 0.08 * (S.fall > 0 ? 1 : 0));
   // Beine: Füße auf dem Brett, beim Anschieben tritt der hintere Fuß
-  const spread = 0.24 + S.crouch * 0.12;
-  const kick = S.pushT > 0 && !S.air ? Math.max(0, Math.sin(S.pushT)) * 0.7 : 0;
-  u.legL.rotation.set(-tuck, 0, spread); u.legR.rotation.set(-tuck, 0, -spread - kick);
+  // Beine: Füße schulterbreit auf dem Brett (links vorne, rechts hinten)
+  const spread = 0.2 + S.crouch * 0.1;
+  const tk = S.bf ? 0.9 : tuck;
+  if (S.pushT > 0 && !S.air) {
+    // Anschieben: hinterer Fuß geht neben das Brett auf den Boden und tritt nach hinten
+    const ph = S.pushT, step = Math.sin(Math.min(1, ph / 0.45) * Math.PI / 2), back = ph < 0.45 ? 0 : Math.sin((ph - 0.45) / 0.55 * Math.PI);
+    u.legL.rotation.set(0, 0, -spread * 0.6);
+    u.legR.rotation.set(-0.45 * step * (1 - back * 0.5), 0, spread * 0.5 + back * 0.7);
+  } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
   // Arme: locker und leicht nach außen, schwingen beim Lenken; in der Luft zum Balancieren hoch; beim Grab greift die Hand zum Brett
   const sway = Math.sin(tAll * 2.2) * 0.05;
   if (S.grab) { u.armL.rotation.set(-0.35, 0, 0.15); u.armR.rotation.set(-0.9, 0, -0.9); }
@@ -3894,11 +3958,11 @@ function updatePeers(dt) {
         const p = st.p || 6, air = p >= 7 && p <= 8;
         pr.board.position.copy(pr.pos); pr.board.rotation.set(0, pr.facing, 0);
         pr.board.userData.deck.rotation.set(0, 0, p === 8 ? (tAll * 15) % (Math.PI * 2) : 0);
-        pr.board.userData.deck.position.y = p === 8 ? 0.25 : 0;
+        pr.board.userData.deck.position.y = p === 8 ? 0.45 : 0.2;
         pr.g.rotation.set(0, pr.facing + Math.PI / 2, 0); pr.g.position.y = pr.pos.y + 0.22 + (air ? 0.15 : 0);
         const tuck = air ? 0.4 : 0;
-        u.legL.rotation.set(-tuck, 0, 0.26); u.legR.rotation.set(-tuck, 0, -0.26);
-        const a = air || p === 9 ? 0.75 : 0.32;
+        u.legL.rotation.set(-tuck, 0, -0.2); u.legR.rotation.set(-tuck, 0, 0.2);
+        const a = air || p === 9 ? 0.4 : 0.1;
         u.armL.rotation.set(0.12, 0, -a); u.armR.rotation.set(-0.12, 0, a);
       } else if (playingGame() === 'fight') {
         if (!u.gloves) { addGloves(pr.g, 0x3fb55e); u.gloves = true; }
@@ -4014,8 +4078,16 @@ const game = { coins: 0, total: 0, time: 0, running: false, deaths: 0, stage: 0,
 let toastTimer = 0;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1100); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
+function flyHelp() {
+  const kn = d => keyName(keyBinds[d] || d);
+  if (isRace(mode) && race && race.car.veh && race.car.veh.admin)
+    return `<span class="pill">🚀 ${isTouch ? 'Fliegen-Knopf halten = hoch · loslassen = runter · in der Luft Drift = Turbo' : `${kn('KeyC')} halten = hoch · loslassen = runter · in der Luft ${kn('ShiftLeft')} = Turbo`}</span>`;
+  if (powers.fly && !isRace(mode) && !['skate', 'fight', 'blaster'].includes(mode))
+    return `<span class="pill">✈️ ${isTouch ? 'Hoch- und Runter-Knopf' : `${kn('Space')} = hoch · ${kn('KeyC')} = runter · ${kn('KeyF')} = aus`}</span>`;
+  return '';
+}
 function renderStats() {
-  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Haupt-Erfinder' : 'Admin'}</b>${isGod() ? ' · Unsterblich' : ''}</span>` : '';
+  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Haupt-Erfinder' : 'Admin'}</b>${isGod() ? ' · Unsterblich' : ''}</span>` + flyHelp() : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${coinText()}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'fight' && fight && fight.pvp) {
@@ -4111,7 +4183,6 @@ function enterPlay(m) {
     $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Drift';
     $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + (veh.admin ? (isTouch ? ' · Fliegen-Knopf halten = abheben, in der Luft Drift = Raketen-Turbo' : ' · C halten: FLIEGEN · in der Luft Shift: Raketen-Turbo') : '') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
-    if (veh.admin) setTimeout(() => feed(isTouch ? '🚀 Fliegen-Knopf halten zum Abheben!' : '🚀 C halten zum Fliegen!'), 3500);
   } else if (m === 'fight') {
     buildFight();
     Object.assign(game, { coins: 0, total: 0, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
@@ -4132,7 +4203,7 @@ function enterPlay(m) {
     buildSkate();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
     $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Trick';
-    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · E Grab · A/D in der Luft drehen · auf Rails landen = Grind · Tricks hintereinander = Kombo';
+    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
     toast('Los, skaten!');
   } else if (m === 'horror') {
     buildHorror();
@@ -4445,9 +4516,12 @@ function renderKeyList() {
   el.innerHTML = KEY_ACTIONS.map(([def, label]) => `<div class="kr"><span>${label}</span><button type="button" class="btn${keyWait === def ? ' wait' : ''}" data-key="${def}">${keyWait === def ? 'Taste drücken …' : keyName(keyBinds[def] || def)}</button></div>`).join('');
   el.querySelectorAll('[data-key]').forEach(b => b.onclick = () => { keyWait = keyWait === b.dataset.key ? null : b.dataset.key; renderKeyList(); });
 }
+document.querySelectorAll('#steerSeg button').forEach(b => b.onclick = () => { steerMode = b.dataset.st; store.set('klotzwelt-lenkung', steerMode); beep('equip'); syncSettingsUI(); });
 $('keyReset').onclick = () => { keyBinds = {}; store.set('klotzwelt-tasten', keyBinds); keyWait = null; renderKeyList(); beep('equip'); toast('Tasten zurückgesetzt'); };
 function syncSettingsUI() {
   renderKeyList();
+  document.querySelectorAll('#steerSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.st === steerMode)));
+  $('verInfo').textContent = 'Version ' + BUILD;
   $('setYear').value = settings.birthYear || '';
   document.querySelectorAll('#bloodSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.b === '1') === !!settings.blood)));
   const d = devDef();
