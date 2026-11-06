@@ -174,7 +174,7 @@ body.editing #stickZone { display: none; }
 #stick { pointer-events: none; opacity: .45; transition: opacity .15s; }
 #stick.held { opacity: 1; transition: none; }
 #driftBtn { background: var(--gold); }
-#trickBtns { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(190px, calc(env(safe-area-inset-bottom, 0px) + 180px)); display: grid; grid-template-columns: repeat(3, auto); gap: 6px; touch-action: none; transform-origin: bottom right; }
+#trickBtns { position: absolute; right: 150px; bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); display: grid; grid-template-columns: repeat(3, auto); gap: 6px; touch-action: none; transform-origin: bottom right; }
 #trickBtns .btn { padding: 8px 10px; font-size: 13px; min-width: 70px; touch-action: none; box-shadow: 2px 2px 0 var(--ink); }
 #trickBtns .btn.on { background: var(--ink); color: var(--paper); }
 body.editing #trickBtns { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; cursor: grab; }
@@ -562,7 +562,7 @@ function applyViewOffset() {
   } else camera.clearViewOffset();
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); applyViewOffset(); });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); applyViewOffset(); try { showTrickBtns(); } catch (e) {} });
 
 // ---------- Texturen & Materialien ----------
 function blockTexture() {
@@ -2018,7 +2018,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.16';
+const BUILD = '2026-11-06.17';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3062,16 +3062,22 @@ function updateSkate(dt) {
     // Im Stand mit W: dorthin losfahren, wohin die Kamera schaut
     if (push > 0 && Math.abs(S.speed) < 2) { let d = (cam.yaw + Math.PI) - S.h; d = Math.atan2(Math.sin(d), Math.cos(d)); S.h += d * Math.min(1, dt * 6); }
     // Anschieben wie echt: der hintere Fuß tritt in Stößen auf den Boden, danach rollt man einfach weiter
-    const pushing = (push > 0.2 && S.speed < 20) || (push < -0.2 && S.speed < 1 && S.speed > -9);
-    if (pushing || S.pushT > 0) {
-      const before = S.pushT; S.pushT += dt / 0.6;
-      if (before < 0.45 && S.pushT >= 0.45) S.speed += push > 0 ? (S.speed < 6 ? 5.5 : 4.2) : -3; // der eigentliche Tritt
-      if (pushing) S.pushHold = 2.0;
-      if (S.pushT >= 1) S.pushT = pushing ? S.pushT - 1 : 0;
+    // Anschieben wie echt: zweimal mit dem Fuß treten, dann stellt man sich seitlich hin und rollt.
+    // Erst wenn man wieder langsam wird (und weiter drückt), schiebt man noch einmal zweimal an.
+    if (!S.kicks && S.pushT <= 0) {
+      if (push > 0.2 && S.speed < 6) S.kicks = 2, S.kickDir = 1;
+      else if (push < -0.2 && S.speed < 1 && S.speed > -6) S.kicks = 2, S.kickDir = -1;
+    }
+    if (S.kicks || S.pushT > 0) {
+      const before = S.pushT; S.pushT += dt / 0.5;
+      if (before < 0.45 && S.pushT >= 0.45) S.speed += S.kickDir > 0 ? (S.speed < 3 ? 4.6 : 3.8) : -2.8; // der eigentliche Tritt
+      S.pushHold = 0.45;
+      if (S.pushT >= 1) { S.kicks = Math.max(0, (S.kicks || 0) - 1); S.pushT = S.kicks ? S.pushT - 1 : 0; }
     }
     // S beim Fahren = bremsen (Fuß schleift), im Stand = rückwärts anschieben
     if (push < -0.2 && S.speed > 0.5) S.speed = Math.max(0, S.speed - 12 * -push * dt);
-    S.speed -= S.speed * 0.025 * dt;
+    S.speed -= S.speed * 0.04 * dt;
+    if (S.speed > 15) S.speed += (15 - S.speed) * Math.min(1, dt * 2);
     S.h -= S.steer * 2.1 * dt * Math.min(1, 0.4 + Math.abs(S.speed) / 8);
     const x = P.pos.x, z = P.pos.z;
     const gx = (skH(x + 0.05, z) - skH(x - 0.05, z)) / 0.1, gz = (skH(x, z + 0.05) - skH(x, z - 0.05)) / 0.1;
@@ -5264,9 +5270,15 @@ const devDef = () => DEV_DEFAULTS[device || (isTouch ? 'phone' : 'pc')];
 function applyTrickBtns() {
   const tb = $('trickBtns'); if (!tb) return;
   tb.style.transform = 'scale(' + (settings.tricks || 1) + ')';
-  if (settings.tbX != null) { tb.style.right = settings.tbX + 'px'; tb.style.bottom = settings.tbY + 'px'; tb.style.left = tb.style.top = ''; } else tb.style.right = tb.style.bottom = tb.style.left = tb.style.top = '';
+  if (settings.tbX != null) { tb.style.right = settings.tbX + 'px'; tb.style.bottom = settings.tbY + 'px'; tb.style.left = tb.style.top = ''; } else { tb.style.left = tb.style.top = ''; showTrickBtns(); }
 }
-function showTrickBtns() { $('trickBtns').hidden = !(isTouch && (mode === 'skate' || (editingLayout && true))); }
+function showTrickBtns() {
+  const tb = $('trickBtns'); tb.hidden = !(isTouch && (mode === 'skate' || editingLayout));
+  if (!tb.hidden && settings.tbX == null) {
+    const j = $('jumpBtn').getBoundingClientRect();
+    if (j.width) { tb.style.right = Math.round(innerWidth - j.left + 14) + 'px'; tb.style.bottom = Math.round(innerHeight - j.bottom) + 'px'; }
+  }
+}
 function applySettings() {
   applyTrickBtns();
   const px = v => v == null ? '' : v + 'px', d = devDef();
