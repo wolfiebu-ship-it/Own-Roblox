@@ -108,6 +108,10 @@ input { -webkit-user-select: text; user-select: text; }
 .pill { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pill b { font-family: var(--display); font-weight: 400; font-size: 18px; }
 #topright { position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
+.keyList { display: flex; flex-direction: column; gap: 4px; }
+.keyList .kr { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.keyList .kr button { min-width: 92px; padding: 6px 10px; font-size: 13px; }
+.keyList .kr button.wait { background: var(--accent); color: #fff; }
 #hint.gone { opacity: 0; }
 #hint { transition: opacity .6s; position: absolute; left: 50%; transform: translateX(-50%); top: max(64px, calc(env(safe-area-inset-top, 0px) + 58px)); font-weight: 600; background: rgba(29,42,68,.78); color: var(--paper); border-radius: 10px; padding: 6px 12px; font-size: 13px; text-align: center; max-width: calc(100% - 32px); box-sizing: border-box; pointer-events: none !important; }
 #toolbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(56px, calc(env(safe-area-inset-bottom, 0px) + 46px)); padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 32px); box-sizing: border-box; }
@@ -147,8 +151,10 @@ body.editing #stickZone { display: none; }
 .vehs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
 .veh { border: 3px solid var(--ink); border-radius: 12px; background: var(--soft); padding: 8px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
 .veh[aria-pressed="true"] { background: #ffe1d4; outline: 3px solid var(--accent); outline-offset: 1px; }
-.veh b { font-family: var(--display); font-weight: 400; font-size: 17px; }
-.veh .bar { height: 8px; border-radius: 4px; background: var(--muted); opacity: .25; position: relative; }
+.veh { min-width: 0; overflow: hidden; }
+.veh b { font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.15; overflow-wrap: anywhere; hyphens: auto; }
+.veh .small { overflow-wrap: anywhere; }
+.veh .bar { height: 8px; border-radius: 4px; background: rgba(29,42,68,.15); position: relative; overflow: hidden; }
 .veh .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); opacity: 1; }
 #wheelieBtn { position: absolute; right: max(120px, calc(env(safe-area-inset-right, 0px) + 116px)); bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); width: 76px; height: 76px; border-radius: 50%; font-family: var(--display); font-size: 15px; touch-action: none; }
 #banPanel h2, #fsHelp h2, #pausePanel h2, #settingsPanel h2, #vehPanel h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
@@ -458,6 +464,10 @@ body.menu #feed { top: max(14px, env(safe-area-inset-top, 0px)); max-width: min(
   </div>
   <button class="btn" id="setLayout" type="button">Knöpfe mit dem Finger verschieben</button>
   <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
+  <div class="label">Tastenbelegung (Tastatur)</div>
+  <p class="small" style="margin:0">Tippe auf eine Taste und drücke dann die neue Taste. Wird gleich gespeichert. Esc bricht ab.</p>
+  <div id="keyList" class="keyList"></div>
+  <button type="button" class="btn" id="keyReset">Alle Tasten zurücksetzen</button>
   <div class="label">Alter (nur wenn du nicht angemeldet bist)</div>
   <input id="setYear" class="field" inputmode="numeric" maxlength="4" placeholder="Geburtsjahr, z. B. 2012" aria-label="Geburtsjahr">
   <div class="label">Blut in Kampf- und Waffenspielen (ab 13)</div>
@@ -1934,10 +1944,45 @@ function zoomBy(f) {
 const keys = {};
 let jumpPressed = false;
 const joy = { x: 0, y: 0 };
+// ---------- Tastenbelegung: jede Aktion hat eine Standard-Taste, die man in den Einstellungen ändern kann ----------
+const KEY_ACTIONS = [
+  ['KeyW', 'Vorwärts / Gas'], ['KeyS', 'Rückwärts / Bremse'], ['KeyA', 'Links'], ['KeyD', 'Rechts'],
+  ['Space', 'Springen · Ollie · Ausweichen · Drift'], ['ShiftLeft', 'Shift-Lock · Drift · Kickflip · Turbo'],
+  ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
+  ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
+  ['KeyF', 'Admin: Fliegen'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
+  ['KeyB', 'Admin: Bauen'], ['KeyR', 'Bauen: Werkzeug wechseln']
+];
+let keyBinds = store.get('klotzwelt-tasten', {}) || {};
+const keyName = c => !c ? '–' : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
+  c.startsWith('Key') ? c.slice(3) : c.startsWith('Digit') ? c.slice(5) : c.startsWith('Numpad') ? 'Num ' + c.slice(6) : ({ ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' })[c] || c;
+// gedrückte Taste -> Standard-Taste der Aktion (der Rest des Spiels kennt nur die Standard-Tasten)
+function virtKey(code) {
+  if (code === 'ShiftRight') code = keyBinds.ShiftLeft && keyBinds.ShiftLeft !== 'ShiftLeft' ? 'ShiftRight' : 'ShiftLeft';
+  for (const [def] of KEY_ACTIONS) if ((keyBinds[def] || def) === code) return def;
+  if (KEY_ACTIONS.some(([def]) => def === code)) return null; // diese Taste wurde einer anderen Aktion gegeben
+  return code;
+}
+let keyWait = null;
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.code === 'Escape') { if (mode !== 'menu') { if (paused) resumeGame(); else openPause(); } return; }
+  // neue Taste für eine Aktion festlegen
+  if (keyWait) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.code !== 'Escape') {
+      const old = keyBinds[keyWait] || keyWait;
+      for (const [def] of KEY_ACTIONS) if (def !== keyWait && (keyBinds[def] || def) === e.code) keyBinds[def] = old; // tauschen, falls schon belegt
+      keyBinds[keyWait] = e.code; store.set('klotzwelt-tasten', keyBinds); beep('equip');
+    }
+    keyWait = null; renderKeyList(); return;
+  }
+}, true);
+addEventListener('keydown', e0 => {
+  if (e0.target.tagName === 'INPUT') return;
+  if (e0.code === 'Escape') { if (mode !== 'menu') { if (paused) resumeGame(); else openPause(); } return; }
   if (mode === 'menu') return;
+  const vc = virtKey(e0.code); if (!vc) return;
+  const e = { code: vc, repeat: e0.repeat, preventDefault: () => e0.preventDefault() };
+  if (['Space', 'Tab'].includes(e0.code) || e0.code.startsWith('Arrow')) e0.preventDefault();
   keys[e.code] = true;
   if (e.code === 'Space') { jumpPressed = true; e.preventDefault(); }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !isRace(mode) && mode !== 'skate') setShiftLock(!shiftLock);
@@ -1955,7 +2000,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyR') setTool(tool === 'place' ? 'remove' : 'place');
   }
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('keyup', e => { const vc = virtKey(e.code); if (vc) keys[vc] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 const cv = renderer.domElement;
@@ -1963,7 +2008,8 @@ const drags = new Map();
 let lastMouse = null, menuSpin = 0;
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
-  cv.setPointerCapture(e.pointerId);
+  // Bei Shift-Lock (Maus gefangen) geht setPointerCapture nicht, darf aber nichts kaputt machen
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   if (mode === 'blaster' && e.pointerType === 'mouse' && e.button === 0) keys.MouseFire = true;
   if (mode === 'fight' && e.pointerType === 'mouse') { if (e.button === 0) fightPunchReq = true; if (e.button === 2) keys.MouseBlock = true; }
   drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button });
@@ -2666,9 +2712,9 @@ function updateRace(dt) {
   if (c.speed < -12) c.speed = -12;
   const grip = Math.max(-1, Math.min(1, c.speed / 8));
   // Lenken: auf der Tastatur sanft einlenken, bei hohem Tempo weniger stark
-  c.steerS = (c.steerS || 0) + (steer - (c.steerS || 0)) * Math.min(1, dt * (Math.abs(steer) > Math.abs(c.steerS || 0) ? 4 : 8));
+  c.steerS = (c.steerS || 0) + (steer - (c.steerS || 0)) * Math.min(1, dt * (Math.abs(steer) > Math.abs(c.steerS || 0) ? 9 : 12));
   steer = c.steerS;
-  const sp = Math.abs(c.speed), hiFade = sp > 22 ? Math.max(0.45, 1 - (sp - 22) / 70) : 1;
+  const sp = Math.abs(c.speed), hiFade = sp > 28 ? Math.max(0.65, 1 - (sp - 28) / 90) : 1;
   const TR = V.turn * (c.wheelie > 0.6 ? 0.6 : 1) * hiFade;
   if (c.drifting) { c.h -= (c.driftDir * 0.85 + steer * 0.8) * TR * dt * grip; c.charge += dt * (1.3 + Math.abs(steer) * 0.5); }
   else c.h -= steer * TR * dt * grip;
@@ -3083,7 +3129,7 @@ const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
 // ======================================================================
 let fight = null, fightPunchReq = false;
 const RING = 6.2, RING_Y = 1.2;
-const JAB_T = 0.26, UPPER_T = 0.42;
+const JAB_T = 0.22, UPPER_T = 0.4;
 function makeFoe(round) {
   const names = BOT_NAMES.filter(n => !isBanned('fight', n));
   const name = names[(round - 1) % names.length] || 'Boxi', look = botLook(name);
@@ -3104,7 +3150,7 @@ function buildFight() {
     world.add(r);
   }
   // unsichtbare Wände: man fällt nicht aus dem Ring
-  for (const [x, z, w, d] of [[0, -RING - 0.3, RING * 2 + 1, 0.4], [0, RING + 0.3, RING * 2 + 1, 0.4], [-RING - 0.3, 0, 0.4, RING * 2 + 1], [RING + 0.3, 0, 0.4, RING * 2 + 1]]) addBox(x, RING_Y + 2, z, w, 4, d, 0).mesh.visible = false;
+  for (const [x, z, w, d] of [[0, -RING - 1.2, RING * 2 + 4, 2.2], [0, RING + 1.2, RING * 2 + 4, 2.2], [-RING - 1.2, 0, 2.2, RING * 2 + 4], [RING + 1.2, 0, 2.2, RING * 2 + 4]]) addBox(x, RING_Y + 3, z, w, 6, d, 0).mesh.visible = false;
   // Publikum
   let fs = 5; const fr = () => (fs = (fs * 9301 + 49297) % 233280) / 233280;
   for (let k = 0; k < 4; k++) {
@@ -3192,6 +3238,14 @@ function gotKo(m) {
   if (fight && mode === 'fight') { fight.pvpWins = (fight.pvpWins || 0) + 1; toast('K.O.!'); earn(10); }
   else if (arena && mode === 'blaster') { arena.kills++; earn(3); feed(m.from + ' erwischt! (' + arena.kills + '/' + ARENA_WIN + ')'); }
 }
+function keepInRing() {
+  const lim = RING - 0.5;
+  if (Math.abs(P.pos.x) > lim || Math.abs(P.pos.z) > lim || P.pos.y < RING_Y - 0.3) {
+    P.pos.x = Math.max(-lim, Math.min(lim, P.pos.x)); P.pos.z = Math.max(-lim, Math.min(lim, P.pos.z));
+    if (P.pos.y < RING_Y - 0.3) { P.pos.y = RING_Y; P.vel.y = 0; }
+    P.vel.x *= -0.3; P.vel.z *= -0.3; avatar.position.copy(P.pos);
+  }
+}
 function updateFight(dt) {
   const F = fight; if (!F) return;
   const live = mode === 'fight' && dead <= 0;
@@ -3207,8 +3261,8 @@ function updateFight(dt) {
   // nicht in Mitspielern stehen
   for (const pr of pvp) { const dx = P.pos.x - pr.pos.x, dz = P.pos.z - pr.pos.z, d = Math.hypot(dx, dz); if (d < 1.25) { const k = d > 0.01 ? (1.25 - d) / d : 1; moveAxis('x', (d > 0.01 ? dx : 1) * k * 0.5); moveAxis('z', dz * k * 0.5); } }
   if (F.pvp) { let bd = 1e9; for (const pr of pvp) { const d = Math.hypot(pr.pos.x - P.pos.x, pr.pos.z - P.pos.z); if (d < bd) { bd = d; tgt = pr.pos; } } }
-  // zum Gegner schauen, Kamera hinter dem Spieler
-  if (live && (foeUp || F.pvp)) {
+  // zum Gegner schauen, Kamera hinter dem Spieler (mit Shift-Lock steuert man Blick und Richtung selbst mit der Maus)
+  if (live && (foeUp || F.pvp) && !shiftLock) {
     let d = angTo(P.pos, tgt) - P.facing; d = Math.atan2(Math.sin(d), Math.cos(d)); P.facing += d * Math.min(1, dt * 5);
     let cd = (P.facing + Math.PI) - cam.yaw; cd = Math.atan2(Math.sin(cd), Math.cos(cd)); cam.yaw += cd * Math.min(1, dt * (drags.size ? 0.6 : 2.5));
   }
@@ -3227,8 +3281,12 @@ function updateFight(dt) {
   // Schlagen: Klick, J oder Schlag-Knopf. Der dritte Schlag in Folge wird ein Aufwärtshaken.
   const punchKey = !!(keys.KeyJ || keys.TouchDrift);
   F.comboT += dt;
-  if (live && (foeUp || F.pvp) && (fightPunchReq || (punchKey && !F.prevPunch)) && !blocking && (F.pT < 0 || F.pT > F.pDur * 0.75)) {
-    F.combo = F.comboT < 0.75 ? F.combo + 1 : 1; F.comboT = 0;
+  // jeder Klick zählt: Klicks werden gesammelt (höchstens 6) und nacheinander geschlagen
+  if (fightPunchReq || (punchKey && !F.prevPunch)) { F.punchQ = Math.min(6, (F.punchQ || 0) + 1); F.qT = 0; }
+  F.qT = (F.qT || 0) + dt; if (F.qT > 1.2) F.punchQ = 0;
+  if (live && (foeUp || F.pvp) && F.punchQ > 0 && !blocking && (F.pT < 0 || F.pT > F.pDur * 0.5)) {
+    F.punchQ--;
+    F.combo = F.comboT < 0.5 ? F.combo + 1 : 1; F.comboT = 0;
     F.upper = F.combo >= 3; if (F.upper) F.combo = 0;
     F.pArm = F.upper ? 1 : -F.pArm; F.pDur = F.upper ? UPPER_T : JAB_T; F.pT = 0; F.pHit = false; beep('whoosh');
     if (foe.state === 'move' && Math.random() < 0.22 * foe.power) { foe.state = 'block'; foe.t = 0.45; }
@@ -3248,6 +3306,7 @@ function updateFight(dt) {
     if (F.dodge > 0) avatar.rotation.z = Math.sin((0.3 - F.dodge) / 0.3 * Math.PI) * 0.35;
     avatar.position.copy(P.pos);
   }
+  keepInRing();
   if (!foeUp) return;
   // Computer-Gegner: anlaufen, umkreisen, ausholen (gut zu sehen), zuschlagen, blocken
   const dx = P.pos.x - foe.pos.x, dz = P.pos.z - foe.pos.z, dist = Math.hypot(dx, dz) || 0.001;
@@ -3290,6 +3349,7 @@ function updateFight(dt) {
   const sw = moving ? Math.sin(foe.walk) * 0.5 : 0;
   fu.legL.rotation.x = sw; fu.legR.rotation.x = -sw;
   boxPose(foe.g, foe.facing, { block: foe.state === 'block', wind: foe.state === 'wind' ? foe.arm : 0, arm: foe.arm, p: foe.state === 'punch' ? 1 - foe.t / 0.24 : -1, upper: false, recoil: foe.recoil });
+  keepInRing();
   foe.g.position.set(foe.pos.x, foe.pos.y + Math.abs(Math.sin(tAll * 5)) * 0.06, foe.pos.z);
 }
 
@@ -4089,7 +4149,7 @@ function openVehPicker() {
     if (v.admin && !isAdmin()) continue;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'veh';
     b.setAttribute('aria-pressed', String(v === chosenVehicle));
-    b.innerHTML = `<b>${v.admin ? TICK + ' ' : ''}${v.name}</b><span class="small">${v.brand}${v.admin ? ' · nur für Admins' : ''}</span><span class="small">Tempo</span><span class="bar"><i style="width:${Math.round(v.max / 58 * 100)}%"></i></span><span class="small">Beschleunigung</span><span class="bar"><i style="width:${Math.round(v.acc / 28 * 100)}%"></i></span>`;
+    b.innerHTML = `<b>${v.admin ? TICK + ' ' : ''}${v.name}</b><span class="small">${v.brand}${v.admin ? ' · nur für Admins' : ''}</span><span class="small">Tempo</span><span class="bar"><i style="width:${Math.min(100, Math.round(v.max / 62 * 100))}%"></i></span><span class="small">Beschleunigung</span><span class="bar"><i style="width:${Math.min(100, Math.round(v.acc / 28 * 100))}%"></i></span>`;
     b.onclick = () => { chosenVehicle = v; if (!v.admin) store.set('klotzwelt-fahrzeug', v.id); openVehPicker(); };
     list.appendChild(b);
   }
@@ -4298,7 +4358,7 @@ function frame(now) {
   updateDebris(dt);
   updatePeers(dt);
   netSendState();
-  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && playingGame() !== 'skate' && playingGame() !== 'fight' && dead <= 0) P.facing = cam.yaw + Math.PI;
+  if ((firstPerson() || shiftLock) && mode !== 'menu' && !isRace(playingGame()) && playingGame() !== 'skate' && (playingGame() !== 'fight' || shiftLock) && dead <= 0) P.facing = cam.yaw + Math.PI;
   if (mode !== 'menu' && dead <= 0) avatar.visible = !firstPerson() && !isRace(playingGame());
   if (race && race.car.mesh.userData.driver) race.car.mesh.userData.driver.visible = !firstPerson();
   placeCamera();
@@ -4368,7 +4428,14 @@ function setGender(g) {
   for (const k in pr) { if (!profile.owned.includes(pr[k])) profile.owned.push(pr[k]); profile.wear[k] = pr[k]; }
   saveProfile(); rebuildAvatar(); syncSettingsUI(); beep('equip');
 }
+function renderKeyList() {
+  const el = $('keyList'); if (!el) return;
+  el.innerHTML = KEY_ACTIONS.map(([def, label]) => `<div class="kr"><span>${label}</span><button type="button" class="btn${keyWait === def ? ' wait' : ''}" data-key="${def}">${keyWait === def ? 'Taste drücken …' : keyName(keyBinds[def] || def)}</button></div>`).join('');
+  el.querySelectorAll('[data-key]').forEach(b => b.onclick = () => { keyWait = keyWait === b.dataset.key ? null : b.dataset.key; renderKeyList(); });
+}
+$('keyReset').onclick = () => { keyBinds = {}; store.set('klotzwelt-tasten', keyBinds); keyWait = null; renderKeyList(); beep('equip'); toast('Tasten zurückgesetzt'); };
 function syncSettingsUI() {
+  renderKeyList();
   $('setYear').value = settings.birthYear || '';
   document.querySelectorAll('#bloodSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.b === '1') === !!settings.blood)));
   const d = devDef();
