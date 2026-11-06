@@ -1971,7 +1971,7 @@ function virtKey(code) {
 }
 let keyWait = null;
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.7';
+const BUILD = '2026-11-06.8';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3010,7 +3010,8 @@ function updateSkate(dt) {
     const pushing = (push > 0.2 && S.speed < 16) || (push < -0.2 && S.speed < 1 && S.speed > -8);
     if (pushing || S.pushT > 0) {
       const before = S.pushT; S.pushT += dt / 0.6;
-      if (before < 0.45 && S.pushT >= 0.45) { S.speed += push > 0 ? 3.4 : -2.6; beep('place'); } // der eigentliche Tritt
+      if (before < 0.45 && S.pushT >= 0.45) S.speed += push > 0 ? 3.4 : -2.6; // der eigentliche Tritt
+      if (pushing) S.pushHold = 2.0;
       if (S.pushT >= 1) S.pushT = pushing ? S.pushT - 1 : 0;
     }
     // S beim Fahren = bremsen (Fuß schleift), im Stand = rückwärts anschieben
@@ -3164,25 +3165,34 @@ function poseSkater(S, dt, push) {
   const bob = S.land > 0 ? Math.sin(S.land / 0.2 * Math.PI) * 0.15 : 0; S.land = Math.max(0, (S.land || 0) - dt);
   const tuck = S.air ? (S.grab ? 0.75 : S.flipT > 0 ? 0.55 : 0.3) : 0;
   const off = 0.24 - S.crouch * 0.18 - bob + (S.flipT > 0 ? 0.3 : 0) + tuck * 0.25 - 1.0; // Füße relativ zur Körpermitte
-  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi), cy + off * Math.cos(phi), P.pos.z + fwz * off * Math.sin(phi));
+  // Anschiebe-Haltung ein- und ausblenden: nach dem letzten Tritt bleibt man noch kurz so, dann dreht man sich seitlich
+  S.pushHold = Math.max(0, (S.pushHold || 0) - dt);
+  const pbT = !S.air && !S.grind && (S.pushT > 0 || S.pushHold > 0) ? 1 : 0;
+  S.pb = (S.pb || 0) + (pbT - (S.pb || 0)) * Math.min(1, dt * (pbT ? 6 : S.air ? 12 : 3));
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.21 * S.pb;
+  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.08 : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
   S.wobble = Math.max(0, (S.wobble || 0) - dt);
   const fallTilt = S.wobble > 0 ? Math.sin(S.wobble * 40) * 0.12 * (S.wobble / 0.35) : 0;
-  avatar.rotation.set(lean + fallTilt, yaw + Math.PI / 2, phi + Math.sin(tAll * 25) * 0.08 * (S.fall > 0 ? 1 : 0));
+  avatar.rotation.set(S.pb > 0.5 ? 0 : lean + fallTilt, yaw + Math.PI / 2 * (1 - S.pb), S.pb > 0.5 ? 0 : phi);
   // Beine: Füße auf dem Brett, beim Anschieben tritt der hintere Fuß
-  // Beine: Füße schulterbreit auf dem Brett (links vorne, rechts hinten)
+  // Beine: seitlich mit beiden Füßen auf dem Brett, oder beim Anschieben nach vorne schauen
   const spread = 0.2 + S.crouch * 0.1;
   const tk = S.bf ? 0.9 : tuck;
-  if (S.pushT > 0 && !S.air) {
-    // Anschieben: hinterer Fuß geht neben das Brett auf den Boden und tritt nach hinten
-    const ph = S.pushT, step = Math.sin(Math.min(1, ph / 0.45) * Math.PI / 2), back = ph < 0.45 ? 0 : Math.sin((ph - 0.45) / 0.55 * Math.PI);
-    u.legL.rotation.set(0, 0, -spread * 0.6);
-    u.legR.rotation.set(-0.45 * step * (1 - back * 0.5), 0, spread * 0.5 + back * 0.7);
+  if (S.pb > 0.5) {
+    // vorderer (linker) Fuß steht auf dem Brett, der rechte schiebt neben dem Brett am Boden an
+    u.legL.rotation.set(0, 0, 0);
+    if (S.pushT > 0) {
+      const ph = S.pushT, sw = ph < 0.75 ? -0.55 + 1.2 * (ph / 0.75) : 0.65 - 1.2 * ((ph - 0.75) / 0.25);
+      u.legR.rotation.set(sw, 0, 0.08);
+      u.armL.rotation.set(-sw * 0.5, 0, -0.1); u.armR.rotation.set(sw * 0.5, 0, 0.1);
+    } else { u.legR.rotation.set(0.3, 0, -0.32); } // rollen: hinterer Fuß wieder aufs Brett
   } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
   // Arme: locker und leicht nach außen, schwingen beim Lenken; in der Luft zum Balancieren hoch; beim Grab greift die Hand zum Brett
   const sway = Math.sin(tAll * 2.2) * 0.05;
-  if (S.grab) { u.armL.rotation.set(-0.35, 0, 0.15); u.armR.rotation.set(-0.9, 0, -0.9); }
+  if (S.pb > 0.5 && S.pushT > 0) {}
+  else if (S.grab) { u.armL.rotation.set(-0.35, 0, 0.15); u.armR.rotation.set(-0.9, 0, -0.9); }
   else if (S.air || S.grind) { const a = (S.grind ? 0.5 : 0.35) + Math.sin(tAll * 7) * (S.grind ? 0.1 : 0.03); u.armL.rotation.set(0.2, 0, -a); u.armR.rotation.set(-0.2, 0, a); }
   else { u.armL.rotation.set(0.1 + sway, 0, -0.1 - Math.max(0, S.steer) * 0.12); u.armR.rotation.set(-0.1 - sway, 0, 0.1 - Math.min(0, S.steer) * 0.12); }
 }
