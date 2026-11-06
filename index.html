@@ -783,6 +783,16 @@ ITEMS.push(
   { id: 'w-shotgun', slot: 'weapon', name: 'Streu-Blaster', price: 250, weapon: { rate: 0.8, dmg: 14, spread: 0.09, count: 6, color: 0xffd23f, body: 0x8b5a2b } },
   { id: 'w-minigun', slot: 'weapon', name: 'Minigun', price: 500, weapon: { rate: 0.07, dmg: 9, spread: 0.04, count: 1, color: 0xff6b3d, body: 0x2a2d34, mini: true } }
 );
+ITEMS.push(
+  { id: 'b-classic', slot: 'board', name: 'Klassik-Brett', price: 0, board: { deck: 0xff6b3d, grip: 0x2a2d34, wheels: 0xffd23f, accent: 0xffd23f } },
+  { id: 'b-ocean', slot: 'board', name: 'Ozean-Brett', price: 120, board: { deck: 0x3b7de0, grip: 0x1d2a44, wheels: 0xf4f4f0, accent: 0x6fd0f0 } },
+  { id: 'b-mint', slot: 'board', name: 'Minz-Brett', price: 150, board: { deck: 0x3fdc7a, grip: 0x2a2d34, wheels: 0xf4f4f0, accent: 0xf4f4f0 } },
+  { id: 'b-pink', slot: 'board', name: 'Pink-Brett', price: 150, board: { deck: 0xff6fae, grip: 0x2a2d34, wheels: 0x6fd0f0, accent: 0xf4f4f0 } },
+  { id: 'b-night', slot: 'board', name: 'Nacht-Brett', price: 200, board: { deck: 0x2a2d34, grip: 0x121418, wheels: 0xff3b8d, accent: 0xff3b8d } },
+  { id: 'b-flame', slot: 'board', name: 'Flammen-Brett', price: 260, board: { deck: 0x2a2d34, grip: 0x121418, wheels: 0xffd23f, accent: 0xff8a2b, flames: true } },
+  { id: 'b-neon', slot: 'board', name: 'Neon-Brett', price: 350, board: { deck: 0x8b5cd6, grip: 0x1d2a44, wheels: 0x6fd0f0, accent: 0x6fd0f0, glow: true } },
+  { id: 'b-gold', slot: 'board', name: 'Gold-Brett', price: 500, board: { deck: 0xffc83d, grip: 0x2a2d34, wheels: 0xf4f4f0, accent: 0x8a5a00 } }
+);
 ITEMS.sort((a, b) => a.price - b.price);
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
@@ -1401,6 +1411,11 @@ function thumbFor(item) {
       const d = new THREE.DirectionalLight(0xffffff, 0.6); d.position.set(2, 4, 5); thumbScene.add(d);
       thumbCam = new THREE.PerspectiveCamera(35, 1, 0.05, 50);
     }
+    if (item.slot === 'board') {
+      const w = makeBoard(item.id); w.rotation.set(-2.1, 0.75, 0); w.position.y = 0.2; thumbScene.add(w);
+      thumbCam.position.set(0, 0.4, 3.4); thumbCam.lookAt(0, 0.2, 0);
+      thumbR.render(thumbScene, thumbCam); const url = thumbR.domElement.toDataURL('image/png'); thumbScene.remove(w); thumbs.set(item.id, url); return url;
+    }
     if (item.slot === 'weapon') {
       const w = makeWeapon(item.id); w.rotation.set(Math.PI / 2, 0, 0); thumbScene.add(w);
       thumbCam.position.set(1.3, 0.55, -0.4); thumbCam.lookAt(0, -0.05, -1.0);
@@ -1854,7 +1869,7 @@ function hammerMesh() {
 }
 function syncHammer() {
   const u = avatar.userData;
-  const want = isAdmin() && powers.hammer && (mode === 'obby' || mode === 'build' || mode === 'horror');
+  const want = isMain() && powers.hammer && ['obby', 'build', 'horror', 'skate'].includes(mode);
   if (want && !u.hammer) { u.hammer = hammerMesh(); u.armR.add(u.hammer); }
   else if (!want && u.hammer) { u.armR.remove(u.hammer); u.hammer = null; }
 }
@@ -1991,7 +2006,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.10';
+const BUILD = '2026-11-06.11';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2261,7 +2276,7 @@ const SLOT_WORDS = { hat: 'hüte hut mütze kappe', hair: 'haare frisur', face: 
 const matchItem = (i, q) => (i.name + ' ' + SLOT_WORDS[i.slot]).toLowerCase().includes(q);
 function renderShop() {
   const q = $('shopSearch').value.trim().toLowerCase();
-  chipRow($('shopCats'), [...SLOTS, ['weapon', 'Waffen']], q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
+  chipRow($('shopCats'), [...SLOTS, ['weapon', 'Waffen'], ['board', 'Skateboards']], q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
   const grid = $('shopGrid'); grid.innerHTML = '';
   const list = q ? ITEMS.filter(i => matchItem(i, q)) : ITEMS.filter(i => i.slot === shopCat);
   if (!list.length) grid.innerHTML = '<p class="small">Nichts gefunden. Versuch ein anderes Wort, zum Beispiel „Hut“, „rot“ oder „Brille“.</p>';
@@ -2388,7 +2403,7 @@ function togglePower(k) {
     powers.god = !powers.god; store.set('klotzwelt-unsterblich', powers.god); toast(powers.god ? 'Unsterblich an' : 'Unsterblich aus'); beep('equip'); renderAdminBar(); renderAdminIfOpen(); return;
   }
   if (k === 'hammer' && !isMain()) { toast('Den Bann-Hammer haben nur Haupt-Erfinder'); return; }
-  if (!isAdmin() || ((isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode)) && k !== 'build')) return;
+  if (!isAdmin() || (isRace(mode) && k !== 'build') || (k === 'hammer' && ['fight', 'blaster'].includes(mode))) return;
   powers[k] = !powers[k];
   const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
   toast(names[k] + (powers[k] ? ' an' : ' aus'));
@@ -2404,7 +2419,7 @@ function renderAdminBar() {
   $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
   $('jumpBtn').textContent = mode === 'skate' ? 'Ollie' : (isAdmin() && powers.fly ? 'Hoch' : 'Sprung');
   if (bar.hidden) return;
-  const items = isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode) ? [] : [['fly', 'Fliegen', 'F']].concat(isMain() ? [['hammer', 'Bann-Hammer', 'H']] : []);
+  const items = isRace(mode) ? [] : [['fly', 'Fliegen', 'F']].concat(isMain() && !['fight', 'blaster'].includes(mode) ? [['hammer', 'Bann-Hammer', 'H']] : []);
   if (isMain() && !isRace(mode)) items.push(['god', 'Unsterblich', 'U']);
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
@@ -2414,6 +2429,7 @@ function renderAdminBar() {
     b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
     bar.appendChild(b);
   }
+  if (!isMain()) return;
   const g = currentGame(), n = adminData.bans[g].length + ((NET.admin && NET.admin.bans[g]) || []).length;
   const lb = document.createElement('button'); lb.className = 'btn';
   lb.textContent = 'Gebannte (' + n + ')' + (isTouch ? '' : ' (L)');
@@ -2914,16 +2930,22 @@ function rampMesh(r) {
     const grp = new THREE.Group(); grp.position.set(r.x, 0, r.z); grp.rotation.y = r.a; cp.position.set(0, y + 0.05, at); grp.add(cp); world.add(grp);
   }
 }
-function makeBoard() {
+const myBoardId = () => (profile.wear.board && profile.owned.includes(profile.wear.board) && ITEM[profile.wear.board]) ? profile.wear.board : 'b-classic';
+function makeBoard(id) {
+  const bd = (ITEM[id] && ITEM[id].board) || ITEM['b-classic'].board;
   const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
-  const deckM = olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(0xff6b3d), 0, 0, 0);
-  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(0x2a2d34), 0, 0.045, 0);
+  const deckM = olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(bd.deck), 0, 0, 0);
+  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(bd.grip), 0, 0.045, 0);
+  // Streifen unten und an den Seiten
+  olAdd(deck, roundedBox(0.2, 0.02, 1.7, 0.01), tc(bd.accent), 0, -0.04, 0);
+  if (bd.flames) for (const z of [-0.5, 0, 0.5]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.35, 8), tc(0xff8a2b)); f.rotation.x = Math.PI / 2; f.position.set(0, -0.045, z); f.scale.y = 0.2; deck.add(f); }
+  if (bd.glow) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.1), new THREE.MeshBasicMaterial({ color: bd.accent, transparent: true, opacity: 0.5 })); gl.rotation.x = Math.PI / 2; gl.position.y = -0.17; deck.add(gl); }
   // Nase und Heck leicht nach oben gebogen
-  for (const z of [-1, 1]) { const k = olAdd(deck, roundedBox(0.6, 0.07, 0.35, 0.03), tc(0xff6b3d), 0, 0.06, z * 1.12); k.rotation.x = -z * 0.35; }
+  for (const z of [-1, 1]) { const k = olAdd(deck, roundedBox(0.6, 0.07, 0.35, 0.03), tc(bd.deck), 0, 0.06, z * 1.12); k.rotation.x = -z * 0.35; }
   const wheels = [];
   for (const z of [-0.65, 0.65]) {
     olAdd(deck, roundedBox(0.5, 0.05, 0.08, 0.02), tc(0xc8d0dc), 0, -0.07, z);
-    for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 12), tc(0xffd23f)); w.rotation.z = Math.PI / 2; w.position.set(x, -0.12, z); deck.add(w); wheels.push(w); }
+    for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 12), bd.glow ? toon('neonw' + bd.wheels, { color: bd.wheels, emissive: bd.wheels, emissiveIntensity: 0.8 }) : tc(bd.wheels)); w.rotation.z = Math.PI / 2; w.position.set(x, -0.12, z); deck.add(w); wheels.push(w); }
   }
   g.userData.deck = deck; g.userData.wheels = wheels;
   return g;
@@ -2951,7 +2973,7 @@ function buildSkate() {
     for (let k = 0; k <= Math.floor(ri.L / 4); k++) { const t = Math.min(ri.L - 0.3, 0.3 + k * 4); const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, r.h, 8), tc(0x8a8f99)); post.position.set(r.x1 + ri.ux * t, r.h / 2, r.z1 + ri.uz * t); post.castShadow = true; world.add(post); }
     addCoin(mx, r.h + 1.6, mz);
   }
-  const board = makeBoard(); world.add(board);
+  const board = makeBoard(myBoardId()); world.add(board);
   skate = { h: Math.PI, speed: 0, vy: 0, air: false, vert: false, spin: 0, spinV: 0, flip: null, flipKind: 'kick', flipT: 0, airT: 0, score: 0, best: '', bestPts: 0, time: 120, stun: 0, board, trickHeld: false, trickHoldT: 0, slope: 0,
     steer: 0, stance: 0, crouch: 0.1, pushT: 0, pop: 0, land: 0, grab: false, grabT: 0, grind: null, grindT: 0, sparkT: 0, railCool: 0, comboN: 0, comboPts: 0, comboNames: [], comboT: 0 };
   P.pos.set(0, 0, 36); P.vel.set(0, 0, 0); P.facing = Math.PI;
@@ -3027,16 +3049,16 @@ function updateSkate(dt) {
     // Im Stand mit W: dorthin losfahren, wohin die Kamera schaut
     if (push > 0 && Math.abs(S.speed) < 2) { let d = (cam.yaw + Math.PI) - S.h; d = Math.atan2(Math.sin(d), Math.cos(d)); S.h += d * Math.min(1, dt * 6); }
     // Anschieben wie echt: der hintere Fuß tritt in Stößen auf den Boden, danach rollt man einfach weiter
-    const pushing = (push > 0.2 && S.speed < 16) || (push < -0.2 && S.speed < 1 && S.speed > -8);
+    const pushing = (push > 0.2 && S.speed < 20) || (push < -0.2 && S.speed < 1 && S.speed > -9);
     if (pushing || S.pushT > 0) {
       const before = S.pushT; S.pushT += dt / 0.6;
-      if (before < 0.45 && S.pushT >= 0.45) S.speed += push > 0 ? 3.4 : -2.6; // der eigentliche Tritt
+      if (before < 0.45 && S.pushT >= 0.45) S.speed += push > 0 ? (S.speed < 6 ? 5.5 : 4.2) : -3; // der eigentliche Tritt
       if (pushing) S.pushHold = 2.0;
       if (S.pushT >= 1) S.pushT = pushing ? S.pushT - 1 : 0;
     }
     // S beim Fahren = bremsen (Fuß schleift), im Stand = rückwärts anschieben
     if (push < -0.2 && S.speed > 0.5) S.speed = Math.max(0, S.speed - 12 * -push * dt);
-    S.speed -= S.speed * 0.05 * dt;
+    S.speed -= S.speed * 0.025 * dt;
     S.h -= S.steer * 2.1 * dt * Math.min(1, 0.4 + Math.abs(S.speed) / 8);
     const x = P.pos.x, z = P.pos.z;
     const gx = (skH(x + 0.05, z) - skH(x - 0.05, z)) / 0.1, gz = (skH(x, z + 0.05) - skH(x, z - 0.05)) / 0.1;
@@ -4003,7 +4025,7 @@ function updatePeers(dt) {
       u.armL.rotation.x = st.a ? -2.6 : -sw; u.armR.rotation.x = st.a ? -2.6 : sw;
       if (playingGame() === 'skate') {
         // Mitspieler auf dem Skateboard
-        if (!pr.board) { pr.board = makeBoard(); }
+        if (!pr.board) { pr.board = makeBoard(pr.look && pr.look.wear && pr.look.wear.board); }
         if (pr.board.parent !== world) world.add(pr.board);
         const p = st.p || 6, air = p >= 7 && p <= 8;
         pr.board.position.copy(pr.pos); pr.board.rotation.set(0, pr.facing, 0);
@@ -4375,7 +4397,8 @@ function updatePlayer(dt) {
     if (dead <= 0) { for (const d of debris) world.remove(d.o); debris = []; dead = 0; respawn(); avatar.visible = true; }
     return;
   }
-  const active = mode === 'obby' || mode === 'build' || mode === 'horror' || mode === 'fight' || mode === 'blaster';
+  const active = mode === 'obby' || mode === 'build' || mode === 'horror' || mode === 'fight' || mode === 'blaster' || (mode === 'skate' && isAdmin() && powers.fly);
+  if (mode === 'skate' && skate && !skate.wasFly) { skate.wasFly = true; skate.board.visible = false; rebuildAvatar(); }
   let f = 0, r = 0;
   if (active) {
     f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
@@ -4484,7 +4507,8 @@ function frame(now) {
     for (const c of world.children) if (c.userData.cloud) c.position.x += dt * 0.6;
   } else if (isRace(playingGame())) {
     updateRace(dt);
-  } else if (playingGame() === 'skate') {
+  } else if (playingGame() === 'skate' && !(isAdmin() && powers.fly)) {
+    if (skate && skate.wasFly) { skate.wasFly = false; skate.air = true; skate.vy = 0; skate.grind = null; skate.board.visible = true; rebuildAvatar(); }
     updateSkate(dt);
   } else {
     updatePlayer(dt);

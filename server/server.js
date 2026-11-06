@@ -112,7 +112,7 @@ function cleanProfile(p) {
   p = p && typeof p === 'object' ? p : {};
   const out = { coins: Math.round(num(p.coins, 0, 1e7, 150)), owned: [], wear: {}, body: {}, shape: {} };
   if (Array.isArray(p.owned)) out.owned = p.owned.map(x => str(x, 30)).filter(Boolean).slice(0, 400);
-  if (p.wear && typeof p.wear === 'object') for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back', 'weapon']) out.wear[k] = str(p.wear[k], 30);
+  if (p.wear && typeof p.wear === 'object') for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back', 'weapon', 'board']) out.wear[k] = str(p.wear[k], 30);
   if (p.body && typeof p.body === 'object') for (const k of ['head', 'torso', 'arms', 'legs']) out.body[k] = Math.round(num(p.body[k], 0, 15, 0));
   const s = p.shape || {};
   out.shape = { height: num(s.height, 0.85, 1.2, 1), width: num(s.width, 0.85, 1.35, 1), head: num(s.head, 0.85, 1.3, 1) };
