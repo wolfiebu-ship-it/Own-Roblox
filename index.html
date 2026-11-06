@@ -174,6 +174,10 @@ body.editing #stickZone { display: none; }
 #stick { pointer-events: none; opacity: .45; transition: opacity .15s; }
 #stick.held { opacity: 1; transition: none; }
 #driftBtn { background: var(--gold); }
+#trickBtns { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(190px, calc(env(safe-area-inset-bottom, 0px) + 180px)); display: grid; grid-template-columns: repeat(3, auto); gap: 6px; touch-action: none; transform-origin: bottom right; }
+#trickBtns .btn { padding: 8px 10px; font-size: 13px; min-width: 70px; touch-action: none; box-shadow: 2px 2px 0 var(--ink); }
+#trickBtns .btn.on { background: var(--ink); color: var(--paper); }
+body.editing #trickBtns { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; cursor: grab; }
 html[data-device="phone"] .pill { padding: 3px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
 html[data-device="phone"] .pill b { font-size: 15px; }
 html[data-device="phone"] #topright .btn, html[data-device="phone"] #adminBar .btn { padding: 5px 9px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); }
@@ -396,6 +400,10 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div id="hint"></div>
   <div id="stick" hidden><div id="knob"></div></div>
   <button class="btn primary" id="jumpBtn" hidden>Sprung</button>
+  <div id="trickBtns" hidden>
+    <button class="btn" type="button" data-tk="KeyK">Kickflip</button><button class="btn" type="button" data-tk="KeyJ">Heelflip</button><button class="btn" type="button" data-tk="KeyQ">Shove-it</button>
+    <button class="btn" type="button" data-tk="KeyR">Backflip</button><button class="btn" type="button" data-tk="KeyF">Frontflip</button><button class="btn" type="button" data-tk="KeyE">Grab</button>
+  </div>
   <button class="btn" id="driftBtn" hidden>Drift</button>
   <button class="btn" id="wheelieBtn" hidden>Wheelie</button>
   <button class="btn" id="downBtn" hidden>Runter</button>
@@ -434,7 +442,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
 </div>
 
 <div id="layoutBar" class="panel" hidden role="dialog" aria-label="Knöpfe verschieben">
-  <p class="small"><b>Knöpfe verschieben:</b> Zieh den Joystick und den Sprung-Knopf mit dem Finger dorthin, wo du sie haben willst.</p>
+  <p class="small"><b>Knöpfe verschieben:</b> Zieh den Joystick, den Sprung-Knopf und die Trick-Knöpfe mit dem Finger dorthin, wo du sie haben willst.</p>
   <div class="row"><button class="btn" id="layReset" type="button">Zurücksetzen</button><button class="btn primary" id="layDone" type="button">Fertig</button></div>
 </div>
 
@@ -463,6 +471,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
     <label for="setJump">Sprung-Knopf</label><div><input type="range" id="setJump" min="56" max="150" step="2"><div class="ends"><span>klein</span><span>groß</span></div></div>
     <label for="setJumpX">Abstand rechts</label><div><input type="range" id="setJumpX" min="8" max="260" step="2"><div class="ends"><span>am Rand</span><span>weiter innen</span></div></div>
     <label for="setJumpY">Abstand unten</label><div><input type="range" id="setJumpY" min="16" max="360" step="2"><div class="ends"><span>unten</span><span>höher</span></div></div>
+    <label for="setTricks">Trick-Knöpfe (Skaten)</label><div><input type="range" id="setTricks" min="0.6" max="1.6" step="0.05"><div class="ends"><span>klein</span><span>groß</span></div></div>
   </div>
   <button class="btn" id="setLayout" type="button">Knöpfe mit dem Finger verschieben</button>
   <div class="seg" id="stickModeSeg"><button type="button" data-sm="float">Joystick folgt dem Daumen</button><button type="button" data-sm="fixed">Joystick fest links</button></div>
@@ -2009,7 +2018,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.14';
+const BUILD = '2026-11-06.15';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3733,7 +3742,7 @@ const npcNames = n => BOT_NAMES.filter(b => !isBanned(mg ? mg.key : 'obby', b)).
 const MINI = {
   // ---------------- Lava-Flucht ----------------
   lava: {
-    name: 'Lava-Flucht', emoji: '🌋', color: '#ffd8c2', solo: true,
+    name: 'Lava-Flucht', prev: [[15, 19, 15], [0, 9, 0]], color: '#ffd8c2', solo: true,
     desc: 'Die Lava steigt! Spring von Plattform zu Plattform nach oben, bevor sie dich erwischt. Oben wartet das goldene Ziel.',
     hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · schnell nach oben!' : 'WASD laufen · Leertaste springen · schnell nach oben, die Lava steigt!',
     build() {
@@ -3743,8 +3752,9 @@ const MINI = {
       let a = 0, y = 0;
       const cols = [0x3b7de0, 0x3fb55e, 0xffd23f, 0x8b5cd6, 0xff6fae, 0x6fd0f0];
       for (let i = 0; i < 46; i++) {
-        a += 0.72 + Math.random() * 0.2; y += 1.25 + Math.random() * 0.45;
-        const r = 7 + Math.sin(i * 0.7) * 1.2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+        const r = 7.5, chord = 3.2 + 1.7 + Math.random() * 0.5; // Plattform + Lücke von 1,7 bis 2,2 m
+        a += 2 * Math.asin(chord / (2 * r)); y += 1.0 + Math.random() * 0.3;
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
         plat(x, y, z, 3.2, 3.2, cols[i % 6]); P0.push([x, y, z]);
       }
       // Säule in der Mitte
@@ -3771,7 +3781,7 @@ const MINI = {
 
   // ---------------- Farb-Stopp ----------------
   colors: {
-    name: 'Farb-Stopp', emoji: '🎨', color: '#f3d7ff',
+    name: 'Farb-Stopp', prev: [[0, 15, 21], [0, 0, 0]], color: '#f3d7ff',
     desc: 'Eine Farbe wird angesagt. Lauf schnell auf ein Feld in dieser Farbe, denn alle anderen verschwinden! Wer am längsten oben bleibt, gewinnt.',
     hint: () => isTouch ? 'Joystick laufen · schnell auf die richtige Farbe!' : 'WASD laufen · Leertaste springen · schnell auf die richtige Farbe!',
     build() {
@@ -3822,7 +3832,7 @@ const MINI = {
 
   // ---------------- Münzrausch ----------------
   rush: {
-    name: 'Münzrausch', emoji: '💰', color: '#fff3b0',
+    name: 'Münzrausch', prev: [[20, 14, 26], [0, 1, 0]], color: '#fff3b0',
     desc: 'Sammle in 90 Sekunden mehr Münzen als die anderen! In der Klotzstadt tauchen ständig neue Münzen auf.',
     hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · sammle mehr als die anderen!' : 'WASD laufen · Leertaste springen · sammle mehr als die anderen!',
     build() {
@@ -3873,49 +3883,140 @@ const MINI = {
 
   // ---------------- Fangen ----------------
   tag: {
-    name: 'Fangen', emoji: '🏃', color: '#d3f5d0',
-    desc: 'Du bist der Fänger! Fang alle 6 Klotzis, bevor die Zeit um ist. Sie rennen weg und schlagen Haken.',
-    hint: () => isTouch ? 'Joystick laufen · berühre die anderen, um sie zu fangen' : 'WASD laufen · Leertaste springen · berühre die anderen, um sie zu fangen',
+    name: 'Fangen', prev: [[30, 16, 30], [0, 1, 0]], color: '#d3f5d0',
+    desc: 'Rot fängt, Blau rennt weg! 4 Runden im großen Park: mal bist du der Fänger, mal musst du flüchten. Vor jeder Runde gibt es 10 Sekunden Countdown.',
+    hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · Rot fängt, Blau rennt weg' : 'WASD laufen · Leertaste springen · Rot fängt, Blau rennt weg',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(4);
-      plat(0, 0, 0, 56, 56, 0x8fd16f);
-      for (const [x, z, w, d] of [[0, -28.5, 56, 1], [0, 28.5, 56, 1], [-28.5, 0, 1, 56], [28.5, 0, 1, 56]]) addBox(x, 1, z, w, 2, d, 0x7a5a3a);
-      for (let k = 0; k < 14; k++) { const x = (Math.random() - 0.5) * 44, z = (Math.random() - 0.5) * 44; if (Math.hypot(x, z) < 5) continue; addBox(x, 1.5, z, 1, 3, 1, 0x7a5a3a); const top = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8), tc(0x3fb55e)); top.position.set(x, 3.8, z); top.castShadow = true; world.add(top); }
-      const M = { npcs: [], time: 100, caught: 0 };
-      npcNames(6).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, Math.cos(k) * 16, 0, Math.sin(k) * 16), { sp: 6.6 + Math.random() * 1.6, jT: 0, caught: false })));
-      setSpawn(0, 0, 0);
+      const R = 58;
+      plat(0, 0, 0, R * 2, R * 2, 0x8fd16f);
+      for (const [x, z, w, d] of [[0, -R - 0.5, R * 2, 1], [0, R + 0.5, R * 2, 1], [-R - 0.5, 0, 1, R * 2], [R + 0.5, 0, 1, R * 2]]) addBox(x, 0.8, z, w, 1.6, d, 0x7a5a3a);
+      // Wege und ein Teich (nur zum Anschauen)
+      for (const [x, z, w, d] of [[0, 0, 4, R * 2 - 4], [0, 0, R * 2 - 4, 4]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), tc(0xd9c79a)); m.position.set(x, 0.012, z); m.receiveShadow = true; world.add(m); }
+      const pond = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 0.04, 28), tc(0x6fb8e8)); pond.position.set(-30, 0.02, 28); world.add(pond);
+      // Bäume mit genug Abstand zueinander, nicht auf den Wegen und nicht im Teich
+      const trees = [];
+      for (let tries = 0; trees.length < 26 && tries < 600; tries++) {
+        const x = (Math.random() - 0.5) * (R * 2 - 12), z = (Math.random() - 0.5) * (R * 2 - 12);
+        if (Math.abs(x) < 5 || Math.abs(z) < 5 || Math.hypot(x + 30, z - 28) < 10 || trees.some(([a, b]) => Math.hypot(a - x, b - z) < 11)) continue;
+        trees.push([x, z]);
+        const h = 2.6 + Math.random() * 1.2;
+        addBox(x, h / 2, z, 1, h, 1, 0x7a5a3a);
+        const top = new THREE.Mesh(new THREE.SphereGeometry(2 + Math.random() * 0.6, 12, 10), tc([0x3fb55e, 0x2f9a4c, 0x55c46a][trees.length % 3])); top.position.set(x, h + 1.4, z); top.castShadow = true; world.add(top);
+      }
+      // ein paar Büsche und Steine
+      for (let k = 0; k < 14; k++) { const x = (Math.random() - 0.5) * (R * 2 - 10), z = (Math.random() - 0.5) * (R * 2 - 10); if (Math.abs(x) < 4 || Math.abs(z) < 4 || trees.some(([a, b]) => Math.hypot(a - x, b - z) < 5)) continue; addBox(x, 0.5, z, 1.8, 1, 1.4, k % 2 ? 0x8a8f99 : 0x3f9a4c); }
+      const M = { R, npcs: [], round: 0, rounds: 4, phase: 'count', t: 10, won: 0, mark: null, players: [] };
+      npcNames(7).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, 0, 0, 0), { sp: 0, caught: false, team: 'blue', side: 1, jT: 0 })));
+      M.mark = MINI.tag.marker(0x3b7de0); avatar.add(M.mark);
+      mg = M; MINI.tag.startRound();
       return M;
+    },
+    marker(color) { const m = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 4), new THREE.MeshBasicMaterial({ color })); m.rotation.x = Math.PI; m.position.y = 3.2; return m; },
+    setTeam(n, team) {
+      n.team = team; const col = team === 'red' ? 0xe2453c : 0x3b7de0;
+      if (!n.mark) { n.mark = MINI.tag.marker(col); n.g.add(n.mark); } else n.mark.material.color.setHex(col);
+    },
+    startRound() {
+      const M = mg; M.round++; M.phase = 'count'; M.t = 10;
+      M.meRed = M.round % 2 === 1; // Runde 1 und 3: du fängst, Runde 2 und 4: du rennst weg
+      const catchers = M.meRed ? [] : M.npcs.slice(0, 2);
+      M.npcs.forEach((n, k) => {
+        n.caught = false; n.g.visible = true;
+        MINI.tag.setTeam(n, catchers.includes(n) ? 'red' : 'blue');
+        if (M.meRed && k >= 6) { n.g.visible = false; n.caught = true; } // als Fänger jagst du 6 Leute
+        const a = k / M.npcs.length * Math.PI * 2;
+        n.pos.set(n.team === 'red' ? Math.cos(a) * 3 : Math.cos(a) * 14, 0, n.team === 'red' ? Math.sin(a) * 3 : Math.sin(a) * 14);
+        n.sp = n.team === 'red' ? 8.2 + Math.random() * 0.6 : 6.8 + Math.random() * 1.4;
+      });
+      M.mark.material.color.setHex(M.meRed ? 0xe2453c : 0x3b7de0);
+      P.pos.set(0, 0, M.meRed ? 0 : 16); P.vel.set(0, 0, 0);
+      M.time = M.meRed ? 75 : 60; M.caughtN = 0;
+      MINI.tag.banner('Runde ' + M.round + ': Du bist ' + (M.meRed ? 'FÄNGER' : 'WEGRENNER'), M.meRed ? '#e2453c' : '#3b7de0');
+    },
+    banner(text, col) {
+      let b = document.getElementById('mgBanner');
+      if (!b) { b = document.createElement('div'); b.id = 'mgBanner'; b.style.cssText = 'position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);padding:12px 20px;border-radius:14px;border:3px solid #1d2a44;color:#fff;font-family:var(--display);font-size:26px;z-index:8;pointer-events:none;text-align:center;transition:opacity .4s;box-shadow:4px 4px 0 #1d2a44'; document.body.appendChild(b); }
+      b.textContent = text; b.style.background = col; b.style.opacity = 1; clearTimeout(b.t); b.t = setTimeout(() => { b.style.opacity = 0; }, 3500);
     },
     update(dt) {
       const M = mg, live = mode === 'tag';
-      if (live) { M.time -= dt; game.time += dt; }
+      if (!live) return;
+      game.time += dt; M.t -= dt;
+      const blues = M.npcs.filter(n => n.team === 'blue' && !n.caught && n.g.visible), reds = M.npcs.filter(n => n.team === 'red');
+      if (M.phase === 'count') {
+        const s = Math.ceil(M.t); if (s !== M.lastS) { M.lastS = s; if (s <= 3 && s > 0) { toast(String(s)); beep('equip'); } }
+        if (M.meRed) { P.pos.set(0, P.pos.y, 0); P.vel.x = P.vel.z = 0; } // der Fänger wartet, die anderen verteilen sich
+        if (M.t <= 0) { M.phase = 'play'; toast('Los!'); beep('check'); }
+      } else if (M.phase === 'play') {
+        M.time -= dt;
+        if (M.meRed) {
+          for (const n of blues) if (Math.hypot(n.pos.x - P.pos.x, n.pos.z - P.pos.z) < 1.4 && Math.abs(P.pos.y - n.pos.y) < 1.6) { n.caught = true; M.caughtN++; beep('check'); feed(n.name + ' gefangen!'); earn(2); }
+          if (!blues.some(n => !n.caught)) { M.won++; earn(10); MINI.tag.endRound('Alle gefangen!'); return; }
+        } else {
+          for (const r of reds) {
+            for (const n of blues) if (Math.hypot(n.pos.x - r.pos.x, n.pos.z - r.pos.z) < 1.3) { n.caught = true; feed(n.name + ' wurde gefangen'); }
+            if (Math.hypot(P.pos.x - r.pos.x, P.pos.z - r.pos.z) < 1.3 && !isGod()) { hurtFlash(); MINI.tag.endRound(r.name + ' hat dich gefangen!'); return; }
+          }
+        }
+        if (M.time <= 0) { if (!M.meRed) { M.won++; earn(10); } MINI.tag.endRound(M.meRed ? 'Zeit um!' : 'Überlebt!'); return; }
+      } else if (M.phase === 'pause') {
+        if (M.t <= 0) { if (M.round >= M.rounds) return mgEnd(M.won >= 3, M.won >= 3 ? 'Super gespielt!' : 'Spiel vorbei', [['Runden gewonnen', M.won + ' von ' + M.rounds]], M.won * 5); MINI.tag.startRound(); }
+      }
+      // Computer-Spieler
+      const lim = M.R - 2;
       for (const n of M.npcs) {
+        if (!n.g.visible) continue;
         let moving = false;
-        if (!n.caught && live) {
-          const dx = n.pos.x - P.pos.x, dz = n.pos.z - P.pos.z, d = Math.hypot(dx, dz) || 1;
-          let tx = n.pos.x, tz = n.pos.z;
-          if (d < 14) { tx += dx / d * 5; tz += dz / d * 5; n.jT -= dt; if (n.jT <= 0) { n.jT = 0.6 + Math.random(); n.side = Math.random() < 0.5 ? -1 : 1; } tx += -dz / d * 3 * n.side; tz += dx / d * 3 * n.side; }
-          else if (!n.target || Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 1) n.target = { x: (Math.random() - 0.5) * 44, z: (Math.random() - 0.5) * 44 };
-          if (d >= 14 && n.target) { tx = n.target.x; tz = n.target.z; }
-          // nicht aus der Wiese und nicht in die Bäume
-          tx = Math.max(-25, Math.min(25, tx)); tz = Math.max(-25, Math.min(25, tz));
-          const ox = n.pos.x, oz = n.pos.z;
-          moving = npcStep(n, tx, tz, d < 14 ? n.sp : 3.2, dt);
-          if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.4)) { n.pos.x = ox; n.pos.z = oz; n.side = -(n.side || 1); }
-          if (d < 1.3 && Math.abs(P.pos.y - n.pos.y) < 1.5) { n.caught = true; M.caught++; beep('check'); feed(n.name + ' gefangen! (' + M.caught + '/' + M.npcs.length + ')'); earn(3); }
+        if (n.caught) { n.g.userData.armL.rotation.x = n.g.userData.armR.rotation.x = -2.9; n.g.userData.legL.rotation.x = n.g.userData.legR.rotation.x = 0; n.g.position.copy(n.pos); continue; }
+        if (M.phase === 'pause') { npcAnim(n, false, dt); continue; }
+        let tx = n.pos.x, tz = n.pos.z, sp = n.sp;
+        if (n.team === 'red') {
+          if (M.phase === 'count') { npcAnim(n, false, dt); continue; }
+          // den nächsten Blauen jagen (auch dich)
+          let best = null, bd = 1e9;
+          const targets = blues.map(b => b.pos).concat([P.pos]);
+          for (const p of targets) { const d = Math.hypot(p.x - n.pos.x, p.z - n.pos.z); if (d < bd) { bd = d; best = p; } }
+          if (best) { tx = best.x; tz = best.z; }
+        } else {
+          // vor dem nächsten Fänger weglaufen, mit Haken
+          const hunters = M.meRed ? [P.pos] : reds.map(r => r.pos);
+          let hx = 0, hz = 0, hd = 1e9;
+          for (const p of hunters) { const d = Math.hypot(p.x - n.pos.x, p.z - n.pos.z); if (d < hd) { hd = d; hx = p.x; hz = p.z; } }
+          if (hd < 20 && M.phase === 'play') {
+            const dx = n.pos.x - hx, dz = n.pos.z - hz, d = hd || 1;
+            n.jT -= dt; if (n.jT <= 0) { n.jT = 0.7 + Math.random() * 1.1; n.side = Math.random() < 0.5 ? -1 : 1; }
+            tx = n.pos.x + dx / d * 6 - dz / d * 3 * n.side; tz = n.pos.z + dz / d * 6 + dx / d * 3 * n.side;
+            // am Rand nicht festlaufen: zur Mitte abbiegen
+            if (Math.abs(tx) > lim - 6 || Math.abs(tz) > lim - 6) { tx = n.pos.x - dz / d * 6 * n.side - n.pos.x * 0.3; tz = n.pos.z + dx / d * 6 * n.side - n.pos.z * 0.3; }
+          } else {
+            if (!n.target || Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 1.5) n.target = { x: (Math.random() - 0.5) * (lim * 2 - 10), z: (Math.random() - 0.5) * (lim * 2 - 10) };
+            tx = n.target.x; tz = n.target.z; sp = M.phase === 'count' ? n.sp : 3.5;
+          }
+        }
+        tx = Math.max(-lim, Math.min(lim, tx)); tz = Math.max(-lim, Math.min(lim, tz));
+        const ox = n.pos.x, oz = n.pos.z;
+        moving = npcStep(n, tx, tz, sp, dt);
+        if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) {
+          // um Bäume und Steine herumgehen
+          n.pos.x = ox; n.pos.z = oz; const a = n.facing + (n.side || 1) * 1.2;
+          n.pos.x += Math.sin(a) * sp * dt; n.pos.z += Math.cos(a) * sp * dt;
+          if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; n.side = -(n.side || 1); }
+          n.target = null;
         }
         npcAnim(n, moving, dt);
-        if (n.caught) { n.g.userData.armL.rotation.x = n.g.userData.armR.rotation.x = -2.8; }
       }
-      if (live && M.caught === M.npcs.length) mgEnd(true, 'Alle gefangen!', [['Zeit', fmt(game.time)]], 30);
-      else if (live && M.time <= 0) mgEnd(false, 'Zeit um!', [['Gefangen', M.caught + ' von ' + M.npcs.length]]);
     },
-    stats: () => pill('Gefangen', mg.caught + '/' + mg.npcs.length) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+    endRound(text) {
+      const M = mg; M.phase = 'pause'; M.t = 3.5;
+      MINI.tag.banner(text, '#1d2a44'); beep(text.includes('dich') || text === 'Zeit um!' ? 'die' : 'win');
+    },
+    stats: () => `<span class="pill" style="background:${mg.meRed ? '#e2453c' : '#3b7de0'};color:#fff">Du bist <b>${mg.meRed ? 'FÄNGER' : 'WEGRENNER'}</b></span>` + pill('Runde', mg.round + '/' + mg.rounds) +
+      (mg.phase === 'count' ? pill('Start in', Math.max(0, Math.ceil(mg.t)) + ' s') : pill('Zeit', Math.max(0, Math.ceil(mg.time || 0)) + ' s')) +
+      (mg.meRed ? pill('Gefangen', mg.caughtN + '/6') : pill('Blau übrig', mg.npcs.filter(n => n.team === 'blue' && !n.caught && n.g.visible).length + 1)) + pill('Gewonnen', mg.won)
   },
-
-  // ---------------- Fallende Felder ----------------
   fall: {
-    name: 'Fallende Felder', emoji: '🟨', color: '#ffe9a8',
+    name: 'Fallende Felder', prev: [[14, 9, 16], [0, -5, 0]], color: '#ffe9a8',
     desc: 'Jedes Feld, auf dem jemand steht, fällt kurz danach runter. Drei Etagen übereinander. Wer zuletzt noch oben ist, gewinnt!',
     hint: () => isTouch ? 'Joystick laufen · nicht stehen bleiben!' : 'WASD laufen · Leertaste springen · nicht stehen bleiben!',
     build() {
@@ -3971,7 +4072,7 @@ const MINI = {
 
   // ---------------- Himmelsturm ----------------
   tower: {
-    name: 'Himmelsturm', emoji: '🗼', color: '#cfe8ff', solo: true,
+    name: 'Himmelsturm', prev: [[22, 14, 22], [0, 9, 0]], color: '#cfe8ff', solo: true,
     desc: 'Ein riesiger Turm aus schwebenden Klötzen. Wie hoch kommst du in 3 Minuten? Alle 15 Stufen gibt es einen Checkpoint.',
     hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · immer höher!' : 'WASD laufen · Leertaste springen · immer höher!',
     build() {
@@ -3980,12 +4081,19 @@ const MINI = {
       const steps = [], cps = [];
       let x = 0, y = 0, z = 0, dir = 0;
       const cols = [0xff6fae, 0x6fd0f0, 0xffd23f, 0x3fdc7a, 0x8b5cd6, 0xff8a2b];
+      let prevW = 10;
       for (let i = 1; i <= 120; i++) {
-        dir += (Math.random() - 0.5) * 1.6;
-        const dist = 3.6 + Math.random() * 1.4 + Math.min(1.2, i * 0.01);
-        x += Math.cos(dir) * dist; z += Math.sin(dir) * dist; y += 1.1 + Math.random() * 0.5;
-        if (Math.hypot(x, z) > 22) { dir += Math.PI; x *= 0.8; z *= 0.8; }
-        const cp = i % 15 === 0, w = cp ? 4 : Math.max(1.6, 3 - i * 0.012);
+        // gleichmäßig: Lücke zwischen den Kanten 1,6 bis 2,2 m, jede Stufe 0,8 bis 1,1 m höher
+        const cp = i % 15 === 0, w = cp ? 4 : 2.8;
+        const gap = 1.6 + Math.random() * 0.6, dist = prevW / 2 + w / 2 + gap;
+        let nx, nz, ok = false;
+        for (let t = 0; t < 12 && !ok; t++) {
+          const d2 = dir + (Math.random() - 0.5) * 1.1 + (Math.hypot(x, z) > 18 ? Math.atan2(Math.sin(Math.atan2(-z, -x) - dir), Math.cos(Math.atan2(-z, -x) - dir)) : 0) * 0.5;
+          nx = x + Math.cos(d2) * dist; nz = z + Math.sin(d2) * dist;
+          ok = Math.hypot(nx, nz) < 24 && steps.slice(-8).every(([a, b, c]) => Math.hypot(a - nx, c - nz) > 3.4 || y + 1 - b > 2.8);
+          if (ok) dir = d2;
+        }
+        x = nx; z = nz; y += 0.8 + Math.random() * 0.3; prevW = w;
         plat(x, y, z, w, w, cp ? 0x3fb55e : cols[i % 6]);
         if (cp) { const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.12, 18), padMat); pad.position.set(x, y + 0.07, z); world.add(pad); cps.push([x, y, z]); }
         steps.push([x, y, z]);
@@ -4007,7 +4115,7 @@ const MINI = {
 
   // ---------------- Labyrinth ----------------
   maze: {
-    name: 'Labyrinth', emoji: '🧩', color: '#e0e6f5', solo: true,
+    name: 'Labyrinth', prev: [[0, 34, 20], [0, 0, 0]], color: '#e0e6f5', solo: true,
     desc: 'Jedes Mal ein neues Labyrinth! Finde den goldenen Ausgang so schnell wie möglich. Unterwegs liegen Münzen.',
     hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Mausrad: Zoom (ganz nah = eigene Sicht) · finde den goldenen Ausgang',
     build() {
@@ -4049,7 +4157,7 @@ const MINI = {
 
   // ---------------- Schubs-Arena ----------------
   sumo: {
-    name: 'Schubs-Arena', emoji: '💥', color: '#ffd0e4',
+    name: 'Schubs-Arena', prev: [[0, 12, 17], [0, 0, 0]], color: '#ffd0e4',
     desc: 'Schubs alle anderen von der Plattform! Mit einem Sprint-Stoß fliegen sie weit. Aber pass auf, sie schubsen zurück.',
     hint: () => isTouch ? 'Joystick laufen · Schubs-Knopf: Stoß nach vorne' : 'WASD laufen · Linksklick oder J: Stoß nach vorne · Leertaste springen',
     btn: 'Schubs',
@@ -4118,7 +4226,7 @@ const MINI = {
 
   // ---------------- Klotz-Fußball ----------------
   soccer: {
-    name: 'Klotz-Fußball', emoji: '⚽', color: '#c8f0d8',
+    name: 'Klotz-Fußball', prev: [[0, 17, 25], [0, 0, 0]], color: '#c8f0d8',
     desc: 'Du gegen das Klotz-Team! Lauf den Ball, schieß aufs Tor und wehr ihre Schüsse ab. Wer zuerst 3 Tore hat, gewinnt.',
     hint: () => isTouch ? 'Joystick laufen · Schuss-Knopf: schießen · Ball berühren = dribbeln' : 'WASD laufen · Linksklick oder J: schießen · Ball berühren = dribbeln',
     btn: 'Schuss',
@@ -4140,8 +4248,8 @@ const MINI = {
         const net = new THREE.Mesh(new THREE.BoxGeometry(2, 3, GW), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.25 })); net.position.set(sx * (L / 2 + 1), 1.5, 0); world.add(net);
         addBox(sx * (L / 2 + 2.2), 1.5, 0, 0.4, 3, GW + 0.4, col);
       }
-      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), tc(0xffffff)); ball.castShadow = true; world.add(ball);
-      for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), tc(0x1d2a44)); const a = k * 1.05; sp.position.set(Math.cos(a) * 0.5, Math.sin(a * 2) * 0.3, Math.sin(a) * 0.5); ball.add(sp); }
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 24), toon('fussball', { color: 0xffffff, map: ballTex() })); ball.castShadow = true; world.add(ball);
+      const bo = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 16), outlineMat); bo.scale.setScalar(1.06); ball.add(bo);
       const M = { L, W, GW, ball, bp: new V3(0, 0.6, 0), bv: new V3(), me: 0, them: 0, pause: 0, time: 180, npcs: [], kickCool: 0 };
       const nm = npcNames(2);
       M.npcs.push(Object.assign(npcMake(nm[0] || 'Kicker', 8, 0, 0), { role: 'striker', cool: 0 }));
@@ -4216,6 +4324,28 @@ const MINI = {
     stats: () => `<span class="pill">Du <b>${mg.me} : ${mg.them}</b> Klotz-Team</span>` + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
   }
 };
+// Fußball-Muster: 12 schwarze Fünfecke (wie ein echter Ball) auf weißem Grund, mit feinen Nähten
+function ballTex() {
+  const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'); g.fillStyle = '#f7f7f4'; g.fillRect(0, 0, W, H);
+  const centers = [[Math.PI / 2, 0], [-Math.PI / 2, 0]];
+  for (let k = 0; k < 5; k++) { centers.push([Math.atan(0.5), k * 2 * Math.PI / 5]); centers.push([-Math.atan(0.5), k * 2 * Math.PI / 5 + Math.PI / 5]); }
+  const toUV = (lat, lon) => [((lon % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * W, (Math.PI / 2 - lat) / Math.PI * H];
+  // jeder Punkt der Kugel: liegt er in einem Fünfeck? (Abstand zum Mittelpunkt, fünfeckig verformt)
+  const img = g.getImageData(0, 0, W, H), d = img.data;
+  const cv = centers.map(([la, lo]) => [Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)]);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const la = Math.PI / 2 - (y + 0.5) / H * Math.PI, lo = (x + 0.5) / W * 2 * Math.PI;
+    const px = Math.cos(la) * Math.cos(lo), py = Math.sin(la), pz = Math.cos(la) * Math.sin(lo);
+    let best = -2, b2 = -2;
+    for (const [cx, cy, cz] of cv) { const dot = px * cx + py * cy + pz * cz; if (dot > best) { b2 = best; best = dot; } else if (dot > b2) b2 = dot; }
+    const ang = Math.acos(Math.min(1, best)), i = (y * W + x) * 4;
+    if (ang < 0.33) { d[i] = d[i + 1] = d[i + 2] = 30; }
+    else if (Math.abs(ang - 0.62) < 0.012 || best - b2 < 0.012) { d[i] = d[i + 1] = d[i + 2] = 170; }
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
 const MG_COLORS = [[0xe2453c, 'Rot'], [0x3b7de0, 'Blau'], [0xffd23f, 'Gelb'], [0x3fb55e, 'Grün'], [0x8b5cd6, 'Lila'], [0xff8a2b, 'Orange']];
 const hexStr = c => '#' + c.toString(16).padStart(6, '0');
 for (const [k, g] of Object.entries(MINI)) g.key = k;
@@ -4479,7 +4609,7 @@ function netHandle(m) {
     case 'playerLeave': { const pr = NET.peers.get(m.id); if (pr) feed(pr.name + ' ist gegangen'); removePeer(m.id); break; }
     case 'states': for (const [id, st] of m.list) { const pr = NET.peers.get(id); if (pr) pr.target = st; } break;
     case 'hit': gotHit(m); break;
-    case 'gift': profile.coins = Math.max(0, profile.coins + m.coins); saveProfile(); beep(m.coins > 0 ? 'buy' : 'remove'); feed(m.coins > 0 ? '🎁 ' + m.from + ' hat dir ' + m.coins + ' Münzen geschenkt!' : m.from + ' hat dir ' + (-m.coins) + ' Münzen weggenommen.'); break;
+    case 'gift': profile.coins = Math.max(0, profile.coins + m.coins); saveProfile(); beep(m.coins > 0 ? 'buy' : 'remove'); feed(m.coins > 0 ? m.from + ' hat dir ' + m.coins + ' Münzen geschenkt!' : m.from + ' hat dir ' + (-m.coins) + ' Münzen weggenommen.'); break;
     case 'ko': gotKo(m); break;
     case 'shot': if (arena && mode === 'blaster') shoot(new V3(...m.a), new V3(...m.b), m.col, 'v', 0, 70, true); break;
     case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
@@ -4691,7 +4821,7 @@ const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(
 function flyHelp() {
   const kn = d => keyName(keyBinds[d] || d);
   if (powers.fly && !isRace(mode) && !['skate', 'fight', 'blaster'].includes(mode))
-    return `<span class="pill">✈️ ${isTouch ? 'Hoch- und Runter-Knopf' : `${kn('Space')} = hoch · ${kn('KeyC')} = runter · ${kn('KeyF')} = aus`}</span>`;
+    return `<span class="pill">Fliegen: ${isTouch ? 'Hoch- und Runter-Knopf' : `${kn('Space')} = hoch · ${kn('KeyC')} = runter · ${kn('KeyF')} = aus`}</span>`;
   return '';
 }
 // Anzeigen oben links dürfen nie unter die Knöpfe oben rechts laufen; der Hinweis kommt darunter
@@ -4765,12 +4895,13 @@ function setTool(t) {
 // ---------- Modi ----------
 function showBest() { const b = store.get('klotzwelt-bestzeit', null); $('best').textContent = b ? 'Bestzeit: ' + fmt(b) : ''; }
 function showMenu() {
-  if (['skate', 'fight', 'blaster'].includes(lastGame) || isRace(lastGame)) { avatar.rotation.z = 0; rebuildAvatar(); }
+  { const bn = document.getElementById('mgBanner'); if (bn) bn.style.opacity = 0; }
+  if (['skate', 'fight', 'blaster', 'tag'].includes(lastGame) || isRace(lastGame)) { avatar.rotation.z = 0; rebuildAvatar(); }
   paused = false; $('pausePanel').hidden = true; setShiftLock(false);
   mode = 'menu';
   document.body.className = 'menu';
   $('home').hidden = false; $('hud').hidden = true; $('win').hidden = true;
-  renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
+  renderAdminBar(); syncHammer(); $('banPanel').hidden = true; showTrickBtns();
   ghost.visible = false;
   netLeaveGame();
   buildStage();
@@ -4822,7 +4953,7 @@ function enterPlay(m) {
   } else if (m === 'skate') {
     buildSkate();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
-    $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Trick';
+    $('driftBtn').hidden = true;
     $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
     toast('Los, skaten!');
   } else if (MINI[m]) {
@@ -4847,7 +4978,7 @@ function enterPlay(m) {
   showHint(8000);
   $('toolbar').hidden = !canBuild();
   if (m === 'obby' && canBuild()) buildToolbar();
-  renderAdminBar(); syncHammer(); $('banPanel').hidden = true;
+  renderAdminBar(); syncHammer(); $('banPanel').hidden = true; showTrickBtns();
   renderStats();
   netJoinGame(m);
 }
@@ -4867,8 +4998,13 @@ function openVehPicker() {
 }
 $('playRace').onclick = () => { if (isBanned('race', profile.name)) return renderGames(); if (chosenVehicle.admin && !isAdmin()) chosenVehicle = VEHICLES[0]; openVehPicker(); };
 $('playSkate').onclick = () => enterPlay('skate');
+document.querySelectorAll('#trickBtns [data-tk]').forEach(b => {
+  b.addEventListener('pointerdown', e => { if (editingLayout) return; e.preventDefault(); e.stopPropagation(); keys[b.dataset.tk] = true; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (er) {} });
+  // kurz gehalten lassen, damit auch ein schnelles Antippen sicher im Spiel ankommt
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => { b.classList.remove('on'); setTimeout(() => { if (!b.classList.contains('on')) keys[b.dataset.tk] = false; }, 140); });
+});
 // Karten der neuen Spiele
-$('miniCards').innerHTML = Object.entries(MINI).map(([k, g]) => `<div class="game" style="background:${g.color}"><div class="mgArt" aria-hidden="true">${g.emoji}</div><h3>${g.name}</h3><p>${g.desc}${g.solo ? '' : ' Mit Freunden noch lustiger!'}</p><button class="btn primary" id="play_${k}">Spielen</button></div>`).join('');
+$('miniCards').innerHTML = Object.entries(MINI).map(([k, g]) => `<div class="game" style="background:${g.color}"><img class="preview" id="prev_${k}" alt="Vorschau: ${g.name}" hidden><h3>${g.name}</h3><p>${g.desc}${g.solo ? '' : ' Mit Freunden noch lustiger!'}</p><button class="btn primary" id="play_${k}">Spielen</button></div>`).join('');
 for (const k of Object.keys(MINI)) $('play_' + k).onclick = () => enterPlay(k);
 $('playFight').onclick = () => enterPlay('fight');
 $('playBlaster').onclick = () => enterPlay('blaster');
@@ -5103,7 +5239,8 @@ function applyDevice() {
   if (mode !== 'menu') {
     $('stick').hidden = $('stickZone').hidden = !isTouch;
     $('jumpBtn').hidden = !isTouch || isRace(playingGame());
-    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || ['skate', 'fight', 'blaster'].includes(playingGame()) || !!(MINI[playingGame()] && MINI[playingGame()].btn));
+    showTrickBtns();
+    $('driftBtn').hidden = !isTouch || !(isRace(playingGame()) || ['fight', 'blaster'].includes(playingGame()) || !!(MINI[playingGame()] && MINI[playingGame()].btn));
     renderAdminBar();
   }
 }
@@ -5122,7 +5259,14 @@ $('deviceBtn').textContent = 'Einstellungen';
 const settings = Object.assign({ stick: null, jump: null, jumpX: null, jumpY: null, stickMode: 'float' }, store.get('klotzwelt-einstellungen', {}) || {});
 const DEV_DEFAULTS = { phone: { stick: 110, jump: 76, jumpX: 24, jumpY: 80 }, tablet: { stick: 170, jump: 120, jumpX: 24, jumpY: 80 }, pc: { stick: 120, jump: 84, jumpX: 24, jumpY: 80 } };
 const devDef = () => DEV_DEFAULTS[device || (isTouch ? 'phone' : 'pc')];
+function applyTrickBtns() {
+  const tb = $('trickBtns'); if (!tb) return;
+  tb.style.transform = 'scale(' + (settings.tricks || 1) + ')';
+  if (settings.tbX != null) { tb.style.right = settings.tbX + 'px'; tb.style.bottom = settings.tbY + 'px'; tb.style.left = tb.style.top = ''; } else tb.style.right = tb.style.bottom = tb.style.left = tb.style.top = '';
+}
+function showTrickBtns() { $('trickBtns').hidden = !(isTouch && (mode === 'skate' || (editingLayout && true))); }
 function applySettings() {
+  applyTrickBtns();
   const px = v => v == null ? '' : v + 'px', d = devDef();
   const st = $('stick');
   st.style.width = st.style.height = px(settings.stick);
@@ -5159,14 +5303,14 @@ function syncSettingsUI() {
   document.querySelectorAll('#bloodSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.b === '1') === !!settings.blood)));
   const d = devDef();
   $('setStick').value = settings.stick ?? d.stick; $('setJump').value = settings.jump ?? d.jump;
-  $('setJumpX').value = settings.jumpX ?? d.jumpX; $('setJumpY').value = settings.jumpY ?? d.jumpY;
+  $('setJumpX').value = settings.jumpX ?? d.jumpX; $('setJumpY').value = settings.jumpY ?? d.jumpY; $('setTricks').value = settings.tricks || 1;
   for (const seg of ['genderSeg', 'genderSeg1']) document.querySelectorAll('#' + seg + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === profile.gender)));
   document.querySelectorAll('#devSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.d === device)));
   document.querySelectorAll('#stickModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sm === settings.stickMode)));
   document.querySelectorAll('#soundSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.snd === '1') === soundOn)));
 }
 function openSettings() { syncSettingsUI(); $('settingsPanel').hidden = false; }
-for (const [id, key] of [['setStick', 'stick'], ['setJump', 'jump'], ['setJumpX', 'jumpX'], ['setJumpY', 'jumpY']]) {
+for (const [id, key] of [['setStick', 'stick'], ['setJump', 'jump'], ['setJumpX', 'jumpX'], ['setJumpY', 'jumpY'], ['setTricks', 'tricks']]) {
   $(id).addEventListener('input', () => {
     settings[key] = +$(id).value; applySettings();
     // Vorschau: Knöpfe kurz zeigen, auch wenn man gerade im Menü ist
@@ -5182,20 +5326,21 @@ document.querySelectorAll('#bloodSeg button').forEach(b => b.onclick = () => {
   settings.blood = b.dataset.b === '1'; applySettings(); syncSettingsUI();
 });
 document.querySelectorAll('#soundSeg button').forEach(b => b.onclick = () => { soundOn = b.dataset.snd === '1'; store.set('klotzwelt-ton', soundOn); soundLabel(); if (!soundOn) stopDrone(); else if (mode === 'horror') startDrone(); syncSettingsUI(); });
-$('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = settings.stickX = settings.stickY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
+$('setReset').onclick = () => { settings.stick = settings.jump = settings.jumpX = settings.jumpY = settings.stickX = settings.stickY = settings.tricks = settings.tbX = settings.tbY = null; settings.stickMode = 'float'; applySettings(); syncSettingsUI(); };
 // Knöpfe mit dem Finger verschieben
 let editingLayout = false, layoutFromMenu = false;
 function startLayoutEdit() {
   $('settingsPanel').hidden = true; $('pausePanel').hidden = true;
   editingLayout = true; layoutFromMenu = mode === 'menu';
   document.body.classList.add('editing');
-  $('hud').hidden = false; $('stick').hidden = false; $('jumpBtn').hidden = false; $('stickZone').hidden = true;
+  $('hud').hidden = false; $('stick').hidden = false; $('jumpBtn').hidden = false; $('stickZone').hidden = true; $('trickBtns').hidden = false;
   $('layoutBar').hidden = false;
 }
 function endLayoutEdit() {
   editingLayout = false; document.body.classList.remove('editing'); $('layoutBar').hidden = true;
   if (layoutFromMenu && mode === 'menu') $('hud').hidden = true;
   else { $('stick').hidden = $('stickZone').hidden = !isTouch; $('jumpBtn').hidden = !isTouch || isRace(playingGame()); }
+  showTrickBtns();
   if (paused) $('pausePanel').hidden = false;
   syncSettingsUI();
 }
@@ -5215,10 +5360,11 @@ function dragEl(el, onDrop) {
   });
 }
 dragEl($('stick'), b => { settings.stickMode = 'fixed'; settings.stickX = Math.round(b.left); settings.stickY = Math.round(innerHeight - b.bottom); });
+dragEl($('trickBtns'), b => { settings.tbX = Math.round(innerWidth - b.right); settings.tbY = Math.round(innerHeight - b.bottom); });
 dragEl($('jumpBtn'), b => { settings.jumpX = Math.round(innerWidth - b.right); settings.jumpY = Math.round(innerHeight - b.bottom); });
 $('setLayout').onclick = startLayoutEdit;
 $('layDone').onclick = endLayoutEdit;
-$('layReset').onclick = () => { settings.stickX = settings.stickY = settings.jumpX = settings.jumpY = null; settings.stickMode = 'float'; applySettings(); };
+$('layReset').onclick = () => { settings.stickX = settings.stickY = settings.jumpX = settings.jumpY = settings.tbX = settings.tbY = null; settings.stickMode = 'float'; applySettings(); };
 $('setClose').onclick = () => { $('settingsPanel').hidden = true; };
 
 // Vollbild
@@ -5267,7 +5413,7 @@ function previewShot(setup, pos, look) {
   } catch (e) { return ''; }
   finally {
     // Handschuhe oder Waffen aus der Vorschau wieder ausziehen
-    try { if (fight || arena) rebuildAvatar(); } catch (e) {}
+    try { if (fight || arena || (mg && mg.mark)) rebuildAvatar(); } catch (e) {}
     if (thumbR) { thumbR.setSize(160, 160); thumbCam.aspect = 1; thumbCam.fov = 35; thumbCam.updateProjectionMatrix(); } }
 }
 function setPreview(id, url) { const img = $(id); if (url) { img.src = url; img.hidden = false; } }
@@ -5278,6 +5424,14 @@ setPreview('prevSkate', previewShot(() => { buildSkate(); P.pos.set(22, 3, 21); 
 setPreview('prevRace', previewShot(() => { buildRace('race', VEHICLES[4]); race.count = 0; }, () => { const c = race.car, t = TRACK.tan[c.idx]; return [c.pos.x - t.x * 9 + t.z * 5, 6, c.pos.z - t.z * 9 - t.x * 5]; }, () => { const c = race.car; return [c.pos.x, 1, c.pos.z]; }));
 setPreview('prevHorror', previewShot(() => { buildHorror(); updateHorror(0); }, [-8, 20, -4], [-14, 0, -18]));
 setPreview('prevBuild', previewShot(() => { buildSandbox(); P.pos.set(2.5, 0, 6.5); P.facing = Math.PI * 1.1; }, [11, 8, 15], [1, 1.5, -1]));
+// Vorschaubilder der neuen Spiele (einmal pro Version erzeugen, dann gespeichert)
+for (const [k, g] of Object.entries(MINI)) {
+  const key = 'kw-vorschau-' + BUILD + '-' + k;
+  let url = null; try { url = localStorage.getItem(key); } catch (e) {}
+  if (!url) { mg = { key: k }; url = previewShot(() => { mg = MINI[k].build(); mg.key = k; }, g.prev[0], g.prev[1]); try { for (const x of Object.keys(localStorage)) if (x.startsWith('kw-vorschau-') && !x.startsWith('kw-vorschau-' + BUILD)) localStorage.removeItem(x); localStorage.setItem(key, url); } catch (e) {} }
+  setPreview('prev_' + k, url);
+}
+mg = null;
 showMenu();
 requestAnimationFrame(frame);
 

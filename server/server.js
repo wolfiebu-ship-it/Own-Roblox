@@ -346,7 +346,7 @@ function handle(c, m) {
       other.profile.coins = Math.min(1e7, had + delta);
       const oc = online.get(t);
       if (oc) send(oc, { t: 'gift', coins: take ? -n : n, from: users[c.user].name });
-      else if (!take) { other.mail = other.mail || []; other.mail.push({ text: '🎁 ' + users[c.user].name + ' hat dir ' + n + ' Münzen geschenkt!', at: now(), read: false }); }
+      else if (!take) { other.mail = other.mail || []; other.mail.push({ text: users[c.user].name + ' hat dir ' + n + ' Münzen geschenkt!', at: now(), read: false }); }
       db.save(); return notice(c, take ? other.name + ' wurden ' + n + ' Münzen weggenommen.' : other.name + ' hat ' + n + ' Münzen bekommen.');
     }
     case 'adminList': if (isAdminU(c.user)) send(c, adminData()); return;
