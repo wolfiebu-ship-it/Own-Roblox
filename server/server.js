@@ -121,6 +121,10 @@ function cleanProfile(p) {
 }
 const roleOf = u => (D().users[u] && D().users[u].role) || null;
 const isAdminU = u => roleOf(u) === 'creator' || roleOf(u) === 'admin';
+// Haupt-Erfinder = Rolle 'creator' (höchstens 10). Der Gründer (D().owner) darf als Einziger Haupt-Erfinder löschen.
+const MAX_MAIN = 10;
+const mainCount = () => Object.values(D().users).filter(x => x.role === 'creator').length;
+const ownerOk = () => !!(D().owner && D().users[D().owner] && D().users[D().owner].role === 'creator');
 const bansOf = u => Object.keys(GAMES).filter(g => (D().bans[g] || []).some(b => b.u === u));
 function adminData() {
   const admins = Object.entries(D().users).filter(([, x]) => x.role).map(([u, x]) => ({ name: x.name, role: x.role, owner: D().owner === u }));
@@ -131,7 +135,7 @@ function adminData() {
 function pushAdmins() { for (const [u, c] of online) if (isAdminU(u)) send(c, adminData()); }
 function meOf(u) {
   const usr = D().users[u];
-  return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, owner: D().owner === u, bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
+  return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, owner: D().owner === u, noOwner: !ownerOk(), bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
 const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, body: p.body, wear: p.wear, shape: p.shape }; };
 
@@ -312,48 +316,59 @@ function handle(c, m) {
       // Groß- und Kleinschreibung egal, weil Handy-Tastaturen oft den ersten Buchstaben groß machen
       const a = Buffer.from(String(m.code || '').trim().toLowerCase()), b = Buffer.from(CREATOR_CODE.toLowerCase());
       if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return err(c, 'Der Code stimmt nicht.');
-      // Es gibt nur einen Haupt-Erfinder: wer den Code zuerst eingibt (nach diesem Update)
-      if (D().owner && D().owner !== c.user && users[D().owner] && users[D().owner].role === 'creator') return err(c, 'Es gibt schon einen Erfinder.');
-      users[c.user].role = 'creator'; D().owner = c.user; db.save();
+      if (users[c.user].role !== 'creator' && mainCount() >= MAX_MAIN) return err(c, 'Es gibt schon ' + MAX_MAIN + ' Haupt-Erfinder. Mehr geht nicht.');
+      users[c.user].role = 'creator';
+      if (!ownerOk()) D().owner = c.user; // der Erste wird Gründer
+      db.save();
       send(c, { t: 'me', me: meOf(c.user) }); send(c, adminData());
-      return notice(c, 'Du bist jetzt Erfinder!');
+      return notice(c, D().owner === c.user ? 'Du bist jetzt Haupt-Erfinder (Gründer)!' : 'Du bist jetzt Haupt-Erfinder!');
     }
     case 'giftCoins': {
-      if (D().owner !== c.user || roleOf(c.user) !== 'creator') return err(c, 'Münzen schenken kann nur der Haupt-Erfinder.');
-      const t = low(m.name), other = users[t], n = Math.round(num(m.coins, 0, 1e6, 0));
+      if (roleOf(c.user) !== 'creator') return err(c, 'Münzen schenken können nur Haupt-Erfinder.');
+      const t = low(m.name), other = users[t], n = Math.round(num(m.coins, 0, 1e6, 0)), take = !!m.take;
       if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
       if (n < 1) return err(c, 'Gib eine Anzahl zwischen 1 und 1000000 ein.');
-      other.profile = cleanProfile(other.profile); other.profile.coins = Math.min(1e7, other.profile.coins + n);
+      other.profile = cleanProfile(other.profile);
+      const had = other.profile.coins, delta = take ? -Math.min(n, had) : n;
+      other.profile.coins = Math.min(1e7, had + delta);
       const oc = online.get(t);
-      if (oc) send(oc, { t: 'gift', coins: n, from: users[c.user].name });
-      else { other.mail = other.mail || []; other.mail.push({ text: '🎁 ' + users[c.user].name + ' hat dir ' + n + ' Münzen geschenkt!', at: now(), read: false }); }
-      db.save(); return notice(c, other.name + ' hat ' + n + ' Münzen bekommen.');
+      if (oc) send(oc, { t: 'gift', coins: take ? -n : n, from: users[c.user].name });
+      else if (!take) { other.mail = other.mail || []; other.mail.push({ text: '🎁 ' + users[c.user].name + ' hat dir ' + n + ' Münzen geschenkt!', at: now(), read: false }); }
+      db.save(); return notice(c, take ? other.name + ' wurden ' + n + ' Münzen weggenommen.' : other.name + ' hat ' + n + ' Münzen bekommen.');
     }
     case 'adminList': if (isAdminU(c.user)) send(c, adminData()); return;
     case 'adminAdd': {
       if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
       const t = low(m.name), other = users[t];
       if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
+      if (m.main) {
+        if (roleOf(c.user) !== 'creator') return err(c, 'Haupt-Erfinder machen können nur Haupt-Erfinder.');
+        if (other.role === 'creator') return err(c, other.name + ' ist schon Haupt-Erfinder.');
+        if (mainCount() >= MAX_MAIN) return err(c, 'Es gibt schon ' + MAX_MAIN + ' Haupt-Erfinder. Mehr geht nicht.');
+        other.role = 'creator'; db.save();
+        const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, users[c.user].name + ' hat dich zum Haupt-Erfinder gemacht!'); }
+        pushAdmins(); return notice(c, other.name + ' ist jetzt Haupt-Erfinder.');
+      }
       if (other.role) return err(c, other.name + ' ist schon Admin.');
       other.role = 'admin'; db.save();
       const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, users[c.user].name + ' hat dich zum Admin gemacht!'); }
       pushAdmins(); return notice(c, other.name + ' ist jetzt Admin.');
     }
     case 'adminRemove': {
-      if (roleOf(c.user) !== 'creator') return err(c, 'Admins löschen kann nur der Erfinder.');
+      if (roleOf(c.user) !== 'creator') return err(c, 'Admins löschen können nur Haupt-Erfinder.');
       const t = low(m.name), other = users[t];
       if (!other) return err(c, 'Diesen Benutzernamen gibt es nicht.');
       if (t === c.user) return err(c, 'Dich selbst kannst du nicht löschen.');
       // Der Haupt-Erfinder darf auch andere Erfinder löschen
-      if (other.role === 'creator' && D().owner !== c.user) return err(c, 'Den Erfinder kann man nicht löschen.');
-      if (other.role === 'creator') { delete other.role; db.save(); const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Erfinder mehr.'); } pushAdmins(); return notice(c, other.name + ' ist kein Erfinder mehr.'); }
+      if (other.role === 'creator' && D().owner !== c.user) return err(c, 'Haupt-Erfinder löschen kann nur der Gründer.');
+      if (other.role === 'creator') { delete other.role; db.save(); const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Haupt-Erfinder mehr.'); } pushAdmins(); return notice(c, other.name + ' ist kein Haupt-Erfinder mehr.'); }
       if (other.role !== 'admin') return err(c, other.name + ' ist kein Admin.');
       delete other.role; db.save();
       const oc = online.get(t); if (oc) { send(oc, { t: 'me', me: meOf(t) }); notice(oc, 'Du bist kein Admin mehr.'); }
       pushAdmins(); return notice(c, other.name + ' ist kein Admin mehr.');
     }
     case 'ban': {
-      if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
+      if (roleOf(c.user) !== 'creator') return err(c, 'Bannen dürfen nur Haupt-Erfinder.');
       const t = low(m.name), other = users[t], g = String(m.game);
       if (!other || !GAMES[g]) return err(c, 'Diesen Spieler gibt es nicht.');
       if (isAdminU(t)) return err(c, 'Admins kann man nicht bannen.');
@@ -365,7 +380,7 @@ function handle(c, m) {
       pushAdmins(); return notice(c, other.name + ' wurde aus ' + GAMES[g] + ' gebannt.');
     }
     case 'unban': {
-      if (!isAdminU(c.user)) return err(c, 'Das dürfen nur Admins.');
+      if (roleOf(c.user) !== 'creator') return err(c, 'Zurückholen dürfen nur Haupt-Erfinder.');
       const t = low(m.name), g = String(m.game), list = D().bans[g] || [];
       if (!list.some(b => b.u === t)) return;
       D().bans[g] = list.filter(b => b.u !== t);

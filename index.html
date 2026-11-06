@@ -826,7 +826,7 @@ const profile = (() => {
 let profileTimer = 0;
 // Nur der Haupt-Erfinder hat unendlich Münzen
 let infOn = store.get('klotzwelt-unendlich', true);
-const infCoins = () => !!(NET && NET.me && NET.me.owner) && infOn !== false;
+const infCoins = () => !!(NET && NET.me && NET.me.role === 'creator') && infOn !== false;
 // Eigenes Unendlich-Zeichen als Grafik (kein Emoji), passend zur Schrift
 const INF_SVG = '<svg class="inf" viewBox="0 0 40 20" aria-label="unendlich" role="img"><path d="M20 10c-4-5-6.5-7-10-7a7 7 0 0 0 0 14c3.5 0 6-2 10-7s6.5-7 10-7a7 7 0 0 1 0 14c-3.5 0-6-2-10-7z" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const coinText = () => infCoins() ? INF_SVG : profile.coins;
@@ -1945,7 +1945,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyF') togglePower('fly');
     if (e.code === 'KeyH') togglePower('hammer');
     if (e.code === 'KeyG' && powers.hammer) hammerAction();
-    if (e.code === 'KeyL') { if ($('banPanel').hidden) openBanPanel(); else $('banPanel').hidden = true; }
+    if (e.code === 'KeyL' && isMain()) { if ($('banPanel').hidden) openBanPanel(); else $('banPanel').hidden = true; }
     if (e.code === 'KeyB' && mode === 'obby') togglePower('build');
   }
   if (canBuild()) {
@@ -1996,7 +1996,7 @@ function endDrag(e) {
   const locked = document.pointerLockElement === cv, px = locked ? innerWidth / 2 : e.clientX, py = locked ? innerHeight / 2 : e.clientY;
   if (mode === 'fight') { fightPunchReq = true; return; }
   if (mode === 'blaster') return;
-  if (isAdmin() && powers.hammer) { hammerAction(px, py); return; }
+  if (isMain() && powers.hammer) { hammerAction(px, py); return; }
   if (canBuild()) buildAction(px, py, d.button === 2 || e.shiftKey);
 }
 cv.addEventListener('pointerup', endDrag);
@@ -2231,35 +2231,40 @@ function renderAdminTab() {
     $('fCreator').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('cCode').value }); $('cCode').value = ''; };
     return;
   }
-  const A = NET.admin || { admins: [], bans: {} }, creator = session.role === 'creator';
+  const A = NET.admin || { admins: [], bans: {} }, creator = session.role === 'creator', founder = !!NET.me.owner;
   const gameOpts = Object.entries(GAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-  h += `<p class="row" style="justify-content:flex-start;gap:6px">${TICK}<b>${esc(session.name)}</b><span class="small">${creator ? 'Erfinder' : 'Admin'}</span></p>
+  const roleName = a => a.owner ? 'Gründer' : a.role === 'creator' ? 'Haupt-Erfinder' : 'Admin';
+  const canDel = a => a.name.toLowerCase() !== session.name.toLowerCase() && (a.role === 'admin' ? creator : founder && !a.owner);
+  const row = (inner) => `<form class="row" style="justify-content:flex-start;flex-wrap:nowrap;gap:6px">${inner}</form>`;
+  h += `<p class="row" style="justify-content:flex-start;gap:6px">${TICK}<b>${esc(session.name)}</b><span class="small">${founder ? 'Gründer · Haupt-Erfinder' : creator ? 'Haupt-Erfinder' : 'Admin'}</span></p>
     <div class="label">Deine Kräfte im Spiel</div>
     <ul class="powers">
       <li><b>Fliegen</b> (Taste F): Leertaste hoch, C runter. Beim Fliegen kann dir nichts passieren.</li>
-      <li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder G drücken (am Handy „Hau!“). Er fliegt aus diesem Spiel.</li>
       <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen.</li>
+      ${creator ? `<li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder G drücken (am Handy „Hau!“). Er fliegt aus diesem Spiel.</li>
       <li><b>Gebannte</b> (Taste L): Im Spiel siehst du, wer aus diesem Spiel gebannt ist, und kannst ihn zurückholen.</li>
+      <li><b>Hyperwagen</b> im Klotz-Rennen: Raketen-Turbo und Fliegen.</li>` : '<li><b>Hyperwagen</b> im Klotz-Rennen.</li><li>Bann-Hammer und Münzen gibt es nur für Haupt-Erfinder.</li>'}
     </ul>
     ${msg}
-    ${creator && !NET.me.owner ? `<div class="label">Haupt-Erfinder werden</div>
+    ${creator && NET.me.noOwner ? `<div class="label">Gründer werden</div>
     <form id="fOwner" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="oCode" class="field" type="password" placeholder="Erfinder-Code" aria-label="Erfinder-Code" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Bestätigen</button></form>
-    <p class="small">Der Haupt-Erfinder kann alle anderen Erfinder und Admins löschen.</p>` : ''}
-    ${NET.me.owner ? `<div class="label">Deine Münzen</div>
+    <p class="small">Es gibt noch keinen Gründer. Der Gründer darf als Einziger Haupt-Erfinder löschen.</p>` : ''}
+    ${creator ? `<div class="label">Deine Münzen</div>
     <div class="seg" id="infSeg"><button type="button" data-inf="1" aria-pressed="${infOn !== false}">Unendlich</button><button type="button" data-inf="0" aria-pressed="${infOn === false}">Normal (${profile.coins})</button></div>
     <p class="small">Bei „Normal“ hast du deine selbst verdienten Münzen und bezahlst im Shop ganz normal.</p>
-    <div class="label">Münzen schenken</div>
-    <form id="fGift" class="row" style="justify-content:flex-start;flex-wrap:nowrap;gap:6px"><input id="gName" class="field" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off" style="min-width:0;flex:2"><input id="gCoins" class="field" inputmode="numeric" placeholder="Anzahl" aria-label="Anzahl Münzen" autocomplete="off" style="min-width:0;flex:1"><button class="btn go" type="submit">Schenken</button></form>
-    <p class="small">Nur du als Haupt-Erfinder kannst Münzen schenken.</p>` : ''}
+    <div class="label">Münzen schenken oder wegnehmen</div>
+    <form id="fGift" class="sect"><div class="row" style="flex-wrap:nowrap;gap:6px"><input id="gName" class="field" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off" style="min-width:0;flex:2"><input id="gCoins" class="field" inputmode="numeric" placeholder="Anzahl" aria-label="Anzahl Münzen" autocomplete="off" style="min-width:0;flex:1"></div>
+      <div class="row" style="gap:6px"><button class="btn go" type="submit" data-take="0">Schenken</button><button class="btn primary" type="submit" data-take="1">Wegnehmen</button></div></form>` : ''}
     <div class="label">Admin hinzufügen</div>
-    <form id="fAddAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername des neuen Admins" autocomplete="off" style="min-width:0"><button class="btn go" type="submit">Admin hinzufügen</button></form>
-    ${creator ? `<div class="label">Admin löschen</div>
-    <form id="fDelAdm" class="row" style="justify-content:flex-start;flex-wrap:nowrap"><input id="dName" class="field" placeholder="Benutzername" aria-label="Benutzername des Admins, der gelöscht wird" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Löschen</button></form>
-    <p class="small">Die Person ist danach wieder ein normaler Spieler. Du kannst sie jederzeit wieder als Admin hinzufügen.</p>` : ''}
+    <form id="fAddAdm" class="sect"><input id="nName" class="field" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off">
+      <div class="row" style="gap:6px"><button class="btn go" type="submit" data-main="0">Admin hinzufügen</button>${creator ? '<button class="btn primary" type="submit" data-main="1">Als Haupt-Erfinder</button>' : ''}</div></form>
+    ${creator ? `<p class="small">Haupt-Erfinder: höchstens ${10} · gerade ${A.admins.filter(a => a.role === 'creator').length}. Sie haben Bann-Hammer und Münzen, normale Admins nicht.</p>
+    <div class="label">Admin löschen</div>
+    ${row('<input id="dName" class="field" placeholder="Benutzername" aria-label="Benutzername, der gelöscht wird" autocomplete="off" style="min-width:0"><button class="btn primary" type="submit">Löschen</button>').replace('<form ', '<form id="fDelAdm" ')}
+    <p class="small">${founder ? 'Du kannst Admins und Haupt-Erfinder löschen.' : 'Du kannst Admins löschen. Haupt-Erfinder löschen kann nur der Gründer.'}</p>` : ''}
     <div class="label">Admins</div>
-    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> ${creator && (a.role === 'admin' || (NET.me.owner && !a.owner)) ? `<span class="small">${a.role === 'creator' ? 'Erfinder' : ''}</span> <button class="btn" data-remove="${esc(a.name)}">Löschen</button>` : `<span class="small">${a.owner ? 'Haupt-Erfinder' : a.role === 'creator' ? 'Erfinder' : 'Admin'}</span>`}</li>`).join('')}</ul>
-    ${creator ? '' : '<p class="small">Admins löschen kann nur der Erfinder.</p>'}
-    <div class="label">Spieler aus einem Spiel bannen</div>
+    <ul class="adminList">${A.admins.map(a => `<li><span>${TICK} ${esc(a.name)}</span> <span class="small">${roleName(a)}</span>${canDel(a) ? ` <button class="btn" data-remove="${esc(a.name)}">Löschen</button>` : ''}</li>`).join('')}</ul>
+    ${creator ? `<div class="label">Spieler aus einem Spiel bannen</div>
     <form id="fBan" class="sect">
       <input id="bName" class="field" placeholder="Benutzername" autocomplete="off" aria-label="Benutzername">
       <select id="bGame" class="field" aria-label="Spiel">${gameOpts}</select>
@@ -2270,20 +2275,24 @@ function renderAdminTab() {
       const sv = (A.bans[g] || []).map(b => `<li>${esc(b.name)} <button class="btn" data-sunban="${g}|${esc(b.name)}">Wieder reinholen</button></li>`);
       const bt = (adminData.bans[g] || []).map((b, i) => `<li>${esc(b.name)} <span class="small">Testspieler</span> <button class="btn" data-unban="${g}|${i}">Wieder reinholen</button></li>`);
       return `<div class="label">Gebannt aus ${gname}</div>` + (sv.length + bt.length ? `<ul class="adminList">${sv.join('')}${bt.join('')}</ul>` : '<p class="small">Niemand gebannt.</p>');
-    }).join('')}`;
+    }).join('')}` : ''}`;
   el.innerHTML = h;
-  $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n }); $('nName').value = ''; } };
+  // welcher Knopf wurde gedrückt?
+  const which = e => (e.submitter && e.submitter.dataset) || {};
+  $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n, main: which(e).main === '1' }); $('nName').value = ''; } };
   el.querySelectorAll('#infSeg button').forEach(b => b.onclick = () => { infOn = b.dataset.inf === '1'; store.set('klotzwelt-unendlich', infOn); $('coinCount').innerHTML = coinText(); beep('equip'); renderAdminTab(); });
-  if ($('fGift')) $('fGift').onsubmit = e => { e.preventDefault(); const n = $('gName').value.trim(), c = Math.round(Number($('gCoins').value)); if (!n || !(c > 0)) { NET.msg = 'Gib einen Namen und eine Anzahl ein.'; NET.msgBad = true; renderAdminTab(); return; } netSend({ t: 'giftCoins', name: n, coins: c }); $('gCoins').value = ''; };
+  if ($('fGift')) $('fGift').onsubmit = e => { e.preventDefault(); const n = $('gName').value.trim(), c = Math.round(Number($('gCoins').value)); if (!n || !(c > 0)) { NET.msg = 'Gib einen Namen und eine Anzahl ein.'; NET.msgBad = true; renderAdminTab(); return; } netSend({ t: 'giftCoins', name: n, coins: c, take: which(e).take === '1' }); $('gCoins').value = ''; };
   if ($('fOwner')) $('fOwner').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('oCode').value }); $('oCode').value = ''; };
   if ($('fDelAdm')) $('fDelAdm').onsubmit = e => { e.preventDefault(); const n = $('dName').value.trim(); if (n) { netSend({ t: 'adminRemove', name: n }); $('dName').value = ''; } };
-  $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
+  if ($('fBan')) $('fBan').onsubmit = e => { e.preventDefault(); const n = $('bName').value.trim(); if (n) netSend({ t: 'ban', name: n, game: $('bGame').value }); };
   el.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => netSend({ t: 'adminRemove', name: b.dataset.remove }));
   el.querySelectorAll('[data-sunban]').forEach(b => b.onclick = () => { const [g, n] = b.dataset.sunban.split('|'); netSend({ t: 'unban', name: n, game: g }); });
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => { const [g, i] = b.dataset.unban.split('|'); if (unbanFrom(g, +i)) toast('Zurückgeholt'); renderAdminTab(); });
   if (!NET.admin) netSend({ t: 'adminList' });
 }
+const isMain = () => isAdmin() && session.role === 'creator';
 function togglePower(k) {
+  if (k === 'hammer' && !isMain()) { toast('Den Bann-Hammer haben nur Haupt-Erfinder'); return; }
   if (!isAdmin() || ((isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode)) && k !== 'build')) return;
   powers[k] = !powers[k];
   const names = { fly: 'Fliegen', hammer: 'Bann-Hammer', build: 'Bauen' };
@@ -2300,7 +2309,7 @@ function renderAdminBar() {
   $('hitBtn').hidden = !(isTouch && isAdmin() && powers.hammer && mode !== 'menu');
   $('jumpBtn').textContent = mode === 'skate' ? 'Ollie' : (isAdmin() && powers.fly ? 'Hoch' : 'Sprung');
   if (bar.hidden) return;
-  const items = isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode) ? [] : [['fly', 'Fliegen', 'F'], ['hammer', 'Bann-Hammer', 'H']];
+  const items = isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode) ? [] : [['fly', 'Fliegen', 'F']].concat(isMain() ? [['hammer', 'Bann-Hammer', 'H']] : []);
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
   for (const [k, label, key] of items) {
@@ -2403,7 +2412,7 @@ const VEHICLES = [
   { id: 'bike', name: 'Motorrad', brand: 'Falkner Blitz 600', type: 'bike', max: 36, acc: 22, turn: 2.1, color: 0xe2453c },
   { id: 'sport', name: 'Sportwagen', brand: 'Turbix GT', type: 'car', max: 40, acc: 18, turn: 1.8, color: 0xffd23f },
   { id: 'super', name: 'Supersportwagen', brand: 'Aurion Vento', type: 'car', max: 46, acc: 21, turn: 1.75, color: 0x8b5cd6, spoiler: true },
-  { id: 'hyper', name: 'Hyperwagen', brand: 'Klotzwelt X1', type: 'car', max: 58, acc: 28, turn: 1.85, color: 0x1d2a44, spoiler: true, admin: true }
+  { id: 'hyper', name: 'Hyperwagen (fliegt!)', brand: 'Klotzwelt X1', type: 'car', max: 62, acc: 28, turn: 1.85, color: 0x1d2a44, spoiler: true, admin: true }
 ];
 function riderPose(a, type) {
   const u = a.userData;
@@ -2444,6 +2453,18 @@ function makeVehicle(v, color, driverLook) {
     }
     olAdd(body, roundedBox(1.1, 0.16, 0.05, 0.03), dark, 0, 0.45, 2.36);
     for (const sx of [-1, 1]) olAdd(body, roundedBox(0.07, 0.12, 2.0, 0.03), dark, sx * 1.0, 0.36, 0);
+    if (v.admin) {
+      // Hyperwagen: Flügel, Raketendüsen und Neon-Licht unten
+      const neon = toon('neon', { color: 0x6fd0f0, emissive: 0x6fd0f0, emissiveIntensity: 1 }), gold = tc(0xffc83d);
+      for (const sx of [-1, 1]) {
+        const wing = olAdd(body, roundedBox(1.1, 0.07, 0.9, 0.03), tc(0x1d2a44), sx * 1.45, 0.62, -0.6); wing.rotation.z = sx * 0.12;
+        olAdd(body, roundedBox(0.08, 0.06, 0.9, 0.02), neon, sx * 1.98, 0.68, -0.6);
+        const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.45, 14), gold); noz.rotation.x = Math.PI / 2; noz.position.set(sx * 0.5, 0.78, -2.5); body.add(noz);
+        const fire = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), toon('fire', { color: 0xff8a2b, emissive: 0xff6b3d, emissiveIntensity: 1 })); fire.position.set(sx * 0.5, 0.78, -2.75); body.add(fire);
+      }
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 4.6), new THREE.MeshBasicMaterial({ color: 0x6fd0f0, transparent: true, opacity: 0.45 }));
+      glow.rotation.x = -Math.PI / 2; glow.position.y = 0.06; body.add(glow);
+    }
     if (v.spoiler) { olAdd(body, roundedBox(1.9, 0.08, 0.5, 0.03), dark, 0, 1.2, -1.95); for (const sx of [-0.65, 0.65]) olAdd(body, roundedBox(0.08, 0.32, 0.12, 0.02), dark, sx, 1.0, -1.95); }
     for (const [x, z] of [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]]) {
       wheel(x, z, wr, 0.36);
@@ -2577,7 +2598,7 @@ function buildRace(game = 'race', veh = VEHICLES[0]) {
 function placeCars() {
   const c = race.car;
   c.mesh.position.copy(c.pos); c.mesh.rotation.y = c.h; c.mesh.rotation.z = c.lean || 0;
-  if (c.mesh.userData.tilt) c.mesh.userData.tilt.rotation.x = -(c.wheelie || 0) * 0.55;
+  if (c.mesh.userData.tilt) c.mesh.userData.tilt.rotation.x = -(c.wheelie || 0) * 0.55 - Math.max(-0.35, Math.min(0.35, (c.vy || 0) * 0.04));
   for (const b of race.bots) { b.pos.copy(trackAt(b.s, b.lane)); b.h = trackHeadingAt(b.s); b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h; }
 }
 function updateRace(dt) {
@@ -2595,7 +2616,7 @@ function updateRace(dt) {
   }
   // Driften: Drift-Taste halten und lenken. Je länger der Drift, desto stärker der Turbo danach.
   const driftKey = ctrl && (keys.ShiftLeft || keys.ShiftRight || keys.Space || keys.TouchDrift);
-  if (driftKey && !c.drifting && Math.abs(steer) > 0.2 && c.speed > 12) { c.drifting = true; c.driftDir = Math.sign(steer); c.charge = 0; beep('jump'); }
+  if (driftKey && !c.drifting && !c.flying && Math.abs(steer) > 0.2 && c.speed > 12) { c.drifting = true; c.driftDir = Math.sign(steer); c.charge = 0; beep('jump'); }
   if (c.drifting && (!driftKey || c.speed < 8)) {
     c.drifting = false;
     if (c.charge > 0.5) { c.boost = Math.min(1.5, 0.4 + c.charge * 0.5); boing(); toast(c.charge > 1.2 ? 'Super-Turbo!' : 'Mini-Turbo!'); }
@@ -2613,6 +2634,29 @@ function updateRace(dt) {
     c.wheelie = Math.max(0, c.wheelie - dt * 3); c.wTime = 0;
   }
   if (c.wheelie > 0.6) max += 4;
+  // Hyperwagen (nur Admins): E oder Flieg-Knopf halten = abheben und fliegen, in der Luft Drift-Taste = Raketen-Turbo
+  if (V.admin) {
+    const up = ctrl && (keys.KeyE || keys.TouchWheelie);
+    c.vy = (c.vy || 0) + (up ? 24 : -15) * dt; c.vy = Math.max(-9, Math.min(10, c.vy));
+    c.alt = (c.alt || 0) + c.vy * dt;
+    if (c.alt <= 0) { if (c.vy < -6) { beep('land'); for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), new THREE.MeshBasicMaterial({ color: 0xdfe6ee, transparent: true, opacity: 0.8 })); m.position.set(c.pos.x + (Math.random() - 0.5) * 3, 0.3, c.pos.z + (Math.random() - 0.5) * 3); world.add(m); particles.push({ m, v: new V3((Math.random() - 0.5) * 4, 1, (Math.random() - 0.5) * 4), life: 0.5, smoke: true }); } } c.alt = 0; c.vy = Math.max(0, c.vy); }
+    if (c.alt > 28) { c.alt = 28; c.vy = Math.min(0, c.vy); }
+    const was = c.flying; c.flying = c.alt > 0.4;
+    if (c.flying && !was) { toast('Abheben!'); boing(); }
+    c.rocket = c.flying && driftKey && ctrl;
+    if (c.flying) max += 12;
+    if (c.rocket) { max += 28; c.speed += 40 * dt; }
+    // Regenbogen-Spur und Raketenflammen
+    if ((c.trailT = (c.trailT || 0) - dt) <= 0 && Math.abs(c.speed) > 6) {
+      c.trailT = 0.03;
+      const hue = (tAll * 0.6) % 1, col = new THREE.Color().setHSL(hue, 0.9, 0.6);
+      for (const sd of [-0.6, 0.6]) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(c.rocket ? 0.45 : 0.28, 8, 6), new THREE.MeshBasicMaterial({ color: c.rocket ? (Math.random() < 0.5 ? 0xff8a2b : 0xffd23f) : col, transparent: true, opacity: 0.85 }));
+        m.position.set(c.pos.x - Math.sin(c.h) * 2.5 + Math.cos(c.h) * sd, c.alt + 0.6, c.pos.z - Math.cos(c.h) * 2.5 - Math.sin(c.h) * sd);
+        world.add(m); particles.push({ m, v: new V3(-Math.sin(c.h) * 3, 0.3, -Math.cos(c.h) * 3), life: c.rocket ? 0.35 : 0.6, smoke: true });
+      }
+    }
+  }
   if (gas > 0) c.speed += (c.speed < 0 ? 30 : V.acc) * gas * dt; else if (gas < 0) c.speed += (c.speed > 0 ? 30 : 20) * gas * dt;
   c.speed -= c.speed * (c.drifting ? 0.65 : 0.5) * dt;
   if (c.speed > max) c.speed += (max - c.speed) * Math.min(1, 3 * dt);
@@ -2628,7 +2672,8 @@ function updateRace(dt) {
   c.vdir += dv * Math.min(1, (c.drifting ? 2.2 : 9) * dt);
   c.pos.x += Math.sin(c.vdir) * c.speed * dt;
   c.pos.z += Math.cos(c.vdir) * c.speed * dt;
-  keepOnTrack(c);
+  if (!c.flying) keepOnTrack(c);
+  c.pos.y = c.alt || 0;
   if (c.drifting && (c.smokeT = (c.smokeT || 0) - dt) <= 0) {
     c.smokeT = 0.05;
     const col = c.charge > 1.2 ? 0xff8a2b : c.charge > 0.5 ? 0x6fd0f0 : 0xdfe6ee;
@@ -2641,7 +2686,7 @@ function updateRace(dt) {
   }
   for (const b of R.bots) {
     const dx = c.pos.x - b.pos.x, dz = c.pos.z - b.pos.z, d = Math.hypot(dx, dz);
-    if (d < 2.3 && d > 0.01) {
+    if (d < 2.3 && d > 0.01 && !c.flying) {
       // nur zur Seite schubsen, nie mitziehen; der Bot weicht aus
       const n = TRACK.nrm[c.idx], side = Math.sign(dx * n.x + dz * n.z) || 1, push = Math.min(0.25, 2.3 - d);
       c.pos.x += n.x * side * push; c.pos.z += n.z * side * push;
@@ -2678,7 +2723,7 @@ function updateRace(dt) {
   P.pos.copy(c.pos);
   let dy = (c.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size) cam.yaw += dy * Math.min(1, 4 * dt);
-  camTarget.lerp(tmpV.set(c.pos.x, 1.4, c.pos.z), 1 - Math.exp(-dt * 10));
+  camTarget.lerp(tmpV.set(c.pos.x, 1.4 + (c.alt || 0), c.pos.z), 1 - Math.exp(-dt * 10));
 }
 // Hält das Kart zwischen den Banden. Man prallt ab und wird in Fahrtrichtung gelenkt, statt stecken zu bleiben.
 function keepOnTrack(o) {
@@ -3521,7 +3566,7 @@ function netHandle(m) {
     case 'social': NET.social = m; updateFriendDot(); renderFriendsIfOpen(); break;
     case 'error': NET.msg = m.msg; NET.msgBad = true; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
     case 'notice': NET.msg = m.msg; NET.msgBad = false; feed(m.msg); renderFriendsIfOpen(); renderAdminIfOpen(); break;
-    case 'me': NET.me = Object.assign({}, NET.me, m.me); rebuildAvatar(); $('coinCount').innerHTML = coinText(); if (mode === 'menu' && currentTab === 'shop') renderShop(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
+    case 'me': NET.me = Object.assign({}, NET.me, m.me); if (!isMain() && powers.hammer) { powers.hammer = false; syncHammer(); } rebuildAvatar(); $('coinCount').innerHTML = coinText(); if (mode === 'menu' && currentTab === 'shop') renderShop(); renderAdminBar(); renderAdminIfOpen(); if (mode === 'menu' && currentTab === 'games') renderGames(); break;
     case 'adminData': NET.admin = m; renderAdminIfOpen(); renderAdminBar(); if (!$('banPanel').hidden) openBanPanel(); break;
     case 'banned':
       if (NET.me) NET.me.bans = [...new Set([...(NET.me.bans || []), m.game])];
@@ -3537,7 +3582,7 @@ function netHandle(m) {
     case 'playerLeave': { const pr = NET.peers.get(m.id); if (pr) feed(pr.name + ' ist gegangen'); removePeer(m.id); break; }
     case 'states': for (const [id, st] of m.list) { const pr = NET.peers.get(id); if (pr) pr.target = st; } break;
     case 'hit': gotHit(m); break;
-    case 'gift': profile.coins += m.coins; saveProfile(); beep('buy'); feed('🎁 ' + m.from + ' hat dir ' + m.coins + ' Münzen geschenkt!'); break;
+    case 'gift': profile.coins = Math.max(0, profile.coins + m.coins); saveProfile(); beep(m.coins > 0 ? 'buy' : 'remove'); feed(m.coins > 0 ? '🎁 ' + m.from + ' hat dir ' + m.coins + ' Münzen geschenkt!' : m.from + ' hat dir ' + (-m.coins) + ' Münzen weggenommen.'); break;
     case 'ko': gotKo(m); break;
     case 'shot': if (arena && mode === 'blaster') shoot(new V3(...m.a), new V3(...m.b), m.col, 'v', 0, 70, true); break;
     case 'look': { const pr = NET.peers.get(m.id); if (pr) { pr.look = m.look; buildPeerMesh(pr); } break; }
@@ -3731,7 +3776,7 @@ let toastTimer = 0;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1100); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
 function renderStats() {
-  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Erfinder' : 'Admin'}</b></span>` : '';
+  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Haupt-Erfinder' : 'Admin'}</b></span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${coinText()}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'fight' && fight && fight.pvp) {
@@ -3821,11 +3866,11 @@ function enterPlay(m) {
   } else if (isRace(m)) {
     const veh = chosenVehicle.admin && !isAdmin() ? VEHICLES[0] : chosenVehicle;
     buildRace(m, veh);
-    $('wheelieBtn').hidden = !isTouch || !(veh.type === 'bike' || veh.type === 'scooter');
-    $('wheelieBtn').textContent = 'Wheelie';
+    $('wheelieBtn').hidden = !isTouch || !(veh.type === 'bike' || veh.type === 'scooter' || veh.admin);
+    $('wheelieBtn').textContent = veh.admin ? 'Fliegen' : 'Wheelie';
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: false, deaths: 0, stage: 0, earned: 0 });
     $('jumpBtn').hidden = true; $('driftBtn').hidden = !isTouch; $('driftBtn').textContent = 'Drift';
-    $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
+    $('hint').textContent = (isTouch ? 'Joystick: Gas, Bremse, lenken · Drift-Knopf halten und lenken, loslassen gibt Turbo' : 'W/↑ Gas · S/↓ Bremse · A/D lenken · Shift oder Leertaste halten: Driften, loslassen gibt Turbo') + (veh.admin ? (isTouch ? ' · Fliegen-Knopf halten = abheben, in der Luft Drift = Raketen-Turbo' : ' · E halten: fliegen · in der Luft Shift: Raketen-Turbo') : '') + ((veh.type === 'bike' || veh.type === 'scooter') ? (isTouch ? ' · Wheelie-Knopf halten' : ' · E halten: Wheelie') : '') + (isTouch ? '' : ' · Esc: Pause');
     toast('3'); beep('equip');
   } else if (m === 'fight') {
     buildFight();
