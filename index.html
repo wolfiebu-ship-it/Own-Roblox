@@ -890,7 +890,9 @@ const session = {
   get name() { return typeof NET !== 'undefined' && NET && NET.me ? NET.me.name : null; }
 };
 const isAdmin = () => !!session.role;
-const powers = { fly: false, hammer: false, build: false };
+const powers = { fly: false, hammer: false, build: false, god: !!store.get('klotzwelt-unsterblich', false) };
+// Unsterblich-Modus: nur für Haupt-Erfinder
+const isGod = () => typeof isMain === 'function' && isMain() && powers.god;
 let swing = 0;
 const same = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 function reservedBy(name) {
@@ -1784,6 +1786,7 @@ function explode(look, pos, facing, pose, vel) {
 }
 // Tod: Figur zerfällt, danach Neustart am Checkpoint
 function die() {
+  if (isGod()) { if (P.pos.y < -20) { P.vel.set(0, 0, 0); respawn(true); } return; }
   if (dead > 0 || mode === 'win' || mode === 'menu') return;
   dead = 1.8; game.deaths++; oof(); toast('Uff!');
   avatar.visible = false;
@@ -1951,7 +1954,7 @@ const KEY_ACTIONS = [
   ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
   ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
   ['KeyF', 'Admin: Fliegen'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
-  ['KeyB', 'Admin: Bauen'], ['KeyR', 'Bauen: Werkzeug wechseln']
+  ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Bauen: Werkzeug wechseln']
 ];
 let keyBinds = store.get('klotzwelt-tasten', {}) || {};
 const keyName = c => !c ? '–' : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
@@ -1989,6 +1992,7 @@ addEventListener('keydown', e0 => {
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isAdmin() && mode !== 'menu' && mode !== 'win') {
     if (e.code === 'KeyF') togglePower('fly');
+    if (e.code === 'KeyU') togglePower('god');
     if (e.code === 'KeyH') togglePower('hammer');
     if (e.code === 'KeyG' && powers.hammer) hammerAction();
     if (e.code === 'KeyL' && isMain()) { if ($('banPanel').hidden) openBanPanel(); else $('banPanel').hidden = true; }
@@ -2291,7 +2295,8 @@ function renderAdminTab() {
       <li><b>Bauen</b> (Taste B): Klötze im Parcours setzen und entfernen.</li>
       ${creator ? `<li><b>Bann-Hammer</b> (Taste H): Spieler anklicken oder G drücken (am Handy „Hau!“). Er fliegt aus diesem Spiel.</li>
       <li><b>Gebannte</b> (Taste L): Im Spiel siehst du, wer aus diesem Spiel gebannt ist, und kannst ihn zurückholen.</li>
-      <li><b>Hyperwagen</b> im Klotz-Rennen: Raketen-Turbo und Fliegen.</li>` : '<li><b>Hyperwagen</b> im Klotz-Rennen.</li><li>Bann-Hammer und Münzen gibt es nur für Haupt-Erfinder.</li>'}
+      <li><b>Hyperwagen</b> im Klotz-Rennen: Raketen-Turbo und Fliegen.</li>
+      <li><b>Unsterblich</b> (Taste U): Du kannst nicht sterben, nicht K.O. gehen und fällst beim Skaten nicht hin. Gerade: <b>${powers.god ? 'an' : 'aus'}</b> <button type="button" class="btn" id="godBtn">${powers.god ? 'Ausschalten' : 'Einschalten'}</button></li>` : '<li><b>Hyperwagen</b> im Klotz-Rennen.</li><li>Bann-Hammer und Münzen gibt es nur für Haupt-Erfinder.</li>'}
     </ul>
     ${msg}
     ${creator && NET.me.noOwner ? `<div class="label">Gründer werden</div>
@@ -2328,6 +2333,7 @@ function renderAdminTab() {
   // welcher Knopf wurde gedrückt?
   const which = e => (e.submitter && e.submitter.dataset) || {};
   $('fAddAdm').onsubmit = e => { e.preventDefault(); const n = $('nName').value.trim(); if (n) { netSend({ t: 'adminAdd', name: n, main: which(e).main === '1' }); $('nName').value = ''; } };
+  if ($('godBtn')) $('godBtn').onclick = () => togglePower('god');
   el.querySelectorAll('#infSeg button').forEach(b => b.onclick = () => { infOn = b.dataset.inf === '1'; store.set('klotzwelt-unendlich', infOn); $('coinCount').innerHTML = coinText(); beep('equip'); renderAdminTab(); });
   if ($('fGift')) $('fGift').onsubmit = e => { e.preventDefault(); const n = $('gName').value.trim(), c = Math.round(Number($('gCoins').value)); if (!n || !(c > 0)) { NET.msg = 'Gib einen Namen und eine Anzahl ein.'; NET.msgBad = true; renderAdminTab(); return; } netSend({ t: 'giftCoins', name: n, coins: c, take: which(e).take === '1' }); $('gCoins').value = ''; };
   if ($('fOwner')) $('fOwner').onsubmit = e => { e.preventDefault(); netSend({ t: 'claimCreator', code: $('oCode').value }); $('oCode').value = ''; };
@@ -2340,6 +2346,10 @@ function renderAdminTab() {
 }
 const isMain = () => isAdmin() && session.role === 'creator';
 function togglePower(k) {
+  if (k === 'god') {
+    if (!isMain()) { toast('Unsterblich gibt es nur für Haupt-Erfinder'); return; }
+    powers.god = !powers.god; store.set('klotzwelt-unsterblich', powers.god); toast(powers.god ? 'Unsterblich an' : 'Unsterblich aus'); beep('equip'); renderAdminBar(); renderAdminIfOpen(); return;
+  }
   if (k === 'hammer' && !isMain()) { toast('Den Bann-Hammer haben nur Haupt-Erfinder'); return; }
   if (!isAdmin() || ((isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode)) && k !== 'build')) return;
   powers[k] = !powers[k];
@@ -2358,6 +2368,7 @@ function renderAdminBar() {
   $('jumpBtn').textContent = mode === 'skate' ? 'Ollie' : (isAdmin() && powers.fly ? 'Hoch' : 'Sprung');
   if (bar.hidden) return;
   const items = isRace(mode) || ['skate', 'fight', 'blaster'].includes(mode) ? [] : [['fly', 'Fliegen', 'F']].concat(isMain() ? [['hammer', 'Bann-Hammer', 'H']] : []);
+  if (isMain() && !isRace(mode)) items.push(['god', 'Unsterblich', 'U']);
   if (mode === 'obby') items.push(['build', 'Bauen', 'B']);
   bar.innerHTML = '';
   for (const [k, label, key] of items) {
@@ -2996,7 +3007,7 @@ function updateSkate(dt) {
     const g = Math.max(skH(P.pos.x, P.pos.z), (gN + gT) / 2);
     if (!S.grind && P.pos.y <= g && S.vy < 0) {
       const k = Math.round(S.spin / Math.PI), off = Math.abs(S.spin - k * Math.PI);
-      const ok = off < 0.75 && S.flipT <= 0.1;
+      const ok = (off < 0.75 && S.flipT <= 0.1) || isGod();
       P.pos.y = g;
       if (ok) {
         if (S.flipT > 0) { addTrick(S, TRICKS[S.flip][0], TRICKS[S.flip][1]); S.flipT = 0; }
@@ -3221,6 +3232,7 @@ function punchPeers(F, list) {
 }
 // Ein anderer Spieler hat mich getroffen
 function gotHit(m) {
+  if (isGod()) { hitFx(P.pos.clone().add(new V3(0, 1.9, 0))); return; }
   const pr = NET.peers.get(m.id), from = pr ? pr.pos : null;
   if (fight && mode === 'fight' && dead <= 0) {
     const F = fight; if (F.dodge > 0) return;
@@ -3331,7 +3343,7 @@ function updateFight(dt) {
       if (live && dist < 2.1 && F.dodge <= 0) {
         let dmg = (blocking ? 1 : 8 + Math.random() * 4) * foe.power;
         if (myHelm) dmg *= 0.75;
-        F.php = Math.max(0, F.php - Math.round(dmg)); F.sinceHurt = 0;
+        if (!isGod()) F.php = Math.max(0, F.php - Math.round(dmg)); F.sinceHurt = 0;
         if (!blocking) { F.recoil = 1; hurtFlash(); hitFx(P.pos.clone().add(new V3(0, 1.9, 0))); P.vel.x += dx / dist * 6; P.vel.z += dz / dist * 6; F.pT = -1; beep('land'); }
         else beep('bonk');
         if (F.php <= 0) { F.losses++; die(); F.between = 2.4; }
@@ -3521,7 +3533,7 @@ function updateArena(dt) {
       break;
     }
     if (!gone && s2.owner === 'b' && live && segHits(prev, p2, P.pos)) {
-      gone = true; A.php = Math.max(0, A.php - s2.dmg); A.sinceHurt = 0; hurtFlash(); hitFx(p2.clone());
+      gone = true; if (!isGod()) A.php = Math.max(0, A.php - s2.dmg); A.sinceHurt = 0; hurtFlash(); hitFx(p2.clone());
       if (A.php <= 0) {
         // neu einsteigen an der Stelle, die am weitesten von den Gegnern weg ist
         let best = null, bd = -1;
@@ -4003,7 +4015,7 @@ let toastTimer = 0;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1100); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') + '.' + Math.floor((s % 1) * 10);
 function renderStats() {
-  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Haupt-Erfinder' : 'Admin'}</b></span>` : '';
+  const adm = isAdmin() ? `<span class="pill">${TICK} <b>${session.role === 'creator' ? 'Haupt-Erfinder' : 'Admin'}</b>${isGod() ? ' · Unsterblich' : ''}</span>` : '';
   if (mode === 'obby') {
     $('stats').innerHTML = adm + `<span class="pill"><i class="coin"></i> <b>${coinText()}</b></span><span class="pill">Münzen <b>${game.coins}/${game.total}</b></span><span class="pill">Zeit <b>${fmt(game.time)}</b></span><span class="pill">Stufe <b>${game.stage + 1}/${obbyStages}</b></span>`;
   } else if (mode === 'fight' && fight && fight.pvp) {
