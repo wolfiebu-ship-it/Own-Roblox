@@ -2018,7 +2018,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.15';
+const BUILD = '2026-11-06.16';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -4117,7 +4117,7 @@ const MINI = {
   maze: {
     name: 'Labyrinth', prev: [[0, 34, 20], [0, 0, 0]], color: '#e0e6f5', solo: true,
     desc: 'Jedes Mal ein neues Labyrinth! Finde den goldenen Ausgang so schnell wie möglich. Unterwegs liegen Münzen.',
-    hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Mausrad: Zoom (ganz nah = eigene Sicht) · finde den goldenen Ausgang',
+    hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Maus ziehen: umschauen · finde den goldenen Ausgang',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(2);
       const G2 = 11, C = 4.4, off = -(G2 * C) / 2;
@@ -4133,7 +4133,7 @@ const MINI = {
         if (da) wallsV[j][Math.max(i, a)] = false; else wallsH[Math.max(j, b)][i] = false;
         seen[a][b] = true; stack.push([a, b]);
       }
-      const wc = 0x5a6a88, H = 3.2;
+      const wc = 0x5a6a88, H = 4.6;
       for (let j = 0; j <= G2; j++) for (let i = 0; i < G2; i++) if (wallsH[j][i]) addBox(off + i * C + C / 2, H / 2, off + j * C, C + 0.4, H, 0.4, wc);
       for (let j = 0; j < G2; j++) for (let i = 0; i <= G2; i++) if (wallsV[j][i]) addBox(off + i * C, H / 2, off + j * C + C / 2, 0.4, H, C + 0.4, wc);
       const ex = off + (G2 - 0.5) * C, ez = off + (G2 - 0.5) * C;
@@ -4146,6 +4146,8 @@ const MINI = {
     update(dt) {
       const M = mg, live = mode === 'maze';
       if (live) game.time += dt;
+      // nicht von oben schummeln: Kamera bleibt nah und flach
+      cam.dist = Math.min(cam.dist, 4.2); cam.pitch = Math.min(cam.pitch, 0.32);
       mgCoins(M.coins, dt, live);
       if (live && Math.hypot(P.pos.x - M.ex, P.pos.z - M.ez) < 1.5) {
         const best = store.get('klotzwelt-labyrinth', 0), rec = !best || game.time < best; if (rec) store.set('klotzwelt-labyrinth', game.time);
@@ -5185,7 +5187,7 @@ function frame(now) {
     const u = avatar.userData;
     if (currentTab === 'games') u.armR.rotation.x = -2.5 + Math.sin(tAll * 6) * 0.35;
     else { u.armL.rotation.x = Math.sin(tAll * 1.5) * 0.06; u.armR.rotation.x = -Math.sin(tAll * 1.5) * 0.06; }
-    if ((menuSpin -= dt) < 0) P.facing += (Math.sin(tAll * 0.5) * 0.35 - P.facing) * Math.min(1, dt * 2);
+    if ((menuSpin -= dt) < 0) { let d0 = -P.facing; d0 = Math.atan2(Math.sin(d0), Math.cos(d0)); P.facing += d0 * Math.min(1, dt * 2); }
     menuZoomCur += (menuZoom - menuZoomCur) * Math.min(1, dt * 6);
     const narrow = innerWidth <= 720;
     cam.yaw = 0; cam.pitch = 0.16 - menuZoomCur * 0.04; cam.dist = (narrow ? 6.8 : 5.9) - menuZoomCur * (narrow ? 0.6 : 1.4);
