@@ -2006,7 +2006,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.11';
+const BUILD = '2026-11-06.12';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -4731,7 +4731,12 @@ showMenu();
 requestAnimationFrame(frame);
 
 // Offline-Unterstützung, wenn als Web-App installiert
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+  // kommt ein neuer Service Worker, einmal neu laden, damit die neue Version läuft
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded && mode === 'menu') { reloaded = true; location.reload(); } });
+}
 })();
 </script>
 </body>

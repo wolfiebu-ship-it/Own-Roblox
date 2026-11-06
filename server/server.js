@@ -73,7 +73,8 @@ const server = http.createServer((req, res) => {
   if (!FILES[p]) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('Nicht gefunden'); }
   fs.readFile(path.join(ROOT, p), (err, buf) => {
     if (err) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { 'content-type': FILES[p], 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' });
+    // Seite und Service Worker nie zwischenspeichern, damit Updates sofort ankommen
+    res.writeHead(200, { 'content-type': FILES[p], 'cache-control': /html|javascript/.test(FILES[p]) ? 'no-store' : 'no-cache', 'x-content-type-options': 'nosniff' });
     res.end(buf);
   });
 });
