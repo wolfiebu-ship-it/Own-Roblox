@@ -459,7 +459,7 @@ wss.on('connection', (ws, req) => {
   const c = { ws, id: nextId++, user: null, room: null, state: null, party: null, count: 0, alive: true, ip: String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim() };
   clients.add(c);
   ws.on('pong', () => { c.alive = true; });
-  ws.on('message', raw => { let m; try { m = JSON.parse(raw); } catch (e) { return; } if (m && typeof m.t === 'string') handle(c, m); });
+  ws.on('message', raw => { let m; try { m = JSON.parse(raw); } catch (e) { return; } if (!m || typeof m.t !== 'string') return; if (!dbReady) return err(c, 'Der Server startet noch. Bitte kurz warten und neu laden.'); handle(c, m); });
   ws.on('close', () => { logoutConn(c); clients.delete(c); });
 });
 setInterval(() => { for (const c of clients) c.count = 0; }, 1000);
@@ -470,8 +470,16 @@ setInterval(() => {
   }
 }, 30000);
 
-db.load().then(() => {
-  server.listen(PORT, () => console.log('Klotzwelt läuft auf Port ' + PORT));
-}).catch(e => { console.error('Start fehlgeschlagen:', e.message); process.exit(1); });
+// Erst die Website starten (damit Render sofort „Live“ meldet), dann die Datenbank verbinden.
+// Antwortet die Datenbank nicht gleich (z. B. weil Neon schläft), wird es immer wieder versucht, statt abzustürzen.
+let dbReady = false;
+server.listen(PORT, () => console.log('Klotzwelt läuft auf Port ' + PORT));
+(async function connectDb(tries = 1) {
+  try { await db.load(); dbReady = true; console.log('Bereit.'); }
+  catch (e) {
+    console.error('Datenbank noch nicht erreichbar (Versuch ' + tries + '):', e.message);
+    setTimeout(() => connectDb(tries + 1), Math.min(30000, 2000 * tries));
+  }
+})();
 
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, async () => { await db.flush(); process.exit(0); });

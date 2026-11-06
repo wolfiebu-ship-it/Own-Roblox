@@ -9,14 +9,17 @@ let data = { users: {}, tokens: {} };
 let pool = null;
 let timer = null;
 let saving = Promise.resolve();
+let loaded = false; // erst nach dem Laden darf gespeichert werden (sonst würden leere Daten alles überschreiben)
 
 async function load() {
   if (process.env.DATABASE_URL) {
     const { Pool } = require('pg');
+    if (pool) { try { await pool.end(); } catch (e) {} }
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.PGSSL === 'off' ? false : { rejectUnauthorized: false },
-      max: 3
+      max: 3,
+      connectionTimeoutMillis: 15000
     });
     await pool.query('CREATE TABLE IF NOT EXISTS klotzwelt (id text PRIMARY KEY, data jsonb NOT NULL)');
     const r = await pool.query("SELECT data FROM klotzwelt WHERE id = 'main'");
@@ -31,6 +34,7 @@ async function load() {
   data.users = data.users || {};
   data.tokens = data.tokens || {};
   data.bans = data.bans || {};
+  loaded = true;
   return data;
 }
 
@@ -46,11 +50,13 @@ async function write() {
 
 // Mehrere Änderungen kurz hintereinander werden zu einem Speichervorgang zusammengefasst
 function save() {
+  if (!loaded) return;
   clearTimeout(timer);
   timer = setTimeout(flush, 1500);
 }
 function flush() {
   clearTimeout(timer);
+  if (!loaded) return Promise.resolve();
   saving = saving.then(write).catch(e => console.error('Speichern fehlgeschlagen:', e.message));
   return saving;
 }
