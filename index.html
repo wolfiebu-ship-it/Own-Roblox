@@ -104,6 +104,8 @@ input { -webkit-user-select: text; user-select: text; }
 /* HUD */
 #hud { position: fixed; inset: 0; pointer-events: none; }
 #hud > * { pointer-events: auto; }
+#hud .btn, #adminBar .btn, #topright .btn { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#topright, #adminBar { z-index: 6; }
 #stats { position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); left: max(14px, env(safe-area-inset-left, 0px)); display: flex; gap: 8px; flex-wrap: wrap; max-width: calc(100% - 190px); }
 .pill { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pill b { font-family: var(--display); font-weight: 400; font-size: 18px; }
@@ -2023,7 +2025,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.2';
+const BUILD = '2026-11-07.3';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2134,7 +2136,18 @@ function setShiftLock(on) {
     if (!shiftLock && document.pointerLockElement) document.exitPointerLock();
   } catch (e) {}
 }
-$('slBtn').onclick = () => setShiftLock(!shiftLock);
+function onTap(el, fn) {
+  el.onclick = null;
+  // Maus: sofort beim Drücken. Finger: beim Loslassen (dann darf der Browser auch Vollbild einschalten).
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); fn(e); return; }
+    e.preventDefault(); e.stopPropagation(); el._tap = e.pointerId; try { el.setPointerCapture(e.pointerId); } catch (er) {}
+  });
+  el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse' && el._tap === e.pointerId) { el._tap = null; e.preventDefault(); e.stopPropagation(); fn(e); } });
+  el.addEventListener('pointercancel', () => { el._tap = null; });
+  el.addEventListener('click', e => { e.preventDefault(); if (e.detail === 0) fn(e); }); // Tastatur (Enter/Leertaste)
+}
+onTap($('slBtn'), () => setShiftLock(!shiftLock));
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && shiftLock && !isTouch && !paused) setShiftLock(false); });
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== cv || paused) return;
@@ -2443,14 +2456,14 @@ function renderAdminBar() {
   for (const [k, label, key] of items) {
     const b = document.createElement('button'); b.className = 'btn';
     b.textContent = label + (isTouch ? '' : ' (' + key + ')');
-    b.setAttribute('aria-pressed', String(powers[k])); b.onclick = () => togglePower(k);
+    b.setAttribute('aria-pressed', String(powers[k])); onTap(b, () => togglePower(k));
     bar.appendChild(b);
   }
   if (!isMain()) return;
   const g = currentGame(), n = adminData.bans[g].length + ((NET.admin && NET.admin.bans[g]) || []).length;
   const lb = document.createElement('button'); lb.className = 'btn';
   lb.textContent = 'Gebannte (' + n + ')' + (isTouch ? '' : ' (L)');
-  lb.onclick = openBanPanel;
+  onTap(lb, () => { if ($('banPanel').hidden) openBanPanel(); else $('banPanel').hidden = true; });
   bar.appendChild(lb);
 }
 // Im Spiel: Bannliste nur für das Spiel, in dem man gerade ist
@@ -5061,7 +5074,7 @@ function openPause() {
   $('pausePanel').hidden = false;
 }
 function resumeGame() { showHint(3000); paused = false; $('pausePanel').hidden = true; $('settingsPanel').hidden = true; last = performance.now(); if (shiftLock && !isTouch) setShiftLock(true); }
-$('menuBtn').onclick = openPause;
+onTap($('menuBtn'), () => { if (paused) resumeGame(); else openPause(); });
 $('pResume').onclick = resumeGame;
 $('pLobby').onclick = () => { paused = false; $('pausePanel').hidden = true; showMenu(); };
 $('pSettings').onclick = () => openSettings();
@@ -5431,7 +5444,7 @@ async function toggleFullscreen() {
   }
   fsLabel();
 }
-$('fsBtn').onclick = toggleFullscreen; $('fsBtn2').onclick = toggleFullscreen;
+$('fsBtn').onclick = toggleFullscreen; onTap($('fsBtn2'), toggleFullscreen);
 $('fsClose').onclick = () => { $('fsHelp').hidden = true; };
 document.addEventListener('fullscreenchange', fsLabel); document.addEventListener('webkitfullscreenchange', fsLabel);
 fsLabel();
