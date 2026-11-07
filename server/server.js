@@ -12,7 +12,8 @@ const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.join(__dirname, '..');
 const FILES = { '/index.html': 'text/html; charset=utf-8', '/sw.js': 'text/javascript; charset=utf-8', '/manifest.webmanifest': 'application/manifest+json', '/icon-192.png': 'image/png', '/icon-512.png': 'image/png', '/apple-touch-icon.png': 'image/png' };
 const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', moto: 'Turbo-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla',
-  lava: 'Lava-Flucht', colors: 'Farb-Stopp', rush: 'Münzrausch', tag: 'Fangen', fall: 'Fallende Felder', tower: 'Himmelsturm', maze: 'Labyrinth', sumo: 'Schubs-Arena', soccer: 'Klotz-Fußball' };
+  lava: 'Lava-Flucht', colors: 'Farb-Stopp', rush: 'Münzrausch', tag: 'Fangen', fall: 'Fallende Felder', tower: 'Himmelsturm', maze: 'Labyrinth', sumo: 'Schubs-Arena', soccer: 'Klotz-Fußball',
+  ochs: 'Ochs am Berg', potato: 'Heiße Kartoffel', targets: 'Zielschießen', stack: 'Stapel-Turm', treasure: 'Schatzsuche', trampo: 'Trampolin-Park', snow: 'Schneeballschlacht', sprint: 'Hürdenlauf', moon: 'Mond-Hüpfer', balloon: 'Ballon-Jagd' };
 const GAME_AGE = { horror: 8, fight: 8, blaster: 10 };
 const ROOM_MAX = 10;
 const TOKEN_DAYS = 30;
@@ -126,7 +127,7 @@ function cleanProfile(p) {
   p = p && typeof p === 'object' ? p : {};
   const out = { coins: Math.round(num(p.coins, 0, 1e7, 150)), owned: [], wear: {}, body: {}, shape: {} };
   if (Array.isArray(p.owned)) out.owned = p.owned.map(x => str(x, 30)).filter(Boolean).slice(0, 400);
-  if (p.wear && typeof p.wear === 'object') for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back', 'weapon', 'board']) out.wear[k] = str(p.wear[k], 30);
+  if (p.wear && typeof p.wear === 'object') for (const k of ['face', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'acc', 'neck', 'back', 'weapon', 'board', 'wskin']) out.wear[k] = str(p.wear[k], 30);
   if (p.body && typeof p.body === 'object') for (const k of ['head', 'torso', 'arms', 'legs']) out.body[k] = Math.round(num(p.body[k], 0, 15, 0));
   const s = p.shape || {};
   out.shape = { height: num(s.height, 0.85, 1.2, 1), width: num(s.width, 0.85, 1.35, 1), head: num(s.head, 0.85, 1.3, 1) };
