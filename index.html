@@ -1950,8 +1950,8 @@ function placeCamera() {
   const dx = Math.sin(cam.yaw) * cp, dy = Math.sin(cam.pitch), dz = Math.cos(cam.yaw) * cp;
   let dist = cam.dist;
   // In engen Gängen rückt die Kamera näher, statt in die Wand zu schauen
-  if (playingGame() === 'horror') {
-    for (let t = 0.5; t < dist; t += 0.25) {
+  if (['horror', 'maze'].includes(playingGame())) {
+    for (let t = 0.5; t < dist; t += 0.2) {
       const x = camTarget.x + dx * t, y = camTarget.y + dy * t, z = camTarget.z + dz * t;
       if (solids.some(sd => !sd.off && x > sd.box.min.x - 0.25 && x < sd.box.max.x + 0.25 && y > sd.box.min.y - 0.25 && y < sd.box.max.y + 0.25 && z > sd.box.min.z - 0.25 && z < sd.box.max.z + 0.25)) { dist = Math.max(1.2, t - 0.3); break; }
     }
@@ -2018,7 +2018,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-06.17';
+const BUILD = '2026-11-07.1';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3065,19 +3065,19 @@ function updateSkate(dt) {
     // Anschieben wie echt: zweimal mit dem Fuß treten, dann stellt man sich seitlich hin und rollt.
     // Erst wenn man wieder langsam wird (und weiter drückt), schiebt man noch einmal zweimal an.
     if (!S.kicks && S.pushT <= 0) {
-      if (push > 0.2 && S.speed < 6) S.kicks = 2, S.kickDir = 1;
+      if (push > 0.2 && S.speed < 8) S.kicks = 2, S.kickDir = 1;
       else if (push < -0.2 && S.speed < 1 && S.speed > -6) S.kicks = 2, S.kickDir = -1;
     }
     if (S.kicks || S.pushT > 0) {
       const before = S.pushT; S.pushT += dt / 0.5;
-      if (before < 0.45 && S.pushT >= 0.45) S.speed += S.kickDir > 0 ? (S.speed < 3 ? 4.6 : 3.8) : -2.8; // der eigentliche Tritt
+      if (before < 0.45 && S.pushT >= 0.45) S.speed += S.kickDir > 0 ? (S.speed < 4 ? 6.5 : 5.5) : -3.2; // der eigentliche Tritt
       S.pushHold = 0.45;
       if (S.pushT >= 1) { S.kicks = Math.max(0, (S.kicks || 0) - 1); S.pushT = S.kicks ? S.pushT - 1 : 0; }
     }
     // S beim Fahren = bremsen (Fuß schleift), im Stand = rückwärts anschieben
     if (push < -0.2 && S.speed > 0.5) S.speed = Math.max(0, S.speed - 12 * -push * dt);
-    S.speed -= S.speed * 0.04 * dt;
-    if (S.speed > 15) S.speed += (15 - S.speed) * Math.min(1, dt * 2);
+    S.speed -= S.speed * 0.025 * dt;
+    if (S.speed > 17) S.speed += (17 - S.speed) * Math.min(1, dt * 2);
     S.h -= S.steer * 2.1 * dt * Math.min(1, 0.4 + Math.abs(S.speed) / 8);
     const x = P.pos.x, z = P.pos.z;
     const gx = (skH(x + 0.05, z) - skH(x - 0.05, z)) / 0.1, gz = (skH(x, z + 0.05) - skH(x, z - 0.05)) / 0.1;
@@ -3206,7 +3206,16 @@ function poseSkater(S, dt, push) {
   const yaw = S.h + S.stance + ((S.air && !S.grind) ? S.spin : 0);
   // Salto (Back-/Frontflip): Brett und Figur drehen sich zusammen um die Körpermitte
   const bfp = S.bf ? Math.min(1, S.bf.t / S.bf.dur) : 0, bfe = bfp * bfp * (3 - 2 * bfp), phi = S.bf ? S.bf.dir * bfe * Math.PI * 2 : 0;
-  const fwx = Math.sin(yaw), fwz = Math.cos(yaw), cy = P.pos.y + 1.0;
+  const fwx = Math.sin(yaw), fwz = Math.cos(yaw);
+  // Am Boden: Höhe an beiden Achsen messen, damit das Brett auf der Rampe aufliegt statt hineinzuragen
+  let gp = -Math.atan(S.slope || 0), lift = 0;
+  if (!S.air && !S.grind) {
+    const gN = skH(P.pos.x + fwx * 0.7, P.pos.z + fwz * 0.7), gT = skH(P.pos.x - fwx * 0.7, P.pos.z - fwz * 0.7);
+    gp = -Math.atan2(gN - gT, 1.4); lift = Math.max(0, (gN + gT) / 2 - P.pos.y, Math.max(gN, gT) - 0.12 - P.pos.y);
+  }
+  S.gpS = (S.gpS ?? gp) + (gp - (S.gpS ?? gp)) * Math.min(1, dt * 18);
+  S.liftS = (S.liftS || 0) + (lift - (S.liftS || 0)) * Math.min(1, dt * 18);
+  const cy = P.pos.y + 1.0 + S.liftS;
   b.rotation.order = 'YXZ';
   b.position.set(P.pos.x - fwx * Math.sin(phi), cy - Math.cos(phi), P.pos.z - fwz * Math.sin(phi)); b.rotation.set(phi, yaw, 0);
   for (const w of b.userData.wheels || []) w.rotation.x += (S.air ? 0 : S.speed) * dt / 0.08;
@@ -3215,7 +3224,7 @@ function poseSkater(S, dt, push) {
   const ease = p * p * (3 - 2 * p);
   const popPitch = S.pop > 0 ? -0.45 * Math.sin((1 - S.pop / 0.18) * Math.PI) : 0;
   S.airPitchS = (S.airPitchS || 0) + ((S.air ? (S.airPitch || 0) : 0) - (S.airPitchS || 0)) * Math.min(1, dt * 10);
-  const pitch = S.grind ? 0 : S.air ? popPitch + S.airPitchS : -Math.atan(S.slope || 0);
+  const pitch = S.grind ? 0 : S.air ? popPitch + S.airPitchS : S.gpS;
   const roll = S.flipT > 0 && kind !== 'shove' ? TRICKS[kind][2] * ease * Math.PI * 2 : 0;
   const shove = S.flipT > 0 && kind === 'shove' ? ease * Math.PI : 0;
   d.rotation.set(pitch, shove, roll + (S.air ? 0 : S.steer * 0.12));
@@ -4121,7 +4130,7 @@ const MINI = {
 
   // ---------------- Labyrinth ----------------
   maze: {
-    name: 'Labyrinth', prev: [[0, 34, 20], [0, 0, 0]], color: '#e0e6f5', solo: true,
+    name: 'Labyrinth', prev: [[-21.5, 2.2, -27], [-19, 1.6, -18]], color: '#e0e6f5', solo: true,
     desc: 'Jedes Mal ein neues Labyrinth! Finde den goldenen Ausgang so schnell wie möglich. Unterwegs liegen Münzen.',
     hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Maus ziehen: umschauen · finde den goldenen Ausgang',
     build() {
@@ -4139,9 +4148,10 @@ const MINI = {
         if (da) wallsV[j][Math.max(i, a)] = false; else wallsH[Math.max(j, b)][i] = false;
         seen[a][b] = true; stack.push([a, b]);
       }
-      const wc = 0x5a6a88, H = 4.6;
-      for (let j = 0; j <= G2; j++) for (let i = 0; i < G2; i++) if (wallsH[j][i]) addBox(off + i * C + C / 2, H / 2, off + j * C, C + 0.4, H, 0.4, wc);
-      for (let j = 0; j < G2; j++) for (let i = 0; i <= G2; i++) if (wallsV[j][i]) addBox(off + i * C, H / 2, off + j * C + C / 2, 0.4, H, C + 0.4, wc);
+      const wc = 0x7d8fb3, H = 4.6;
+      for (let j = 0; j <= G2; j++) for (let i = 0; i <= G2; i++) addBox(off + i * C, (H + 0.2) / 2, off + j * C, 0.7, H + 0.2, 0.7, 0x56658a);
+      for (let j = 0; j <= G2; j++) for (let i = 0; i < G2; i++) if (wallsH[j][i]) addBox(off + i * C + C / 2, H / 2, off + j * C, C - 0.6, H, 0.5, wc);
+      for (let j = 0; j < G2; j++) for (let i = 0; i <= G2; i++) if (wallsV[j][i]) addBox(off + i * C, H / 2, off + j * C + C / 2, 0.5, H, C - 0.6, wc);
       const ex = off + (G2 - 0.5) * C, ez = off + (G2 - 0.5) * C;
       const goal = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), goalMat); goal.position.set(ex, 0.1, ez); world.add(goal);
       const coinsM = [];
@@ -5186,7 +5196,7 @@ function frame(now) {
   updateMovers();
   updateParts(dt);
   updateBots(dt);
-  if (avatar.userData.tag) avatar.userData.tag.visible = mode !== 'menu';
+  if (avatar.userData.tag) avatar.userData.tag.visible = mode !== 'menu' && playingGame() !== 'maze';
   if (mode === 'menu') {
     P.vel.set(0, 0, 0); P.onGround = true;
     animateAvatar(dt);
