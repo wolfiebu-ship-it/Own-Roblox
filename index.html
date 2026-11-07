@@ -216,6 +216,13 @@ html[data-device="tablet"] #hud .btn { padding: 10px 16px; }
 .shape { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; }
 .shape label { font-weight: 800; }
 .shape input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+/* große Schieberegler, gut mit dem Finger zu bedienen */
+#settingsPanel input[type="range"] { -webkit-appearance: none; appearance: none; height: 30px; background: transparent; width: 100%; margin: 0; }
+#settingsPanel input[type="range"]::-webkit-slider-runnable-track { height: 10px; border-radius: 6px; background: var(--soft); border: 2px solid var(--ink); }
+#settingsPanel input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); border: 3px solid var(--ink); margin-top: -11px; }
+#settingsPanel input[type="range"]::-moz-range-track { height: 10px; border-radius: 6px; background: var(--soft); border: 2px solid var(--ink); }
+#settingsPanel input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); border: 3px solid var(--ink); }
+.bigRange .ends { display: flex; justify-content: space-between; font-size: 12px; opacity: .7; }
 .shape .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
 #avatarBody .btn { align-self: flex-start; }
 @media (max-width: 420px) { .devs { grid-template-columns: 1fr; } .dev { flex-direction: row; justify-content: flex-start; padding: 10px 14px; } .dev small { text-align: left; } }
@@ -489,7 +496,8 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div class="seg" id="bloodSeg"><button type="button" data-b="0">Aus (Sterne)</button><button type="button" data-b="1">An</button></div>
   <div class="label">Ton</div>
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
-  <div class="shape"><label for="setVol">Lautstärke</label><div><input type="range" id="setVol" min="0" max="1" step="0.05"><div class="ends"><span>leise</span><span>laut</span></div></div></div>
+  <div class="label">Lautstärke</div>
+  <div class="bigRange"><input type="range" id="setVol" min="0" max="1" step="0.05" aria-label="Lautstärke"><div class="ends"><span>leise</span><span>laut</span></div></div>
   <p class="small" id="verInfo" style="margin:0;opacity:.7"></p>
   <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
 </div>
@@ -2040,7 +2048,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.6';
+const BUILD = '2026-11-07.7';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2977,8 +2985,8 @@ function rampMesh(r) {
   }
 }
 // Echtes Skateboard: schmales Brett mit runden Enden, Nase und Heck hochgebogen, Griptape oben, Metall-Achsen, kleine Rollen
-const BOARD_L = 1.7, BOARD_W = 0.5, BOARD_T = 0.045;
-const kickY = z => { const a = Math.abs(z) - 0.52; return a > 0 ? a * a * 1.15 : 0; };
+const BOARD_L = 1.95, BOARD_W = 0.56, BOARD_T = 0.05;
+const kickY = z => { const a = Math.abs(z) - 0.62; return a > 0 ? a * a * 1.05 : 0; };
 function deckGeo(w, l, t, y0) {
   const r = w / 2, sh = new THREE.Shape();
   sh.moveTo(-r, -(l / 2 - r)); sh.lineTo(-r, l / 2 - r); sh.absarc(0, l / 2 - r, r, Math.PI, 0, true); sh.lineTo(r, -(l / 2 - r)); sh.absarc(0, -(l / 2 - r), r, 0, Math.PI, true);
@@ -2999,17 +3007,17 @@ function makeBoard(id) {
   const ol = new THREE.Mesh(body.geometry, outlineMat); ol.scale.set(1.04, 1.25, 1.02); body.add(ol);
   const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.03, BOARD_L - 0.03, 0.008, BOARD_T / 2 - 0.002), tc(bd.grip)); deck.add(grip);
   // Muster unten: Streifen (oder Flammen), bei Neon leuchtet es
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.006, 0.9), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.006, 1.1), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe);
   if (bd.flames) for (const z of [-0.3, 0, 0.3]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 8), tc(0xff8a2b)); f.rotation.x = Math.PI / 2; f.position.set(0, -BOARD_T / 2 - 0.01, z); f.scale.y = 0.15; deck.add(f); }
   if (bd.glow) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.7), new THREE.MeshBasicMaterial({ color: bd.accent, transparent: true, opacity: 0.45 })); gl.rotation.x = Math.PI / 2; gl.position.y = -0.18; deck.add(gl); }
   // Achsen (Trucks) und Rollen
   const metal = tc(0xc8d0dc), wheels = [];
-  for (const z of [-0.5, 0.5]) {
-    const base = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.12), metal); base.position.set(0, -BOARD_T / 2 - 0.015, z); deck.add(base);
+  for (const z of [-0.58, 0.58]) {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.03, 0.13), metal); base.position.set(0, -BOARD_T / 2 - 0.015, z); deck.add(base);
     const hang = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), metal); hang.position.set(0, -0.07, z); deck.add(hang);
-    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.46, 8), metal); axle.rotation.z = Math.PI / 2; axle.position.set(0, -0.11, z); deck.add(axle);
-    for (const x of [-0.2, 0.2]) {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.06, 14), bd.glow ? toon('neonw' + bd.wheels, { color: bd.wheels, emissive: bd.wheels, emissiveIntensity: 0.8 }) : tc(bd.wheels));
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.5, 8), metal); axle.rotation.z = Math.PI / 2; axle.position.set(0, -0.11, z); deck.add(axle);
+    for (const x of [-0.22, 0.22]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.065, 14), bd.glow ? toon('neonw' + bd.wheels, { color: bd.wheels, emissive: bd.wheels, emissiveIntensity: 0.8 }) : tc(bd.wheels));
       w.rotation.z = Math.PI / 2; w.position.set(x, -0.11, z); deck.add(w); wheels.push(w);
     }
   }
@@ -3200,7 +3208,14 @@ function updateSkate(dt) {
     }
   }
   S.trickHeld = trick;
-  if (Math.abs(P.pos.x) > 54.5 || Math.abs(P.pos.z) > 54.5) { P.pos.x = Math.max(-54.5, Math.min(54.5, P.pos.x)); P.pos.z = Math.max(-54.5, Math.min(54.5, P.pos.z)); S.speed *= -0.4; }
+  if (Math.abs(P.pos.x) > 54.5 || Math.abs(P.pos.z) > 54.5) {
+    const hitX = Math.abs(P.pos.x) > 54.5;
+    P.pos.x = Math.max(-54.5, Math.min(54.5, P.pos.x)); P.pos.z = Math.max(-54.5, Math.min(54.5, P.pos.z));
+    // an der Mauer entlang weiterfahren (Richtung parallel zur Mauer), bei frontalem Aufprall stehen bleiben
+    const along = hitX ? Math.cos(S.h) : Math.sin(S.h);
+    if (Math.abs(along) > 0.25) { turnTo(S, hitX ? (along > 0 ? 0 : Math.PI) : (along > 0 ? Math.PI / 2 : -Math.PI / 2)); S.speed *= 0.95; }
+    else { if (Math.abs(S.speed) > 3 && (!S.bonkT || tAll - S.bonkT > 0.4)) { S.bonkT = tAll; beep('bonk'); } S.speed = 0; }
+  }
   for (const co of coins) {
     if (co.taken) continue;
     co.mesh.rotation.z += dt * 3;
