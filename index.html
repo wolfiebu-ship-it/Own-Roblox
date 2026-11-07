@@ -2060,7 +2060,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.10';
+const BUILD = '2026-11-07.11';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -4278,18 +4278,18 @@ const MINI = {
   // ---------------- Himmelsturm ----------------
   tower: {
     name: 'Himmelsturm', prev: [[22, 14, 22], [0, 9, 0]], color: '#cfe8ff', solo: true,
-    desc: 'Ein riesiger Turm aus schwebenden Klötzen. Wie hoch kommst du in 3 Minuten? Alle 15 Stufen gibt es einen Checkpoint.',
+    desc: 'Ein riesiger Turm aus schwebenden Klötzen. Schaffst du es in 3 Minuten bis zum goldenen Ziel ganz oben? Alle 15 Stufen gibt es einen Checkpoint.',
     hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · immer höher!' : 'WASD laufen · Leertaste springen · immer höher!',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(9);
       plat(0, 0, 0, 10, 10, 0x8a8f99);
       const steps = [], cps = [];
-      let x = 0, y = 0, z = 0, dir = 0;
+      let x = 0, y = 0, z = 0, dir = 0, goalT = null;
       const cols = [0xff6fae, 0x6fd0f0, 0xffd23f, 0x3fdc7a, 0x8b5cd6, 0xff8a2b];
       let prevW = 10;
       for (let i = 1; i <= 120; i++) {
         // gleichmäßig: Lücke zwischen den Kanten 1,6 bis 2,2 m, jede Stufe 0,8 bis 1,1 m höher
-        const cp = i % 15 === 0, w = cp ? 4 : 2.8;
+        const last = i === 120, cp = i % 15 === 0 && !last, w = cp || last ? 4 : 2.8;
         const gap = 1.6 + Math.random() * 0.6, dist = prevW / 2 + w / 2 + gap;
         let nx, nz, ok = false;
         for (let t = 0; t < 12 && !ok; t++) {
@@ -4299,13 +4299,14 @@ const MINI = {
           if (ok) dir = d2;
         }
         x = nx; z = nz; y += 0.8 + Math.random() * 0.3; prevW = w;
-        plat(x, y, z, w, w, cp ? 0x3fb55e : cols[i % 6]);
+        plat(x, y, z, w, w, last ? 0xffc83d : cp ? 0x3fb55e : cols[i % 6]);
+        if (last) { const gp = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.14, 22), goalMat); gp.position.set(x, y + 0.08, z); world.add(gp); goalT = [x, y, z]; }
         if (cp) { const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.12, 18), padMat); pad.position.set(x, y + 0.07, z); world.add(pad); cps.push([x, y, z]); }
         steps.push([x, y, z]);
       }
       const coinsT = steps.filter((_, i) => i % 6 === 3).map(([a, b, c]) => mgCoin(a, b + 1.3, c));
       setSpawn(0, 0, 2);
-      return { steps, cps, cp: -1, best: 0, time: 180, coins: coinsT };
+      return { steps, cps, cp: -1, best: 0, time: 180, coins: coinsT, goal: goalT };
     },
     update(dt) {
       const M = mg, live = mode === 'tower';
@@ -4313,6 +4314,11 @@ const MINI = {
       M.best = Math.max(M.best, P.pos.y);
       mgCoins(M.coins, dt, live, 3);
       M.cps.forEach(([x, y, z], i) => { if (i > M.cp && Math.hypot(P.pos.x - x, P.pos.z - z) < 2 && Math.abs(P.pos.y - y) < 0.5) { M.cp = i; P.spawn.set(x, y, z); toast('Checkpoint!'); beep('check'); earn(5); } });
+      // ganz oben auf dem goldenen Ziel: gewonnen!
+      if (live && M.goal && Math.hypot(P.pos.x - M.goal[0], P.pos.z - M.goal[2]) < 2.1 && Math.abs(P.pos.y - M.goal[1]) < 0.6) {
+        const best = store.get('klotzwelt-turm', 0), rec = !best || game.time < best; if (rec) store.set('klotzwelt-turm', game.time);
+        return mgEnd(true, 'Ganz oben! Geschafft!', [['Zeit', fmt(game.time)], ['Bestzeit', rec ? fmt(game.time) + ' (neu!)' : fmt(best)]], 60);
+      }
       if (live && M.time <= 0) mgEnd(true, 'Zeit um!', [['Höhe', Math.round(M.best) + ' m'], ['Checkpoints', M.cp + 1]], Math.round(M.best / 4));
     },
     stats: () => pill('Höhe', Math.round(Math.max(0, mg.best)) + ' m') + pill('Checkpoint', mg.cp + 1) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
