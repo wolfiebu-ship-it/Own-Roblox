@@ -1935,7 +1935,7 @@ function hammerAction(cx, cy) {
   }
   if (!hit) { if (cx === undefined) toast('Niemand in der Nähe'); return; }
   if (hit.g.position.distanceTo(P.pos) > 30) { toast('Zu weit weg!'); return; }
-  if (hit.kind === 'peer' && hit.ref.look && hit.ref.look.role) { toast(hit.ref.look.role === 'creator' ? 'Den Erfinder kann man nicht bannen!' : 'Admins kann man nicht bannen!'); return; }
+  if (hit.kind === 'peer' && hit.ref.look && (hit.ref.look.owner || (hit.ref.look.role && !(NET.me && NET.me.owner)))) { toast(hit.ref.look.owner ? 'Den Gründer kann man nicht bannen!' : hit.ref.look.role === 'creator' ? 'Haupt-Erfinder kann nur der Gründer bannen!' : 'Admins kann nur der Gründer bannen!'); return; }
   explode(hit.kind === 'bot' ? botLook(hit.name) : peerLook(hit.ref), hit.g.position.clone(), hit.ref.facing || 0, hit.g.userData, new V3());
   if (hit.kind === 'bot') { world.remove(hit.g); bots.splice(bots.indexOf(hit.ref), 1); banFrom(game, hit.name); }
   else { hit.g.visible = false; hit.ref.target = null; netSend({ t: 'ban', name: hit.name, game }); }
@@ -2050,7 +2050,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.8';
+const BUILD = '2026-11-07.9';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3228,7 +3228,7 @@ function updateSkate(dt) {
   }
   poseSkater(S, dt, push);
   P.facing = S.h; P.vel.set(fx * S.speed, S.vy, fz * S.speed); P.onGround = !S.air;
-  let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  let dy = (S.h + Math.PI - 0.55 * (S.pb > 0.5 ? 0 : 1)) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, (Math.abs(dy) > 1.5 ? 7 : 4.5) * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
 }

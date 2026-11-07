@@ -151,7 +151,7 @@ function meOf(u) {
   const usr = D().users[u];
   return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, owner: D().owner === u, noOwner: !ownerOk(), bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
-const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, body: p.body, wear: p.wear, shape: p.shape }; };
+const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, owner: D().owner === u, body: p.body, wear: p.wear, shape: p.shape }; };
 
 // ---------- Freunde & Gruppen ----------
 function partyInfo(p) { return { id: p.id, leader: D().users[p.leader].name, members: [...p.members].map(m => D().users[m].name) }; }
@@ -384,7 +384,8 @@ function handle(c, m) {
       if (roleOf(c.user) !== 'creator') return err(c, 'Bannen dürfen nur Haupt-Erfinder.');
       const t = low(m.name), other = users[t], g = String(m.game);
       if (!other || !GAMES[g]) return err(c, 'Diesen Spieler gibt es nicht.');
-      if (isAdminU(t)) return err(c, 'Admins kann man nicht bannen.');
+      if (t === D().owner) return err(c, 'Den Gründer kann man nicht bannen.');
+      if (isAdminU(t) && D().owner !== c.user) return err(c, 'Admins und Haupt-Erfinder kann nur der Gründer bannen.');
       D().bans[g] = D().bans[g] || [];
       if (!D().bans[g].some(b => b.u === t)) D().bans[g].push({ u: t, by: users[c.user].name, at: now() });
       db.save();
