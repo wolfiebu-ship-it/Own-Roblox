@@ -489,6 +489,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div class="seg" id="bloodSeg"><button type="button" data-b="0">Aus (Sterne)</button><button type="button" data-b="1">An</button></div>
   <div class="label">Ton</div>
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
+  <div class="shape"><label for="setVol">Lautstärke</label><div><input type="range" id="setVol" min="0" max="1" step="0.05"><div class="ends"><span>leise</span><span>laut</span></div></div></div>
   <p class="small" id="verInfo" style="margin:0;opacity:.7"></p>
   <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
 </div>
@@ -610,6 +611,14 @@ function boxGeo(w, h, d) {
 
 // ---------- Sound ----------
 let actx = null, soundOn = store.get('klotzwelt-ton', true), noiseBuf = null;
+// Lautstärke für alle Geräusche (0 bis 1), in den Einstellungen einstellbar
+let volume = store.get('klotzwelt-lautstaerke', 0.8);
+function masterOut() {
+  const a = audio();
+  if (!a._master) { a._master = a.createGain(); a._master.gain.value = volume; a._master.connect(a.destination); }
+  return a._master;
+}
+function setVolume(v) { volume = Math.max(0, Math.min(1, v)); store.set('klotzwelt-lautstaerke', volume); if (actx && actx._master) actx._master.gain.value = volume; }
 function audio() {
   if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
   if (actx.state === 'suspended') actx.resume();
@@ -620,7 +629,7 @@ function oof() {
   if (!soundOn) return;
   try {
     const ac = audio(), t = ac.currentTime + 0.01;
-    const out = ac.createGain(); out.gain.value = 0.9; out.connect(ac.destination);
+    const out = ac.createGain(); out.gain.value = 0.9; out.connect(masterOut());
     const v = ac.createOscillator(); v.type = 'sawtooth';
     v.frequency.setValueAtTime(270, t); v.frequency.exponentialRampToValueAtTime(150, t + 0.26);
     const env = ac.createGain();
@@ -647,7 +656,7 @@ function boing() {
     o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(560, t + 0.12); o.frequency.exponentialRampToValueAtTime(240, t + 0.45);
     const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 14; lg.gain.value = 35; lfo.connect(lg).connect(o.frequency);
     const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    o.connect(g).connect(ac.destination); o.start(t); lfo.start(t); o.stop(t + 0.5); lfo.stop(t + 0.5);
+    o.connect(g).connect(masterOut()); o.start(t); lfo.start(t); o.stop(t + 0.5); lfo.stop(t + 0.5);
   } catch (e) {}
 }
 function beep(kind) {
@@ -674,7 +683,7 @@ function beep(kind) {
       const o = actx.createOscillator(), g = actx.createGain();
       o.type = type; o.frequency.value = f;
       g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+      o.connect(g).connect(masterOut()); o.start(t); o.stop(t + dur);
       t += dur * 0.9;
     }
   } catch (e) {}
@@ -2031,7 +2040,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.5';
+const BUILD = '2026-11-07.6';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -4457,7 +4466,7 @@ function startDrone() {
     g.gain.value = 0.035; lp.type = 'lowpass'; lp.frequency.value = 300;
     const o1 = ac.createOscillator(), o2 = ac.createOscillator();
     o1.type = o2.type = 'sawtooth'; o1.frequency.value = 55; o2.frequency.value = 57.5;
-    o1.connect(lp); o2.connect(lp); lp.connect(g).connect(ac.destination); o1.start(); o2.start();
+    o1.connect(lp); o2.connect(lp); lp.connect(g).connect(masterOut()); o1.start(); o2.start();
     drone = { o1, o2 };
   } catch (e) {}
 }
@@ -4469,7 +4478,7 @@ function ghostSound() {
     o.type = 'sine'; o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(180, t + 1.2);
     const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 6; lg.gain.value = 25; l.connect(lg).connect(o.frequency);
     const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.3); g.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
-    o.connect(g).connect(ac.destination); o.start(t); l.start(t); o.stop(t + 1.3); l.stop(t + 1.3);
+    o.connect(g).connect(masterOut()); o.start(t); l.start(t); o.stop(t + 1.3); l.stop(t + 1.3);
   } catch (e) {}
 }
 function makeMaze(N, seed) {
@@ -5396,9 +5405,12 @@ function renderKeyList() {
   el.querySelectorAll('[data-key]').forEach(b => b.onclick = () => { keyWait = keyWait === b.dataset.key ? null : b.dataset.key; renderKeyList(); });
 }
 document.querySelectorAll('#steerSeg button').forEach(b => b.onclick = () => { steerMode = b.dataset.st; store.set('klotzwelt-lenkung', steerMode); beep('equip'); syncSettingsUI(); });
+$('setVol').addEventListener('input', () => setVolume(+$('setVol').value));
+$('setVol').addEventListener('change', () => { if (soundOn) beep('coin'); });
 $('keyReset').onclick = () => { keyBinds = {}; store.set('klotzwelt-tasten', keyBinds); keyWait = null; renderKeyList(); beep('equip'); toast('Tasten zurückgesetzt'); };
 function syncSettingsUI() {
   renderKeyList();
+  $('setVol').value = volume;
   document.querySelectorAll('#steerSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.st === steerMode)));
   $('verInfo').textContent = 'Version ' + BUILD;
   $('setYear').value = settings.birthYear || '';
