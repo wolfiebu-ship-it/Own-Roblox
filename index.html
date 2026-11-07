@@ -2060,7 +2060,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.11';
+const BUILD = '2026-11-07.12';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3046,8 +3046,7 @@ function makeBoard(id, custom) {
   const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
   // Holzbrett (unten in der Brett-Farbe) und Griptape oben
   const body = new THREE.Mesh(deckGeo(BOARD_W, BOARD_L, BOARD_T, -BOARD_T / 2), tc(bd.deck)); body.castShadow = true; deck.add(body);
-  const ol = new THREE.Mesh(body.geometry, outlineMat); ol.scale.set(1.03, 1.06, 1.015); body.add(ol);
-  const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.03, BOARD_L - 0.03, 0.008, BOARD_T / 2 - 0.002), tc(bd.grip)); deck.add(grip);
+  const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.05, BOARD_L - 0.06, 0.006, BOARD_T / 2 - 0.001), tc(bd.grip)); deck.add(grip);
   // Muster unten: Streifen (oder Flammen), bei Neon leuchtet es
   if (bd.custom) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W - 0.06, 1.2), toon('bpm-' + bd.pattern + bd.deck + '-' + bd.accent, { color: 0xffffff, map: patternTex(bd.pattern || 'none', bd.deck, bd.accent) })); pl.rotation.x = Math.PI / 2; pl.position.y = -BOARD_T / 2 - 0.003; deck.add(pl); }
   else { const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.006, 1.1), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe); }
@@ -3427,8 +3426,8 @@ function poseSkater(S, dt, push) {
   S.pushHold = Math.max(0, (S.pushHold || 0) - dt);
   const pbT = !S.air && !S.grind && (S.pushT > 0 || S.pushHold > 0) ? 1 : 0;
   S.pb = (S.pb || 0) + (pbT - (S.pb || 0)) * Math.min(1, dt * (pbT ? 6 : S.air ? 12 : 3));
-  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.06 * S.pb;
-  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.24 * S.pb : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.15 * S.pb;
+  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.04 * S.pb : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
   S.wobble = Math.max(0, (S.wobble || 0) - dt);
@@ -3444,11 +3443,16 @@ function poseSkater(S, dt, push) {
     u.legL.rotation.set(0, 0, 0);
     if (S.pushT > 0) {
       // der rechte Fuß geht deutlich neben das Brett auf den Boden und tritt nach hinten
-      const ph = S.pushT, sw = ph < 0.7 ? -0.7 + 1.5 * (ph / 0.7) : 0.8 - 1.5 * ((ph - 0.7) / 0.3);
-      u.legR.rotation.set(sw, 0, 0.3); u.legL.rotation.set(-0.15, 0, 0);
+      // Bodenkontakt (0 bis 0,7): Fuß setzt vorne auf und schiebt nach hinten; danach schwingt er durch die Luft nach vorne
+      const ph = S.pushT, contact = ph < 0.7;
+      const sw = contact ? -0.4 + 0.85 * (ph / 0.7) : 0.45 - 0.85 * ((ph - 0.7) / 0.3);
+      // Das Bein reicht nur bis zum Boden, wenn es etwas länger wird (die Figur hat keine Knie)
+      const hip = 0.22 - 0.04 + 0.82, need = hip / (0.8 * Math.cos(sw));
+      u.legR.rotation.set(sw, 0, 0.05); u.legR.scale.y = contact ? Math.min(1.45, need) : 1;
+      u.legL.rotation.set(0, 0, 0);
       u.armL.rotation.set(-sw * 0.5, 0, -0.1); u.armR.rotation.set(sw * 0.5, 0, 0.1);
-    } else { u.legR.rotation.set(0.3, 0, -0.32); } // rollen: hinterer Fuß wieder aufs Brett
-  } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
+    } else { u.legR.rotation.set(0.32, 0, -0.38); u.legR.scale.y = 1; } // rollen: hinterer Fuß wieder aufs Brett
+  } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); u.legR.scale.y = 1; }
   // Arme: locker und leicht nach außen, schwingen beim Lenken; in der Luft zum Balancieren hoch; beim Grab greift die Hand zum Brett
   const sway = Math.sin(tAll * 2.2) * 0.05;
   if (S.pb > 0.5 && S.pushT > 0) {}
