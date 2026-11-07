@@ -2031,7 +2031,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.4';
+const BUILD = '2026-11-07.5';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2967,22 +2967,42 @@ function rampMesh(r) {
     const grp = new THREE.Group(); grp.position.set(r.x, 0, r.z); grp.rotation.y = r.a; cp.position.set(0, y + 0.05, at); grp.add(cp); world.add(grp);
   }
 }
+// Echtes Skateboard: schmales Brett mit runden Enden, Nase und Heck hochgebogen, Griptape oben, Metall-Achsen, kleine Rollen
+const BOARD_L = 1.7, BOARD_W = 0.5, BOARD_T = 0.045;
+const kickY = z => { const a = Math.abs(z) - 0.52; return a > 0 ? a * a * 1.15 : 0; };
+function deckGeo(w, l, t, y0) {
+  const r = w / 2, sh = new THREE.Shape();
+  sh.moveTo(-r, -(l / 2 - r)); sh.lineTo(-r, l / 2 - r); sh.absarc(0, l / 2 - r, r, Math.PI, 0, true); sh.lineTo(r, -(l / 2 - r)); sh.absarc(0, -(l / 2 - r), r, 0, Math.PI, true);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, curveSegments: 14 });
+  g.rotateX(Math.PI / 2); g.translate(0, y0 + t, 0);
+  // feiner unterteilen ist nicht nötig: die Biegung entsteht über die Eckpunkte der Rundung
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setY(i, pos.getY(i) + kickY(pos.getZ(i)));
+  g.computeVertexNormals();
+  return g;
+}
 const myBoardId = () => (profile.wear.board && profile.owned.includes(profile.wear.board) && ITEM[profile.wear.board]) ? profile.wear.board : 'b-classic';
 function makeBoard(id) {
   const bd = (ITEM[id] && ITEM[id].board) || ITEM['b-classic'].board;
   const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
-  const deckM = olAdd(deck, roundedBox(0.62, 0.07, 2.0, 0.03), tc(bd.deck), 0, 0, 0);
-  olAdd(deck, roundedBox(0.58, 0.02, 1.9, 0.01), tc(bd.grip), 0, 0.045, 0);
-  // Streifen unten und an den Seiten
-  olAdd(deck, roundedBox(0.2, 0.02, 1.7, 0.01), tc(bd.accent), 0, -0.04, 0);
-  if (bd.flames) for (const z of [-0.5, 0, 0.5]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.35, 8), tc(0xff8a2b)); f.rotation.x = Math.PI / 2; f.position.set(0, -0.045, z); f.scale.y = 0.2; deck.add(f); }
-  if (bd.glow) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.1), new THREE.MeshBasicMaterial({ color: bd.accent, transparent: true, opacity: 0.5 })); gl.rotation.x = Math.PI / 2; gl.position.y = -0.17; deck.add(gl); }
-  // Nase und Heck leicht nach oben gebogen
-  for (const z of [-1, 1]) { const k = olAdd(deck, roundedBox(0.6, 0.07, 0.35, 0.03), tc(bd.deck), 0, 0.06, z * 1.12); k.rotation.x = -z * 0.35; }
-  const wheels = [];
-  for (const z of [-0.65, 0.65]) {
-    olAdd(deck, roundedBox(0.5, 0.05, 0.08, 0.02), tc(0xc8d0dc), 0, -0.07, z);
-    for (const x of [-0.24, 0.24]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 12), bd.glow ? toon('neonw' + bd.wheels, { color: bd.wheels, emissive: bd.wheels, emissiveIntensity: 0.8 }) : tc(bd.wheels)); w.rotation.z = Math.PI / 2; w.position.set(x, -0.12, z); deck.add(w); wheels.push(w); }
+  // Holzbrett (unten in der Brett-Farbe) und Griptape oben
+  const body = new THREE.Mesh(deckGeo(BOARD_W, BOARD_L, BOARD_T, -BOARD_T / 2), tc(bd.deck)); body.castShadow = true; deck.add(body);
+  const ol = new THREE.Mesh(body.geometry, outlineMat); ol.scale.set(1.04, 1.25, 1.02); body.add(ol);
+  const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.03, BOARD_L - 0.03, 0.008, BOARD_T / 2 - 0.002), tc(bd.grip)); deck.add(grip);
+  // Muster unten: Streifen (oder Flammen), bei Neon leuchtet es
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.006, 0.9), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe);
+  if (bd.flames) for (const z of [-0.3, 0, 0.3]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 8), tc(0xff8a2b)); f.rotation.x = Math.PI / 2; f.position.set(0, -BOARD_T / 2 - 0.01, z); f.scale.y = 0.15; deck.add(f); }
+  if (bd.glow) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.7), new THREE.MeshBasicMaterial({ color: bd.accent, transparent: true, opacity: 0.45 })); gl.rotation.x = Math.PI / 2; gl.position.y = -0.18; deck.add(gl); }
+  // Achsen (Trucks) und Rollen
+  const metal = tc(0xc8d0dc), wheels = [];
+  for (const z of [-0.5, 0.5]) {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.12), metal); base.position.set(0, -BOARD_T / 2 - 0.015, z); deck.add(base);
+    const hang = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), metal); hang.position.set(0, -0.07, z); deck.add(hang);
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.46, 8), metal); axle.rotation.z = Math.PI / 2; axle.position.set(0, -0.11, z); deck.add(axle);
+    for (const x of [-0.2, 0.2]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.06, 14), bd.glow ? toon('neonw' + bd.wheels, { color: bd.wheels, emissive: bd.wheels, emissiveIntensity: 0.8 }) : tc(bd.wheels));
+      w.rotation.z = Math.PI / 2; w.position.set(x, -0.11, z); deck.add(w); wheels.push(w);
+    }
   }
   g.userData.deck = deck; g.userData.wheels = wheels;
   return g;
@@ -3113,14 +3133,14 @@ function updateSkate(dt) {
       if (Math.abs(slope) > 1.6 && skH(x, z) > 0.5 && slope > 0) { S.air = true; S.vert = true; S.vy = Math.abs(S.speed) * 0.95; S.airT = 0; S.spinV = 0; }
       else { S.speed *= -0.3; beep('bonk'); }
     } else if (nH < P.pos.y - 0.25) { S.air = true; S.vy = Math.max(0, slope * S.speed); S.airT = 0; S.spinV = 0; P.pos.x = nx; P.pos.z = nz; }
-    else if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || rampSideBlock(P.pos.x, P.pos.z, nx, nz, P.pos.y) || (slope < 0.35 && stepWall(P.pos.x, P.pos.z, nx, nz, P.pos.y))) { S.speed *= -0.2; beep('bonk'); }
+    else if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || rampSideBlock(P.pos.x, P.pos.z, nx, nz, P.pos.y) || (slope < 0.35 && stepWall(P.pos.x, P.pos.z, nx, nz, P.pos.y))) wallSlide(S, P.pos.x, P.pos.z, nx, nz, false);
     else P.pos.set(nx, nH, nz);
     // Kombo endet, wenn man eine Weile ohne Trick fährt
     if (S.comboN && (S.comboT -= dt) <= 0) bankCombo(S);
   } else {
     // ---------- In der Luft ----------
     S.airT += dt; S.vy -= 26 * dt; S.pop = Math.max(0, S.pop - dt);
-    if (!S.vert) { const nx = P.pos.x + fx * S.speed * dt, nz = P.pos.z + fz * S.speed * dt; if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || skH(nx, nz) > P.pos.y + 0.3 || stepWall(P.pos.x, P.pos.z, nx, nz, P.pos.y + 0.3)) { S.speed *= -0.2; beep('bonk'); } else { P.pos.x = nx; P.pos.z = nz; } }
+    if (!S.vert) { const nx = P.pos.x + fx * S.speed * dt, nz = P.pos.z + fz * S.speed * dt; if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || skH(nx, nz) > P.pos.y + 0.3 || stepWall(P.pos.x, P.pos.z, nx, nz, P.pos.y + 0.3)) wallSlide(S, P.pos.x, P.pos.z, nx, nz, true); else { P.pos.x = nx; P.pos.z = nz; } }
     P.pos.y += S.vy * dt;
     S.spinV += (-steer * 7 - S.spinV) * Math.min(1, dt * 6); S.spin += S.spinV * dt;
     if (want) startFlip(S, want);
@@ -3182,6 +3202,16 @@ function updateSkate(dt) {
   let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, (Math.abs(dy) > 1.5 ? 7 : 4.5) * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
+}
+// An einer Wand entlanggleiten statt zurückgeworfen zu werden (kein Umdrehen, kein Hüpfen)
+function turnTo(S, a) { let d = a - S.h; d = Math.atan2(Math.sin(d), Math.cos(d)); S.h += d * 0.2; }
+function wallSlide(S, x0, z0, x1, z1, air) {
+  const y = P.pos.y, ok = (x, z) => !railBlocks(x0, z0, x, z, y) && (air ? skH(x, z) <= y + 0.3 && !stepWall(x0, z0, x, z, y + 0.3) : !rampSideBlock(x0, z0, x, z, y) && !stepWall(x0, z0, x, z, y) && skH(x, z) <= y + 0.12);
+  const dx = x1 - x0, dz = z1 - z0;
+  if (Math.abs(dx) > 0.001 && ok(x1, z0)) { P.pos.x = x1; if (!air) P.pos.y = skH(x1, z0); turnTo(S, Math.atan2(Math.sign(dx), 0)); S.speed *= 0.93; return; }
+  if (Math.abs(dz) > 0.001 && ok(x0, z1)) { P.pos.z = z1; if (!air) P.pos.y = skH(x0, z1); turnTo(S, Math.atan2(0, Math.sign(dz))); S.speed *= 0.93; return; }
+  if (Math.abs(S.speed) > 3 && (!S.bonkT || tAll - S.bonkT > 0.4)) { S.bonkT = tAll; beep('bonk'); }
+  S.speed = 0;
 }
 // Rampen sind fest wie Beton: springt die Höhe auf dem Weg plötzlich nach oben (Seite oder Rückwand), ist dort eine Wand
 function stepWall(x0, z0, x1, z1, y) {
