@@ -930,12 +930,13 @@ function saveAdmin() { store.set('klotzwelt-admin', adminData); }
 // Ein Bann gilt immer nur für ein Spiel, nicht für das ganze Konto
 const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla',
   lava: 'Lava-Flucht', colors: 'Farb-Stopp', rush: 'Münzrausch', tag: 'Fangen', fall: 'Fallende Felder', tower: 'Himmelsturm', maze: 'Labyrinth', sumo: 'Schubs-Arena', soccer: 'Klotz-Fußball',
-  ochs: 'Ochs am Berg', potato: 'Heiße Kartoffel', targets: 'Zielschießen', stack: 'Stapel-Turm', treasure: 'Schatzsuche', trampo: 'Trampolin-Park', snow: 'Schneeballschlacht', sprint: 'Hürdenlauf', moon: 'Mond-Hüpfer', balloon: 'Ballon-Jagd' };
+  ochs: 'Ochs am Berg', potato: 'Heiße Kartoffel', targets: 'Zielschießen', stack: 'Stapel-Turm', treasure: 'Schatzsuche', trampo: 'Trampolin-Park', snow: 'Schneeballschlacht', sprint: 'Hürdenlauf', moon: 'Mond-Hüpfer', balloon: 'Ballon-Jagd',
+  zombie: 'Zombie-Flucht', chairs: 'Reise nach Jerusalem', pirate: 'Piraten-Kanonen', duel: 'Wildwest-Duell', dino: 'Dino-Flucht', pumpkin: 'Kürbis-Jagd' };
 // Mindestalter pro Spiel. Admins dürfen alles spielen.
 const GAME_AGE = { horror: 8, fight: 8, blaster: 10 };
 const isRace = m => m === 'race' || m === 'moto';
 function normBans(b) {
-  const out = Object.fromEntries('obby build race moto skate fight blaster horror lava colors rush tag fall tower maze sumo soccer ochs potato targets stack treasure trampo snow sprint moon balloon'.split(' ').map(k => [k, []]));
+  const out = Object.fromEntries('obby build race moto skate fight blaster horror lava colors rush tag fall tower maze sumo soccer ochs potato targets stack treasure trampo snow sprint moon balloon zombie chairs pirate duel dino pumpkin'.split(' ').map(k => [k, []]));
   if (Array.isArray(b)) out.obby = b.map(n => typeof n === 'string' ? { name: n, by: null, at: Date.now() } : n).filter(x => x && x.name);
   else if (b && typeof b === 'object') for (const k of Object.keys(out)) if (Array.isArray(b[k])) out[k] = b[k].filter(x => x && x.name);
   return out;
@@ -2094,7 +2095,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.17';
+const BUILD = '2026-11-07.18';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -4438,13 +4439,13 @@ const MINI = {
 
   // ---------------- Labyrinth ----------------
   maze: {
-    name: 'Labyrinth', prev: [[-50, 11, -50], [-22, 0, -22]], color: '#e0e6f5', solo: true,
-    desc: 'Ein großes Hecken-Labyrinth, jedes Mal neu, mit neuem Start und neuem Ausgang. Finde das goldene Licht so schnell wie möglich!',
+    name: 'Labyrinth', prev: [[-50, 11, -50], [-22, 0, -22]], color: '#ffe0dc', solo: true,
+    desc: 'Ein großes rotes Labyrinth, jedes Mal neu, mit neuem Start und neuem Ausgang. Finde das goldene Licht so schnell wie möglich!',
     hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Maus ziehen: umschauen · finde den goldenen Ausgang',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(2);
       const G2 = 15, C = 5.4, off = -(G2 * C) / 2;
-      plat(0, 0, 0, G2 * C + 2, G2 * C + 2, 0x7fc46a);
+      plat(0, 0, 0, G2 * C + 2, G2 * C + 2, 0xe6dccb);
       // Labyrinth mit Tiefensuche
       const wallsH = Array.from({ length: G2 + 1 }, () => Array(G2).fill(true)), wallsV = Array.from({ length: G2 }, () => Array(G2 + 1).fill(true));
       const seen = Array.from({ length: G2 }, () => Array(G2).fill(false)), stack = [[0, 0]]; seen[0][0] = true;
@@ -4456,9 +4457,9 @@ const MINI = {
         if (da) wallsV[j][Math.max(i, a)] = false; else wallsH[Math.max(j, b)][i] = false;
         seen[a][b] = true; stack.push([a, b]);
       }
-      // Hecken-Labyrinth: grüne Hecken, dunklere Ecken
-      const H = 4.6, hedge = [0x3f9a4c, 0x48a856, 0x37904a];
-      for (let j = 0; j <= G2; j++) for (let i = 0; i <= G2; i++) addBox(off + i * C, (H + 0.2) / 2, off + j * C, 0.8, H + 0.2, 0.8, 0x2f7a3c);
+      // rote Mauern, dunklere Ecken
+      const H = 4.6, hedge = [0xd2453a, 0xc63c32, 0xdb5246];
+      for (let j = 0; j <= G2; j++) for (let i = 0; i <= G2; i++) addBox(off + i * C, (H + 0.2) / 2, off + j * C, 0.8, H + 0.2, 0.8, 0x9e2e26);
       for (let j = 0; j <= G2; j++) for (let i = 0; i < G2; i++) if (wallsH[j][i]) addBox(off + i * C + C / 2, H / 2, off + j * C, C - 0.6, H, 0.7, hedge[(i + j) % 3]);
       for (let j = 0; j < G2; j++) for (let i = 0; i <= G2; i++) if (wallsV[j][i]) addBox(off + i * C, H / 2, off + j * C + C / 2, 0.7, H, C - 0.6, hedge[(i * 2 + j) % 3]);
       // Start in einer zufälligen Ecke, Ausgang immer woanders: weit weg vom Start am Rand
@@ -4968,13 +4969,15 @@ Object.assign(MINI, {
   // ---------------- Schneeballschlacht ----------------
   snow: {
     name: 'Schneeballschlacht', prev: [[0, 10, 26], [0, 1, 0]], color: '#eef6ff', click: true, aim: true,
-    desc: 'Wirf Schneebälle auf das rote Team und versteck dich hinter den Schneemauern. Wer zuerst 10 Treffer hat, gewinnt!',
+    desc: 'Jedes Team bleibt auf seiner Seite der blauen Linie. Wirf Schneebälle auf das rote Team und versteck dich hinter den Schneemauern. Wer zuerst 10 Treffer hat, gewinnt!',
     hint: () => isTouch ? 'Joystick laufen · auf den Bildschirm tippen = werfen (dorthin, wo du tippst)' : 'WASD laufen · Maus zielen · Linksklick oder J = werfen',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(4);
       plat(0, 0, 0, 50, 60, 0xf4f8ff);
       for (const [x, z, w, d] of [[0, -30.5, 50, 1], [0, 30.5, 50, 1], [-25.5, 0, 1, 60], [25.5, 0, 1, 60]]) addBox(x, 1, z, w, 2, d, 0xcfe6f7);
-      for (const [x, z] of [[-8, 10], [8, 10], [0, 4], [-12, -2], [12, -2], [-6, -10], [6, -10], [0, -16]]) addBox(x, 0.7, z, 4, 1.4, 1, 0xe6f2ff);
+      for (const [x, z] of [[-8, 12], [8, 12], [0, 6], [-14, 4], [14, 4], [-8, -12], [8, -12], [0, -6], [-14, -4], [14, -4]]) addBox(x, 0.7, z, 4, 1.4, 1, 0xe6f2ff);
+      // Mittellinie: keiner kommt auf die andere Seite
+      const mid = new THREE.Mesh(new THREE.BoxGeometry(50, 0.04, 0.35), tc(0x6fb4e8)); mid.position.set(0, 0.03, 0); world.add(mid);
       const M = { balls: [], me: 0, them: 0, cool: 0, npcs: [], stun: 0 };
       npcNames(3).forEach((n, k) => { const nn = npcMake(n, -8 + k * 8, 0, -22); const mk = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 4), new THREE.MeshBasicMaterial({ color: 0xe2453c })); mk.rotation.x = Math.PI; mk.position.y = 3.2; nn.g.add(mk); M.npcs.push(Object.assign(nn, { cool: 1 + Math.random() * 2, stun: 0, strafe: 1 })); });
       setSpawn(0, 0, 22);
@@ -4989,6 +4992,7 @@ Object.assign(MINI, {
       if (live) game.time += dt;
       M.cool = Math.max(0, M.cool - dt); M.stun = Math.max(0, M.stun - dt);
       if (M.stun > 0) { P.vel.x *= 0.5; P.vel.z *= 0.5; }
+      if (P.pos.z < 0.6 && !isGod()) { P.pos.z = 0.6; if (P.vel.z < 0) P.vel.z = 0; }
       if (live && actionPressed(M) && M.cool <= 0 && M.stun <= 0) {
         M.cool = 0.45; beep('whoosh');
         const ray = aimRay(), hits = ray.intersectObjects(solids.slice(1).map(s => s.mesh).concat(M.npcs.map(n => n.g)), true);
@@ -5004,7 +5008,7 @@ Object.assign(MINI, {
         if (live && n.stun <= 0) {
           const want = d > 16 ? 1 : d < 9 ? -1 : 0;
           const tx = n.pos.x + dx / d * want * 3 - dz / d * n.strafe * 2, tz = n.pos.z + dz / d * want * 3 + dx / d * n.strafe * 2;
-          const ox = n.pos.x, oz = n.pos.z; mv = npcStep(n, Math.max(-23, Math.min(23, tx)), Math.max(-28, Math.min(-1, tz)), 4, dt);
+          const ox = n.pos.x, oz = n.pos.z; mv = npcStep(n, Math.max(-23, Math.min(23, tx)), Math.max(-28, Math.min(-1.2, tz)), 4, dt);
           if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; n.strafe *= -1; }
           if (Math.random() < dt * 0.6) n.strafe *= -1;
           n.facing = Math.atan2(dx, dz);
@@ -5145,6 +5149,391 @@ Object.assign(MINI, {
       if (live && M.time <= 0) { const place = 1 + M.npcs.filter(n => n.score > M.score).length; mgEnd(place === 1, place === 1 ? 'Du hast die meisten!' : 'Platz ' + place, [['Deine Punkte', M.score], ['Bester Gegner', Math.max(...M.npcs.map(n => n.score))]], place === 1 ? 25 : 5); }
     },
     stats: () => pill('Punkte', mg.score) + pill('Beste Gegner', Math.max(0, ...mg.npcs.map(n => n.score))) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
+  }
+});
+// ======================================================================
+// Themenspiele: Zombie-Flucht, Reise nach Jerusalem, Piraten-Kanonen, Wildwest-Duell, Dino-Flucht, Kürbis-Jagd
+// ======================================================================
+function tintAvatar(g, col, k) {
+  const c = new THREE.Color(col);
+  g.traverse(o => { if (o.isMesh && o.material && o.material !== outlineMat && o.material.color) { o.material = o.material.clone(); o.material.color.lerp(c, k); } });
+}
+const clampXZ = (n, r) => { n.pos.x = Math.max(-r, Math.min(r, n.pos.x)); n.pos.z = Math.max(-r, Math.min(r, n.pos.z)); };
+function npcFlee(n, fx, fz, sp, dt, r) {
+  const dx = n.pos.x - fx, dz = n.pos.z - fz, d = Math.hypot(dx, dz) || 1;
+  // weg vom Jäger, aber nicht in die Ecke: etwas zur Mitte hin lenken
+  let tx = n.pos.x + dx / d * 4 - n.pos.x * 0.12, tz = n.pos.z + dz / d * 4 - n.pos.z * 0.12;
+  tx = Math.max(-r, Math.min(r, tx)); tz = Math.max(-r, Math.min(r, tz));
+  const ox = n.pos.x, oz = n.pos.z, mv = npcStep(n, tx, tz, sp, dt);
+  if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; npcStep(n, ox - dz / d * 3, oz + dx / d * 3, sp, dt); if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; } }
+  return mv;
+}
+function npcChase(n, tx, tz, sp, dt) {
+  const ox = n.pos.x, oz = n.pos.z, mv = npcStep(n, tx, tz, sp, dt);
+  if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) {
+    // an Hindernissen vorbei rutschen
+    n.pos.x = ox; n.pos.z = oz;
+    if (!npcStep(n, tx, oz, sp, dt) || insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; npcStep(n, ox, tz, sp, dt); if (insideSolid(n.pos.x, 0.5, n.pos.z, 0.45)) { n.pos.x = ox; n.pos.z = oz; } }
+  }
+  return mv;
+}
+
+Object.assign(MINI, {
+  // ---------------- Zombie-Flucht ----------------
+  zombie: {
+    name: 'Zombie-Flucht', prev: [[26, 16, 26], [0, 0, 0]], color: '#dcefd2',
+    desc: 'Thema Zombies: In der verlassenen Stadt ist ein Zombie los. Wen er berührt, der wird selbst zum Zombie! Überlebe 90 Sekunden.',
+    hint: () => isTouch ? 'Joystick laufen · Sprung-Knopf springen · lauf vor den grünen Zombies weg!' : 'WASD laufen · Leertaste springen · lauf vor den grünen Zombies weg!',
+    build() {
+      clearWorld(); setAtmosphere('day'); scene.background.set(0x9aa8a0); scene.fog.color.set(0x9aa8a0); scene.fog.near = 20; scene.fog.far = 90; hemi.intensity = 0.55; sun.intensity = 0.5;
+      plat(0, 0, 0, 60, 60, 0x7d7a72);
+      for (const [x, z, w, d] of [[0, -30.5, 60, 1], [0, 30.5, 60, 1], [-30.5, 0, 1, 60], [30.5, 0, 1, 60]]) addBox(x, 1.5, z, w, 3, d, 0x5a5650);
+      const houses = [[-16, -16], [16, -16], [-16, 16], [16, 16], [0, -20], [0, 20], [-20, 0], [20, 0]];
+      houses.forEach(([x, z], k) => { const h = 3 + (k % 3) * 1.5; addBox(x, h / 2, z, 6, h, 6, [0x9a8a7a, 0x8a7f72, 0xa89880][k % 3]); addBox(x, h + 0.2, z, 6.4, 0.4, 6.4, 0x5a3a2a); });
+      for (const [x, z] of [[-6, -6], [6, 6], [6, -8], [-8, 6], [0, 0]]) addBox(x, 0.6, z, 2.4, 1.2, 1.2, 0x6a6a6a);
+      const M = { npcs: [], time: 90, zombies: 0 };
+      npcNames(8).forEach((n, k) => { const a = k / 8 * Math.PI * 2; M.npcs.push(Object.assign(npcMake(n, Math.cos(a) * 11, 0, Math.sin(a) * 11), { sp: 6 + Math.random() * 1.6, z: false })); });
+      const z0 = M.npcs[Math.floor(Math.random() * M.npcs.length)]; z0.pos.set(24, 0, -24); MINI.zombie.infect(M, z0, true); M.wait = 3;
+      setSpawn(0, 0, 4);
+      return M;
+    },
+    infect(M, n, first) { n.z = true; n.sp = first ? 6.4 : 5.8; M.zombies++; tintAvatar(n.g, 0x5fbf4a, 0.65); if (!first) feed(n.name + ' ist jetzt ein Zombie!'); },
+    update(dt) {
+      const M = mg, live = mode === 'zombie';
+      if (live) { M.time -= dt; game.time += dt; }
+      const humans = [{ isP: true, pos: P.pos }, ...M.npcs.filter(n => !n.z)];
+      if (live && M.wait > 0) { const b = Math.ceil(M.wait); M.wait -= dt; M.time += dt; if (Math.ceil(M.wait) !== b) toast(M.wait > 0 ? 'Der Zombie erwacht in ' + Math.ceil(M.wait) : 'Lauf!'); }
+      const boost = Math.min(2, (90 - M.time) / 45);
+      for (const n of M.npcs) {
+        let mv = false;
+        if (live) {
+          if (n.z && M.wait > 0) { /* wartet noch */ }
+          else if (n.z) {
+            let best = null, bd = 1e9; for (const h of humans) { const d = Math.hypot(h.pos.x - n.pos.x, h.pos.z - n.pos.z) + (h.isP ? -2 : 0); if (d < bd) { bd = d; best = h; } }
+            if (best) {
+              mv = npcChase(n, best.pos.x, best.pos.z, n.sp + boost, dt);
+              if (Math.hypot(best.pos.x - n.pos.x, best.pos.z - n.pos.z) < 1 && Math.abs(best.pos.y - n.pos.y) < 1.6) {
+                if (best.isP) { if (!isGod()) { beep('die'); return mgEnd(false, 'Ein Zombie hat dich erwischt!', [['Überlebt', fmt(game.time)], ['Zombies', M.zombies]], Math.floor(game.time / 6)); } }
+                else { MINI.zombie.infect(M, best); beep('bonk'); }
+              }
+            }
+          } else {
+            let near = null, nd = 1e9; for (const z of M.npcs) if (z.z) { const d = Math.hypot(z.pos.x - n.pos.x, z.pos.z - n.pos.z); if (d < nd) { nd = d; near = z; } }
+            if (near && nd < 14) mv = npcFlee(n, near.pos.x, near.pos.z, n.sp, dt, 28);
+          }
+          clampXZ(n, 29);
+        }
+        npcAnim(n, mv, dt);
+        if (n.z && mv) { n.g.userData.armL.rotation.x = -1.5; n.g.userData.armR.rotation.x = -1.5; }
+      }
+      if (live && M.time <= 0) mgEnd(true, 'Du hast überlebt!', [['Zombies am Ende', M.zombies + ' von ' + M.npcs.length]], 30);
+    },
+    stats: () => pill('Überleben', Math.max(0, Math.ceil(mg.time)) + ' s') + pill('Zombies', mg.zombies) + pill('Menschen', mg.npcs.filter(n => !n.z).length + 1)
+  },
+
+  // ---------------- Reise nach Jerusalem ----------------
+  chairs: {
+    name: 'Reise nach Jerusalem', prev: [[0, 13, 15], [0, 0, 0]], color: '#f3dcff',
+    desc: 'Thema Disco: Solange die Musik läuft, tanzt alle im Kreis um die Stühle. Hört sie auf, schnell auf einen Stuhl! Es gibt immer einen Stuhl zu wenig.',
+    hint: () => isTouch ? 'Joystick laufen · wenn die Musik stoppt: schnell zu einem freien Stuhl!' : 'WASD laufen · wenn die Musik stoppt: schnell zu einem freien Stuhl!',
+    build() {
+      clearWorld(); setAtmosphere('night'); scene.fog.near = 30; scene.fog.far = 90; hemi.intensity = 0.6; sun.intensity = 0.4; flash.intensity = 0; glowL.intensity = 0;
+      const tiles = [0xff6fae, 0x6fd0f0, 0xffd23f, 0x8b5cd6];
+      plat(0, 0, 0, 26, 26, 0x2a2d44);
+      const floor = [];
+      for (let i = -3; i < 3; i++) for (let j = -3; j < 3; j++) { const m = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.04, 3.8), new THREE.MeshBasicMaterial({ color: tiles[(i + j + 6) % 4] })); m.position.set(i * 4 + 2, 0.02, j * 4 + 2); world.add(m); floor.push(m); }
+      for (const [x, z, w, d] of [[0, -13.5, 26, 1], [0, 13.5, 26, 1], [-13.5, 0, 1, 26], [13.5, 0, 1, 26]]) addBox(x, 1, z, w, 2, d, 0x8b5cd6);
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), new THREE.MeshLambertMaterial({ color: 0xdfe6f0, flatShading: true })); ball.position.set(0, 9, 0); world.add(ball);
+      const M = { npcs: [], chairs: [], floor, ball, phase: 'music', t: 6, round: 0 };
+      npcNames(7).forEach((n, k) => { const a = k / 8 * Math.PI * 2; M.npcs.push(Object.assign(npcMake(n, Math.cos(a) * 7, 0, Math.sin(a) * 7), { ang: a, sp: 5.8 + Math.random() * 1.6, react: 0.15 + Math.random() * 0.5, out: false, chair: null })); });
+      mg = M; MINI.chairs.setChairs(M.npcs.length);
+      setSpawn(7, 0, 0);
+      return M;
+    },
+    setChairs(n) {
+      const M = mg; for (const c of M.chairs) world.remove(c.g); M.chairs = [];
+      for (let k = 0; k < n; k++) {
+        const a = k / n * Math.PI * 2, x = Math.cos(a) * 3.2, z = Math.sin(a) * 3.2, g = new THREE.Group();
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1, 0.15, 1), tc(0xe2453c)); seat.position.y = 0.6; g.add(seat);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.15), tc(0xe2453c)); back.position.set(0, 1.1, -0.45); g.add(back);
+        for (const [lx, lz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), tc(0x2a2d34)); l.position.set(lx, 0.3, lz); g.add(l); }
+        g.position.set(x, 0, z); g.rotation.y = -a - Math.PI / 2; world.add(g); M.chairs.push({ g, x, z, by: null });
+      }
+    },
+    update(dt) {
+      const M = mg, live = mode === 'chairs';
+      M.ball.rotation.y += dt * 0.8;
+      if (live) game.time += dt;
+      M.t -= dt;
+      const music = M.phase === 'music';
+      // während der Musik muss man außen um die Stühle herum tanzen
+      if (live && music) { const r = Math.hypot(P.pos.x, P.pos.z); if (r < 4.8) { const k = 4.8 / (r || 1); P.pos.x = (r ? P.pos.x : 1) * k; P.pos.z *= k; } }
+      if (music) { if ((M.note = (M.note || 0) - dt) <= 0) { M.note = 0.32; beep(Math.random() < 0.5 ? 'equip' : 'coin'); } M.floor.forEach((f, i) => f.visible = (Math.floor(tAll * 3) + i) % 3 !== 0); }
+      const all = [M.me || (M.me = { isP: true, pos: P.pos }), ...M.npcs.filter(n => !n.out)];
+      if (live && music && M.t <= 0) { M.phase = 'stop'; M.t = 4; toast('Musik aus! Schnell auf einen Stuhl!'); beep('bonk'); M.chairs.forEach(c => c.by = null); M.npcs.forEach(n => n.wait = n.react); }
+      if (live && M.phase === 'stop') {
+        // Stühle besetzen
+        for (const c of M.chairs) if (!c.by) for (const o of all) { if (M.chairs.some(c2 => c2.by === o)) continue; if (Math.hypot(o.pos.x - c.x, o.pos.z - c.z) < 0.9) { c.by = o; if (o.isP) { beep('check'); feed('Du hast einen Stuhl!'); } break; } }
+        const free = M.chairs.filter(c => !c.by).length;
+        if (free === 0 || M.t <= 0) {
+          const loser = all.filter(o => !M.chairs.some(c => c.by === o));
+          for (const o of loser) {
+            if (o.isP) { if (!isGod()) return mgEnd(false, 'Kein Stuhl mehr frei!', [['Runden geschafft', M.round], ['Übrig', all.length]], M.round * 3); }
+            else { o.out = true; o.g.visible = false; popFx(o.pos.clone().add(new V3(0, 1, 0)), 0xff6fae); feed(o.name + ' ist raus'); }
+          }
+          M.round++; earn(2);
+          const left = M.npcs.filter(n => !n.out).length;
+          if (left === 0) return mgEnd(true, 'Du hast den letzten Stuhl!', [['Runden', M.round]], 35);
+          MINI.chairs.setChairs(left); M.phase = 'music'; M.t = 5 + Math.random() * 5;
+        }
+      }
+      for (const n of M.npcs) {
+        if (n.out) continue;
+        let mv = false;
+        if (live && M.phase === 'music') { n.ang += dt * 0.55; mv = npcStep(n, Math.cos(n.ang) * 6, Math.sin(n.ang) * 6, n.sp * 0.6, dt); }
+        else if (live && M.phase === 'stop') {
+          n.wait -= dt;
+          const mine = M.chairs.find(c => c.by === n);
+          if (mine) { n.pos.set(mine.x, 0.25, mine.z); n.facing = mine.g.rotation.y + Math.PI; }
+          else if (n.wait <= 0) { let best = null, bd = 1e9; for (const c of M.chairs) if (!c.by) { const d = Math.hypot(c.x - n.pos.x, c.z - n.pos.z); if (d < bd) { bd = d; best = c; } } if (best) mv = npcStep(n, best.x, best.z, n.sp, dt); }
+        }
+        if (M.phase === 'music') n.pos.y = 0;
+        npcAnim(n, mv, dt);
+      }
+    },
+    stats: () => `<span class="pill" style="background:${mg.phase === 'music' ? '#8b5cd6;color:#fff' : '#e2453c;color:#fff'}"><b>${mg.phase === 'music' ? 'Musik läuft …' : 'STUHL SUCHEN!'}</b></span>` + pill('Stühle', mg.chairs.length) + pill('Spieler', mg.npcs.filter(n => !n.out).length + 1)
+  },
+
+  // ---------------- Piraten-Kanonen ----------------
+  pirate: {
+    name: 'Piraten-Kanonen', prev: [[22, 14, 22], [0, 0, 0]], color: '#d6ecff',
+    desc: 'Thema Piraten: Feindliche Schiffe schießen auf euer Deck! Wo ein roter Kreis erscheint, schlägt gleich eine Kanonenkugel ein. Wer drei Mal getroffen wird oder ins Wasser fällt, ist raus.',
+    hint: () => isTouch ? 'Joystick laufen · roten Kreisen ausweichen · nicht ins Wasser fallen!' : 'WASD laufen · roten Kreisen ausweichen · nicht ins Wasser fallen!',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(5);
+      const sea = new THREE.Mesh(new THREE.BoxGeometry(260, 0.4, 260), tc(0x2f86d6)); sea.position.y = -3; world.add(sea);
+      plat(0, 0, 0, 16, 34, 0xa8743f);
+      for (let z = -16; z <= 16; z += 2) { const l = new THREE.Mesh(new THREE.BoxGeometry(16, 0.02, 0.08), tc(0x7a5230)); l.position.set(0, 0.01, z); world.add(l); }
+      addBox(0, -1.5, 0, 14, 2, 34, 0x6b4426);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 14, 10), tc(0x6b4426)); mast.position.set(0, 7, -3); world.add(mast);
+      addBox(0, 2, -3, 0.8, 4, 0.8, 0x6b4426);
+      const sail = new THREE.Mesh(new THREE.BoxGeometry(9, 6, 0.1), tc(0xf4efe2)); sail.position.set(0, 8.5, -2.6); world.add(sail);
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 0.05), tc(0x1d1d1d)); flag.position.set(1, 13.6, -3); world.add(flag);
+      for (const [x, z] of [[-34, -10], [36, 8]]) { const s2 = new THREE.Group(); const hull = new THREE.Mesh(new THREE.BoxGeometry(6, 2, 16), tc(0x4a2e1a)); hull.position.y = -1.5; s2.add(hull); const sl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 5, 6), tc(0x2a2a2a)); sl.position.y = 3; s2.add(sl); s2.position.set(x, 0, z); world.add(s2); }
+      const M = { npcs: [], balls: [], spawnT: 1.5, time: 75, lives: 3 };
+      npcNames(6).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, (k % 2 ? 4 : -4), 0, -12 + k * 5), { sp: 5.5 + Math.random() * 1.5, lives: 3, out: false, vy: 0, kx: 0, kz: 0 })));
+      setSpawn(0, 0, 10);
+      return M;
+    },
+    update(dt) {
+      const M = mg, live = mode === 'pirate';
+      if (live) { M.time -= dt; game.time += dt; }
+      const rate = Math.max(0.28, 0.9 - (75 - M.time) * 0.009);
+      if (live && (M.spawnT -= dt) <= 0) {
+        M.spawnT = rate;
+        const aimAt = Math.random() < 0.35 ? (Math.random() < 0.5 ? P.pos : (M.npcs.filter(n => !n.out)[0] || { pos: P.pos }).pos) : null;
+        const x = aimAt ? aimAt.x + (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 14, z = aimAt ? aimAt.z + (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 32;
+        const ring = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.03, 24), new THREE.MeshBasicMaterial({ color: 0xe2453c, transparent: true, opacity: 0.45 })); ring.position.set(x, 0.03, z); world.add(ring);
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), tc(0x2a2d34)); ball.position.set(x, 30, z); world.add(ball);
+        M.balls.push({ ring, ball, x, z, t: 1.3 });
+      }
+      for (let i = M.balls.length - 1; i >= 0; i--) {
+        const b = M.balls[i]; b.t -= dt; b.ball.position.y = Math.max(0.4, b.t / 1.3 * 30); b.ring.material.opacity = 0.3 + Math.sin(tAll * 20) * 0.15;
+        if (b.t > 0) continue;
+        popFx(new V3(b.x, 0.5, b.z), 0xff8a2b); beep('bonk'); world.remove(b.ring); world.remove(b.ball); M.balls.splice(i, 1);
+        if (live && Math.hypot(P.pos.x - b.x, P.pos.z - b.z) < 2.2 && P.pos.y < 2 && !isGod()) {
+          M.lives--; hurtFlash(); const d = Math.hypot(P.pos.x - b.x, P.pos.z - b.z) || 1; P.vel.x += (P.pos.x - b.x) / d * 12; P.vel.z += (P.pos.z - b.z) / d * 12; P.vel.y = 9;
+          if (M.lives <= 0) return mgEnd(false, 'Versenkt!', [['Überlebt', fmt(game.time)], ['Übrig', M.npcs.filter(n => !n.out).length]], Math.floor(game.time / 5));
+        }
+        for (const n of M.npcs) if (!n.out && Math.hypot(n.pos.x - b.x, n.pos.z - b.z) < 2.2) { n.lives--; const d = Math.hypot(n.pos.x - b.x, n.pos.z - b.z) || 1; n.kx = (n.pos.x - b.x) / d * 7; n.kz = (n.pos.z - b.z) / d * 7; n.vy = 8; if (n.lives <= 0) { n.out = true; explode(n.look, n.pos.clone(), n.facing, n.g.userData, new V3(0, 5, 0)); n.g.visible = false; feed(n.name + ' ist raus!'); earn(2); } }
+      }
+      if (live && P.pos.y < -2.5 && !isGod()) return mgEnd(false, 'Ins Wasser gefallen!', [['Überlebt', fmt(game.time)]], Math.floor(game.time / 5));
+      for (const n of M.npcs) {
+        if (n.out) continue;
+        let mv = false;
+        if (live) {
+          const danger = M.balls.find(b => Math.hypot(n.pos.x - b.x, n.pos.z - b.z) < 2.8);
+          if (danger) { const dx = n.pos.x - danger.x, dz = n.pos.z - danger.z, d = Math.hypot(dx, dz) || 1; mv = npcStep(n, n.pos.x + dx / d * 3, n.pos.z + dz / d * 3, n.sp, dt); }
+          else if (!n.tgt || Math.hypot(n.tgt[0] - n.pos.x, n.tgt[1] - n.pos.z) < 0.5) n.tgt = [(Math.random() - 0.5) * 11, (Math.random() - 0.5) * 28];
+          else mv = npcStep(n, n.tgt[0], n.tgt[1], n.sp * 0.6, dt);
+          n.pos.x += n.kx * dt; n.pos.z += n.kz * dt; n.kx *= 0.9; n.kz *= 0.9;
+          n.pos.x = Math.max(-7.4, Math.min(7.4, n.pos.x)); n.pos.z = Math.max(-16.4, Math.min(16.4, n.pos.z));
+        }
+        npcGround(n, dt); npcAnim(n, mv, dt, n.pos.y > 0.05);
+      }
+      const left = M.npcs.filter(n => !n.out).length;
+      if (live && (M.time <= 0 || left === 0)) mgEnd(true, left === 0 ? 'Letzter Pirat an Bord!' : 'Überlebt!', [['Leben übrig', M.lives], ['Andere übrig', left]], 30);
+    },
+    stats: () => pill('Leben', '<span style="color:#e2453c">' + '&#9679;'.repeat(Math.max(0, mg.lives)) + '</span>') + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s') + pill('An Bord', mg.npcs.filter(n => !n.out).length + 1)
+  },
+
+  // ---------------- Wildwest-Duell ----------------
+  duel: {
+    name: 'Wildwest-Duell', prev: [[7, 4, 0], [0, 1.5, 0]], color: '#ffe6c0', click: true, solo: true,
+    desc: 'Thema Wilder Westen: Steh deinem Gegner gegenüber. Erst wenn JETZT erscheint, darfst du ziehen! Wer zu früh drückt, verliert die Runde. Wer zuerst 3 Runden gewinnt, ist der Sheriff.',
+    hint: () => isTouch ? 'Warten … und bei JETZT so schnell wie möglich tippen!' : 'Warten … und bei JETZT so schnell wie möglich klicken (oder J)!',
+    build() {
+      clearWorld(); setAtmosphere('day'); scene.background.set(0xf0c27a); scene.fog.color.set(0xf0c27a); scene.fog.near = 30; scene.fog.far = 120;
+      plat(0, 0, 0, 30, 60, 0xd9a868);
+      for (const [x, z, h, c] of [[-9, -14, 5, 0x9a6a3a], [-9, -2, 4, 0xb07a44], [-9, 10, 6, 0x8a5a30], [9, -12, 4.5, 0xa87040], [9, 0, 5.5, 0x8a5a30], [9, 12, 4, 0xb07a44]]) { addBox(x, h / 2, z, 6, h, 9, c); addBox(x + Math.sign(-x) * 3.2, h - 0.6, z, 0.4, 1.2, 9, 0x5a3a20); }
+      for (const [x, z] of [[-4, -20], [4, 18]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 3, 8), tc(0x4f9a4c)); c.position.set(x, 1.5, z); world.add(c); }
+      const opp = npcMake('Sheriff Rost', 0, 0, -6); opp.facing = 0; npcAnim(opp, false, 0);
+      const M = { opp, me: 0, them: 0, round: 0, state: 'pause', t: 1.5, react: 0.6, times: [] };
+      setSpawn(0, 0, 6);
+      return M;
+    },
+    update(dt) {
+      const M = mg, live = mode === 'duel';
+      P.pos.x = 0; P.pos.z = 6; P.vel.x = 0; P.vel.z = 0; P.facing = Math.PI;
+      cam.yaw = Math.PI / 2.4; cam.pitch = 0.18; cam.dist = 9;
+      M.camAt = (M.camAt || new V3()).set(0, 1.6, 0);
+      npcAnim(M.opp, false, dt);
+      const ua = avatar.userData, uo = M.opp.g.userData;
+      const press = live && actionPressed(M);
+      if (!live) return;
+      game.time += dt; M.t -= dt;
+      if (M.state === 'pause' && M.t <= 0) { M.state = 'wait'; M.t = 1.8 + Math.random() * 3; M.react = Math.max(0.26, 0.62 - M.round * 0.06) + Math.random() * 0.12; toast('Bereit …'); }
+      else if (M.state === 'wait') {
+        if (press) { M.them++; M.state = 'pause'; M.t = 2; toast('Zu früh! Runde verloren'); beep('die'); MINI.duel.check(); return; }
+        if (M.t <= 0) { M.state = 'go'; M.goT = 0; beep('check'); }
+      } else if (M.state === 'go') {
+        M.goT += dt;
+        if (press) { M.me++; M.times.push(M.goT); M.state = 'pause'; M.t = 2; beep('pew'); toast('Treffer! ' + Math.round(M.goT * 1000) + ' ms'); uo.armR.rotation.x = 0; M.opp.g.rotation.x = -0.4; ua.armR.rotation.x = -1.57; MINI.duel.check(); return; }
+        if (M.goT >= M.react) { M.them++; M.state = 'pause'; M.t = 2; beep('pew'); hurtFlash(); toast('Zu langsam!'); uo.armR.rotation.x = -1.57; MINI.duel.check(); return; }
+      }
+      if (M.state !== 'pause' || M.t < 1.2) M.opp.g.rotation.x = 0;
+    },
+    check() { const M = mg; M.round++; if (M.me >= 3) mgEnd(true, 'Du bist der Sheriff!', [['Runden', M.me + ' : ' + M.them], ['Schnellste Reaktion', M.times.length ? Math.round(Math.min(...M.times) * 1000) + ' ms' : '-']], 30); else if (M.them >= 3) mgEnd(false, 'Duell verloren', [['Runden', M.me + ' : ' + M.them]], 5); },
+    stats: () => (mg.state === 'go' ? '<span class="pill" style="background:#e2453c;color:#fff;font-size:1.3em"><b>JETZT!</b></span>' : mg.state === 'wait' ? '<span class="pill"><b>Warten …</b></span>' : '') + `<span class="pill">Du <b>${mg.me} : ${mg.them}</b> Gegner</span>`
+  },
+
+  // ---------------- Dino-Flucht ----------------
+  dino: {
+    name: 'Dino-Flucht', prev: [[9, 7, -9], [0, 4, 16]], color: '#e2f2c8',
+    desc: 'Thema Dinosaurier: Ein riesiger Dino jagt euch durch den Dschungel! Lauf, spring über die Baumstämme und erreich den Rettungs-Hubschrauber.',
+    hint: () => isTouch ? 'Joystick nach vorne · Sprung-Knopf: über die Stämme' : 'W rennen · Leertaste: über die Baumstämme springen',
+    build() {
+      clearWorld(); setAtmosphere('day'); addClouds(4);
+      plat(0, 0, -120, 16, 280, 0x8fc46a);
+      const path = new THREE.Mesh(new THREE.BoxGeometry(10, 0.03, 280), tc(0xc8a46a)); path.position.set(0, 0.016, -120); world.add(path);
+      for (let z = 15; z > -255; z -= 9) for (const s2 of [-1, 1]) { const x = s2 * (9 + Math.random() * 3); addBox(x, 2, z, 0.8, 4, 0.8, 0x7a5230); const lf = new THREE.Mesh(new THREE.SphereGeometry(2.4, 8, 6), tc([0x2f8a3c, 0x3fa04c, 0x26803a][Math.floor(Math.random() * 3)])); lf.position.set(x, 4.8, z); world.add(lf); }
+      for (const [x, w] of [[-8.3, 0.6], [8.3, 0.6]]) addBox(x, 1, -120, w, 2, 280, 0x3f7a34);
+      const logs = [];
+      for (let z = -14; z > -240; z -= 16 + Math.random() * 8) { const w = 4 + Math.random() * 6, x = (Math.random() - 0.5) * (16 - w - 1.4); addBox(x, 0.4, z, w, 0.8, 0.8, 0x8b5a2b); logs.push(z); }
+      // Dino aus Klötzen
+      const dino = new THREE.Group(), dg = 0x4f8a3a, dk = 0x3a6a2a;
+      const part = (w, h, d, x, y, z, c = dg) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), tc(c)); m.position.set(x, y, z); m.castShadow = true; dino.add(m); return m; };
+      part(3, 3, 5, 0, 4.5, 0); part(2.2, 2, 3, 0, 6.6, -3.2); const jaw = part(2, 0.6, 2.6, 0, 5.4, -3.4, dk);
+      for (const x of [-0.7, 0.7]) part(0.35, 0.35, 0.2, x, 7.1, -4.6, 0xffd23f);
+      part(1.6, 1.6, 5, 0, 4.2, 4.2); part(0.9, 0.9, 3, 0, 3.8, 7.6, dk);
+      const legL = part(1.2, 3, 1.4, -1, 1.5, 0.5, dk), legR = part(1.2, 3, 1.4, 1, 1.5, 0.5, dk);
+      for (const x of [-1.3, 1.3]) part(0.4, 0.4, 1, x, 3.8, -2.4, dk);
+      dino.position.set(0, 0, 24); world.add(dino);
+      const heli = new THREE.Group(); const hb = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 5), tc(0xe2453c)); hb.position.y = 1.4; heli.add(hb);
+      const rot = new THREE.Mesh(new THREE.BoxGeometry(9, 0.1, 0.4), tc(0x2a2d34)); rot.position.y = 3; heli.add(rot); heli.position.set(0, 0, -255); world.add(heli);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.02, 24), goalMat); pad.position.set(0, 0.012, -250); world.add(pad);
+      const M = { dino, jaw, legL, legR, rot, dz: 24, npcs: [], logs, done: [], count: 3 };
+      npcNames(5).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, -4 + k * 2, 0, 4 + (k % 2)), { sp: 8.1 + Math.random() * 1, vy: 0, out: false, safe: false })));
+      setSpawn(0, 0, 3);
+      return M;
+    },
+    update(dt) {
+      const M = mg, live = mode === 'dino';
+      M.rot.rotation.y += dt * 12;
+      if (M.count > 0) { const b = Math.ceil(M.count); M.count -= dt; if (Math.ceil(M.count) !== b) { toast(M.count > 0 ? String(Math.ceil(M.count)) : 'Lauf!'); beep(M.count > 0 ? 'equip' : 'bonk'); } if (live) { P.pos.z = Math.max(P.pos.z, 2.5); } return; }
+      if (live) game.time += dt;
+      // der Dino wird immer schneller, aber man kann ihm entkommen
+      const dsp = Math.min(9.6, 6.5 + game.time * 0.12);
+      if (live) M.dz -= dsp * dt;
+      M.dino.position.z = M.dz; M.dino.position.y = Math.abs(Math.sin(tAll * 7)) * 0.3;
+      M.legL.rotation.x = Math.sin(tAll * 7) * 0.6; M.legR.rotation.x = -Math.sin(tAll * 7) * 0.6; M.jaw.rotation.x = Math.max(0, Math.sin(tAll * 4)) * 0.4;
+      if ((M.roar = (M.roar || 2) - dt) <= 0) { M.roar = 4 + Math.random() * 3; beep('bonk'); }
+      const bite = M.dz - 4.2;
+      for (const n of M.npcs) {
+        if (n.out) continue;
+        let mv = false;
+        if (live && !n.safe) {
+          const nextLog = M.logs.find(z => z < n.pos.z + 0.2 && z > n.pos.z - 1.8);
+          if (nextLog !== undefined && n.pos.y <= 0 && n.vy === 0 && insideSolid(n.pos.x, 0.4, nextLog, 0.4)) { if (Math.random() < 0.08) n.trip = 0.6; else n.vy = 9; }
+          n.trip = Math.max(0, (n.trip || 0) - dt);
+          n.pos.z -= (n.trip > 0 ? 2 : n.sp) * dt; mv = true; n.facing = Math.PI;
+          npcGround(n, dt);
+          if (n.pos.z < -250) { n.safe = true; M.done.push(n.name); }
+          if (n.pos.z > bite) { n.out = true; explode(n.look, n.pos.clone(), n.facing, n.g.userData, new V3(0, 6, -4)); n.g.visible = false; feed('Der Dino hat ' + n.name + ' erwischt!'); }
+        }
+        npcAnim(n, mv, dt, n.pos.y > 0.05);
+      }
+      if (live && P.pos.z > bite && !isGod()) { beep('die'); return mgEnd(false, 'Der Dino hat dich erwischt!', [['Geschafft', Math.max(0, Math.round(3 - P.pos.z)) + ' m von 253 m']], Math.floor((3 - P.pos.z) / 25)); }
+      if (live && P.pos.z < -250) { const place = M.done.length + 1; mgEnd(true, place === 1 ? 'Als Erster gerettet!' : 'Gerettet!', [['Zeit', fmt(game.time)], ['Platz', place], ['Erwischt', M.npcs.filter(n => n.out).length]], place === 1 ? 35 : 20); }
+    },
+    stats: () => pill('Bis zum Hubschrauber', Math.max(0, Math.round(P.pos.z + 250)) + ' m') + pill('Dino', Math.max(0, Math.round(mg.dz - 4.2 - P.pos.z)) + ' m hinter dir')
+  },
+
+  // ---------------- Kürbis-Jagd ----------------
+  pumpkin: {
+    name: 'Kürbis-Jagd', prev: [[24, 14, 24], [0, 0, 0]], color: '#ffe0c0',
+    desc: 'Thema Halloween: Sammle auf dem nächtlichen Friedhof so viele Kürbisse wie möglich. Aber Vorsicht vor den Geistern, sie stehlen dir Kürbisse! Wer nach 90 Sekunden die meisten hat, gewinnt.',
+    hint: () => isTouch ? 'Joystick laufen · Kürbisse einsammeln · Geistern ausweichen' : 'WASD laufen · Kürbisse einsammeln · Geistern ausweichen',
+    build() {
+      clearWorld(); setAtmosphere('night'); scene.fog.near = 14; scene.fog.far = 60; hemi.intensity = 0.45; sun.intensity = 0.25; flash.intensity = 0; glowL.intensity = 0;
+      plat(0, 0, 0, 50, 50, 0x3a4a34);
+      for (const [x, z, w, d] of [[0, -25.5, 50, 1], [0, 25.5, 50, 1], [-25.5, 0, 1, 50], [25.5, 0, 1, 50]]) addBox(x, 0.9, z, w, 1.8, d, 0x2a2d34);
+      for (let k = 0; k < 22; k++) { const x = (Math.random() - 0.5) * 44, z = (Math.random() - 0.5) * 44; if (Math.hypot(x, z) < 4) continue; addBox(x, 0.7, z, 1, 1.4, 0.35, 0x8a8f99); }
+      const moon = new THREE.Mesh(new THREE.SphereGeometry(5, 20, 14), new THREE.MeshBasicMaterial({ color: 0xfff1c0 })); moon.position.set(30, 40, -60); world.add(moon);
+      const M = { list: [], ghosts: [], score: 0, time: 90, npcs: [], hurt: 0 };
+      mg = M; for (let k = 0; k < 22; k++) MINI.pumpkin.spawn();
+      for (let k = 0; k < 4; k++) {
+        const g = new THREE.Group(); const body = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), new THREE.MeshBasicMaterial({ color: 0xeef2ff, transparent: true, opacity: 0.8 })); body.scale.y = 1.3; g.add(body);
+        for (const x of [-0.3, 0.3]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 4), new THREE.MeshBasicMaterial({ color: 0x1d2a44 })); e.position.set(x, 0.3, -0.8); g.add(e); }
+        g.position.set((k % 2 ? 1 : -1) * 15, 1.6, (k < 2 ? 1 : -1) * 15); world.add(g); M.ghosts.push({ g, sp: 3.4 + k * 0.3 });
+      }
+      npcNames(4).forEach((n, k) => M.npcs.push(Object.assign(npcMake(n, -3 + k * 2, 0, -2), { score: 0, sp: 6 + Math.random(), hurt: 0 })));
+      setSpawn(0, 0, 3);
+      return M;
+    },
+    spawn() {
+      let x = 0, z = 0; for (let t = 0; t < 20; t++) { x = (Math.random() - 0.5) * 44; z = (Math.random() - 0.5) * 44; if (!insideSolid(x, 0.5, z, 0.6)) break; }
+      const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), tc(0xff8a1f)); b.scale.y = 0.8; b.position.y = 0.38; g.add(b);
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.1), tc(0x3f7a34)); st.position.y = 0.8; g.add(st);
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.05), new THREE.MeshBasicMaterial({ color: 0xffe36b })); glow.position.set(0, 0.36, 0.42); g.add(glow);
+      g.position.set(x, 0, z); world.add(g); mg.list.push({ g, x, z });
+    },
+    update(dt) {
+      const M = mg, live = mode === 'pumpkin';
+      if (live) { M.time -= dt; game.time += dt; }
+      M.hurt = Math.max(0, M.hurt - dt);
+      const pick = (o, i) => { const p = M.list[i]; world.remove(p.g); M.list.splice(i, 1); MINI.pumpkin.spawn(); };
+      for (let i = M.list.length - 1; i >= 0; i--) { const p = M.list[i]; if (live && Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < 1.1) { pick('p', i); M.score++; earn(1); beep('coin'); } }
+      const all = [{ isP: true, pos: P.pos }, ...M.npcs];
+      for (const gh of M.ghosts) {
+        let best = null, bd = 1e9; for (const o of all) { const d = Math.hypot(o.pos.x - gh.g.position.x, o.pos.z - gh.g.position.z); if (d < bd) { bd = d; best = o; } }
+        if (live && best) {
+          const dx = best.pos.x - gh.g.position.x, dz = best.pos.z - gh.g.position.z, d = Math.hypot(dx, dz) || 1;
+          gh.g.position.x += dx / d * gh.sp * dt; gh.g.position.z += dz / d * gh.sp * dt; gh.g.rotation.y = Math.atan2(-dx, -dz);
+          if (d < 1.2) {
+            if (best.isP && M.hurt <= 0 && !isGod()) { const lost = Math.min(3, M.score); M.score -= lost; M.hurt = 2; hurtFlash(); beep('bonk'); if (lost) feed('Ein Geist hat dir ' + lost + ' Kürbisse geklaut!'); gh.g.position.x -= dx / d * 6; gh.g.position.z -= dz / d * 6; }
+            else if (!best.isP && best.hurt <= 0) { best.score = Math.max(0, best.score - 3); best.hurt = 2; gh.g.position.x -= dx / d * 6; gh.g.position.z -= dz / d * 6; }
+          }
+        }
+        gh.g.position.y = 1.6 + Math.sin(tAll * 2 + gh.sp) * 0.3;
+      }
+      for (const n of M.npcs) {
+        let mv = false; n.hurt = Math.max(0, n.hurt - dt);
+        if (live) {
+          const near = M.ghosts.find(gh => Math.hypot(gh.g.position.x - n.pos.x, gh.g.position.z - n.pos.z) < 4);
+          if (near) mv = npcFlee(n, near.g.position.x, near.g.position.z, n.sp, dt, 23);
+          else {
+            if (!n.target || !M.list.includes(n.target)) { let best = null, bd = 1e9; for (const p of M.list) { const d = Math.hypot(p.x - n.pos.x, p.z - n.pos.z) + Math.random() * 5; if (d < bd) { bd = d; best = p; } } n.target = best; }
+            if (n.target) mv = npcChase(n, n.target.x, n.target.z, n.sp, dt);
+          }
+          const i = n.target ? M.list.indexOf(n.target) : -1;
+          if (i >= 0 && Math.hypot(n.target.x - n.pos.x, n.target.z - n.pos.z) < 1.1) { pick(n, i); n.score++; n.target = null; }
+        }
+        npcAnim(n, mv, dt);
+      }
+      if (live && M.time <= 0) { const place = 1 + M.npcs.filter(n => n.score > M.score).length; mgEnd(place === 1, place === 1 ? 'Kürbis-König!' : 'Platz ' + place, [['Deine Kürbisse', M.score], ['Bester Gegner', Math.max(...M.npcs.map(n => n.score))]], place === 1 ? 30 : 6); }
+    },
+    stats: () => pill('Kürbisse', mg.score) + pill('Bester Gegner', Math.max(0, ...mg.npcs.map(n => n.score))) + pill('Zeit', Math.max(0, Math.ceil(mg.time)) + ' s')
   }
 });
 // Fußball-Muster: 12 schwarze Fünfecke (wie ein echter Ball) auf weißem Grund, mit feinen Nähten

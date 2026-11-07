@@ -13,7 +13,8 @@ const ROOT = path.join(__dirname, '..');
 const FILES = { '/index.html': 'text/html; charset=utf-8', '/sw.js': 'text/javascript; charset=utf-8', '/manifest.webmanifest': 'application/manifest+json', '/icon-192.png': 'image/png', '/icon-512.png': 'image/png', '/apple-touch-icon.png': 'image/png' };
 const GAMES = { obby: 'Himmelsparcours', build: 'Baukasten', race: 'Klotz-Rennen', moto: 'Turbo-Rennen', skate: 'Skatepark', fight: 'Box-Ring', blaster: 'Blaster-Arena', horror: 'Gruselvilla',
   lava: 'Lava-Flucht', colors: 'Farb-Stopp', rush: 'Münzrausch', tag: 'Fangen', fall: 'Fallende Felder', tower: 'Himmelsturm', maze: 'Labyrinth', sumo: 'Schubs-Arena', soccer: 'Klotz-Fußball',
-  ochs: 'Ochs am Berg', potato: 'Heiße Kartoffel', targets: 'Zielschießen', stack: 'Stapel-Turm', treasure: 'Schatzsuche', trampo: 'Trampolin-Park', snow: 'Schneeballschlacht', sprint: 'Hürdenlauf', moon: 'Mond-Hüpfer', balloon: 'Ballon-Jagd' };
+  ochs: 'Ochs am Berg', potato: 'Heiße Kartoffel', targets: 'Zielschießen', stack: 'Stapel-Turm', treasure: 'Schatzsuche', trampo: 'Trampolin-Park', snow: 'Schneeballschlacht', sprint: 'Hürdenlauf', moon: 'Mond-Hüpfer', balloon: 'Ballon-Jagd',
+  zombie: 'Zombie-Flucht', chairs: 'Reise nach Jerusalem', pirate: 'Piraten-Kanonen', duel: 'Wildwest-Duell', dino: 'Dino-Flucht', pumpkin: 'Kürbis-Jagd' };
 const GAME_AGE = { horror: 8, fight: 8, blaster: 10 };
 const ROOM_MAX = 10;
 const TOKEN_DAYS = 30;
