@@ -1945,17 +1945,22 @@ function updateDebris(dt) {
 const cam = { yaw: 0, pitch: 0.38, dist: 11 };
 const camTarget = new V3();
 const playingGame = () => mode === 'menu' ? null : mode === 'win' ? lastGame : mode;
+let camColDist = null;
 function placeCamera() {
   const cp = Math.cos(cam.pitch);
   const dx = Math.sin(cam.yaw) * cp, dy = Math.sin(cam.pitch), dz = Math.cos(cam.yaw) * cp;
   let dist = cam.dist;
   // In engen Gängen rückt die Kamera näher, statt in die Wand zu schauen
   if (['horror', 'maze'].includes(playingGame())) {
+    let want = dist;
     for (let t = 0.5; t < dist; t += 0.2) {
       const x = camTarget.x + dx * t, y = camTarget.y + dy * t, z = camTarget.z + dz * t;
-      if (solids.some(sd => !sd.off && x > sd.box.min.x - 0.25 && x < sd.box.max.x + 0.25 && y > sd.box.min.y - 0.25 && y < sd.box.max.y + 0.25 && z > sd.box.min.z - 0.25 && z < sd.box.max.z + 0.25)) { dist = Math.max(1.2, t - 0.3); break; }
+      if (solids.some(sd => !sd.off && x > sd.box.min.x - 0.45 && x < sd.box.max.x + 0.45 && y > sd.box.min.y - 0.45 && y < sd.box.max.y + 0.45 && z > sd.box.min.z - 0.45 && z < sd.box.max.z + 0.45)) { want = Math.max(1.6, t - 0.5); break; }
     }
-  }
+    // weich heranrücken und langsam wieder zurück, statt zu springen
+    camColDist = camColDist == null ? want : camColDist + (want - camColDist) * (want < camColDist ? 0.35 : 0.06);
+    dist = Math.min(dist, camColDist);
+  } else camColDist = null;
   if (firstPerson()) {
     // Eigene Sicht: Kamera im Kopf, Blick in die Richtung, in die man schaut
     const eye = (profile.shape.height || 1) * 0.3;
@@ -2018,7 +2023,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.1';
+const BUILD = '2026-11-07.2';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3089,7 +3094,7 @@ function updateSkate(dt) {
       if (Math.abs(slope) > 1.6) { S.air = true; S.vert = true; S.vy = Math.abs(S.speed) * 0.95; S.airT = 0; S.spinV = 0; }
       else { S.speed *= -0.3; beep('bonk'); }
     } else if (nH < P.pos.y - 0.25) { S.air = true; S.vy = Math.max(0, slope * S.speed); S.airT = 0; S.spinV = 0; P.pos.x = nx; P.pos.z = nz; }
-    else if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y)) { S.speed *= -0.15; beep('bonk'); }
+    else if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || rampSideBlock(P.pos.x, P.pos.z, nx, nz, P.pos.y)) { S.speed *= -0.15; beep('bonk'); }
     else P.pos.set(nx, nH, nz);
     // Kombo endet, wenn man eine Weile ohne Trick fährt
     if (S.comboN && (S.comboT -= dt) <= 0) bankCombo(S);
@@ -3158,6 +3163,19 @@ function updateSkate(dt) {
   let dy = (S.h + Math.PI) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, (Math.abs(dy) > 1.5 ? 7 : 4.5) * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
+}
+// Fährt man von der Seite (oder von hinten) gegen eine Rampe? Dann prallt man ab, statt hinaufzuspringen.
+function rampSideBlock(x0, z0, x1, z1, y) {
+  for (const r of RAMPS) {
+    const fx = Math.sin(r.a), fz = Math.cos(r.a);
+    const u0 = (x0 - r.x) * fx + (z0 - r.z) * fz, v0 = (x0 - r.x) * fz - (z0 - r.z) * fx;
+    const u1 = (x1 - r.x) * fx + (z1 - r.z) * fz, v1 = (x1 - r.x) * fz - (z1 - r.z) * fx;
+    const len = r.t === 'qp' ? r.r + r.d : r.l, inside1 = Math.abs(v1) <= r.w / 2 && u1 >= 0 && u1 <= len;
+    if (!inside1) continue;
+    const fromSide = Math.abs(v0) > r.w / 2 || u0 > len;
+    if (fromSide && rampH(r, x1, z1) > y + 0.12) return true;
+  }
+  return false;
 }
 // Stößt man unterhalb der Stange gegen eine Rail?
 function railBlocks(x0, z0, x1, z1, y) {
@@ -4130,12 +4148,12 @@ const MINI = {
 
   // ---------------- Labyrinth ----------------
   maze: {
-    name: 'Labyrinth', prev: [[-21.5, 2.2, -27], [-19, 1.6, -18]], color: '#e0e6f5', solo: true,
+    name: 'Labyrinth', prev: [[-38, 16, -38], [-8, 0, -8]], color: '#e0e6f5', solo: true,
     desc: 'Jedes Mal ein neues Labyrinth! Finde den goldenen Ausgang so schnell wie möglich. Unterwegs liegen Münzen.',
     hint: () => isTouch ? 'Joystick laufen · finde den goldenen Ausgang' : 'WASD laufen · Maus ziehen: umschauen · finde den goldenen Ausgang',
     build() {
       clearWorld(); setAtmosphere('day'); addClouds(2);
-      const G2 = 11, C = 4.4, off = -(G2 * C) / 2;
+      const G2 = 11, C = 5.4, off = -(G2 * C) / 2;
       plat(0, 0, 0, G2 * C + 2, G2 * C + 2, 0xd9d2c0);
       // Labyrinth mit Tiefensuche
       const wallsH = Array.from({ length: G2 + 1 }, () => Array(G2).fill(true)), wallsV = Array.from({ length: G2 }, () => Array(G2 + 1).fill(true));
@@ -4163,7 +4181,7 @@ const MINI = {
       const M = mg, live = mode === 'maze';
       if (live) game.time += dt;
       // nicht von oben schummeln: Kamera bleibt nah und flach
-      cam.dist = Math.min(cam.dist, 4.2); cam.pitch = Math.min(cam.pitch, 0.32);
+      cam.dist = Math.min(cam.dist, 8); cam.pitch = Math.min(cam.pitch, 0.3);
       mgCoins(M.coins, dt, live);
       if (live && Math.hypot(P.pos.x - M.ex, P.pos.z - M.ez) < 1.5) {
         const best = store.get('klotzwelt-labyrinth', 0), rec = !best || game.time < best; if (rec) store.set('klotzwelt-labyrinth', game.time);
