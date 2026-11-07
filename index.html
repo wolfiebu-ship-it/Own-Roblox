@@ -77,7 +77,7 @@ input { -webkit-user-select: text; user-select: text; }
 .game.race { background: #ffd9c9; }
 .game.horror { background: #d9d2f0; }
 
-.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; flex-shrink: 0; scrollbar-width: none; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; flex-shrink: 0; scrollbar-width: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chip { border: 2.5px solid var(--ink); border-radius: 999px; background: var(--paper); padding: 5px 12px; font-weight: 800; white-space: nowrap; font-size: 14px; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
@@ -2060,7 +2060,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.12';
+const BUILD = '2026-11-07.13';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2259,7 +2259,18 @@ function showTab(t) {
 }
 for (const b of $('tabs').children) b.onclick = () => showTab(b.dataset.tab);
 
+// Kategorie-Leisten: mit gedrückter Maus nach links/rechts ziehen, oder mit dem Mausrad schieben
+function dragScroll(el) {
+  if (el._ds) return; el._ds = true;
+  let sx = 0, sl = 0, down = false, moved = false;
+  el.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; down = true; moved = false; sx = e.clientX; sl = el.scrollLeft; });
+  addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 5) moved = true; if (moved) { el.scrollLeft = sl - dx; el.style.cursor = 'grabbing'; } });
+  addEventListener('pointerup', () => { down = false; el.style.cursor = ''; });
+  el.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+  el.addEventListener('wheel', e => { if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+}
 function chipRow(el, list, current, onPick) {
+  dragScroll(el);
   el.innerHTML = '';
   for (const [id, label] of list) {
     const b = document.createElement('button'); b.className = 'chip'; b.textContent = label;
@@ -3046,7 +3057,7 @@ function makeBoard(id, custom) {
   const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
   // Holzbrett (unten in der Brett-Farbe) und Griptape oben
   const body = new THREE.Mesh(deckGeo(BOARD_W, BOARD_L, BOARD_T, -BOARD_T / 2), tc(bd.deck)); body.castShadow = true; deck.add(body);
-  const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.05, BOARD_L - 0.06, 0.006, BOARD_T / 2 - 0.001), tc(bd.grip)); deck.add(grip);
+  const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.06, 1.2, 0.006, BOARD_T / 2 - 0.001), tc(bd.grip)); deck.add(grip);
   // Muster unten: Streifen (oder Flammen), bei Neon leuchtet es
   if (bd.custom) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W - 0.06, 1.2), toon('bpm-' + bd.pattern + bd.deck + '-' + bd.accent, { color: 0xffffff, map: patternTex(bd.pattern || 'none', bd.deck, bd.accent) })); pl.rotation.x = Math.PI / 2; pl.position.y = -BOARD_T / 2 - 0.003; deck.add(pl); }
   else { const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.006, 1.1), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe); }
@@ -3141,7 +3152,18 @@ function updateSkate(dt) {
   const ollie = ctl && jumpPressed; jumpPressed = false;
   S.crouch += ((S.air ? 0.2 : S.grind ? 0.6 : Math.abs(S.steer) * 0.25 + 0.1) - S.crouch) * Math.min(1, dt * 8);
 
-  if (S.grind) {
+  if (S.drop) {
+    // ---------- Drop-In: zur Kante drehen (0,3 s), über die Kante kippen (0,35 s), dann runterrollen ----------
+    const D2 = S.drop, d = D2.d; D2.t += dt;
+    const ex = d.x - Math.sin(d.h) * 0.3, ez = d.z - Math.cos(d.h) * 0.3; // Kante (Coping)
+    const a = Math.min(1, D2.t / 0.3), ea = a * a * (3 - 2 * a);
+    let dh = d.h - D2.h0; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); S.h = D2.h0 + dh * ea;
+    P.pos.x = D2.x0 + (ex - D2.x0) * ea; P.pos.z = D2.z0 + (ez - D2.z0) * ea;
+    const b2 = Math.max(0, Math.min(1, (D2.t - 0.3) / 0.35)), eb = b2 * b2;
+    S.dropP = eb * 0.85; // Brett-Nase kippt nach unten
+    if (b2 > 0) { P.pos.x = ex + (d.x - ex) * eb; P.pos.z = ez + (d.z - ez) * eb; P.pos.y = D2.y0 + (d.y - D2.y0) * eb; }
+    if (D2.t >= 0.65) { P.pos.set(d.x, d.y, d.z); S.h = d.h; S.speed = 6.5; S.drop = null; S.dropP = 0; S.dropT = 0.5; addTrick(S, 'Drop-In', 350); beep('whoosh'); }
+  } else if (S.grind) {
     // ---------- Grinden ----------
     const r = S.grind.r, ri = railInfo(r, P.pos.x, P.pos.z);
     S.speed = Math.max(6, Math.abs(S.speed) - 1.5 * dt);
@@ -3201,7 +3223,7 @@ function updateSkate(dt) {
     // Drop-In: oben auf einer Rampe stehen und die Drop-In-Taste drücken
     else if (ctl && keys.KeyV && !S.vHeld) {
       const d = dropInSpot(P.pos.x, P.pos.z, P.pos.y);
-      if (d) { P.pos.set(d.x, d.y, d.z); S.h = d.h; S.stance = 0; S.speed = 6; S.dropT = 0.5; addTrick(S, 'Drop-In', 350); beep('whoosh'); }
+      if (d) { S.drop = { t: 0, x0: P.pos.x, z0: P.pos.z, y0: P.pos.y, h0: S.h + S.stance, d }; S.stance = 0; S.speed = 0; S.kicks = 0; S.pushT = 0; }
       else feed('Für einen Drop-In fahr erst oben auf eine Rampe');
     }
     else if (nH > P.pos.y + 0.6) {
@@ -3411,7 +3433,7 @@ function poseSkater(S, dt, push) {
   const ease = p * p * (3 - 2 * p);
   const popPitch = S.pop > 0 ? -0.45 * Math.sin((1 - S.pop / 0.18) * Math.PI) : 0;
   S.airPitchS = (S.airPitchS || 0) + ((S.air ? (S.airPitch || 0) : 0) - (S.airPitchS || 0)) * Math.min(1, dt * 10);
-  const pitch = S.grind ? 0 : S.air ? popPitch + S.airPitchS : S.gpS;
+  const pitch = S.grind ? 0 : S.air ? popPitch + S.airPitchS : S.drop ? (S.dropP || 0) : S.gpS;
   const roll = S.flipT > 0 && kind !== 'shove' ? TRICKS[kind][2] * ease * Math.PI * 2 : 0;
   const shove = S.flipT > 0 && kind === 'shove' ? ease * Math.PI : 0;
   d.rotation.set(pitch, shove, roll + (S.air ? 0 : S.steer * 0.12));
@@ -3433,7 +3455,7 @@ function poseSkater(S, dt, push) {
   S.wobble = Math.max(0, (S.wobble || 0) - dt);
   const fallTilt = S.wobble > 0 ? Math.sin(S.wobble * 40) * 0.12 * (S.wobble / 0.35) : 0;
   S.dropT = Math.max(0, (S.dropT || 0) - dt);
-  avatar.rotation.set(S.pb > 0.5 ? 0 : lean + fallTilt, yaw + Math.PI / 2 * (1 - S.pb), S.pb > 0.5 ? 0 : phi + (S.dropT > 0 ? -0.4 * S.dropT * 2 : 0));
+  avatar.rotation.set(S.pb > 0.5 ? 0 : lean + fallTilt, yaw + Math.PI / 2 * (1 - S.pb), S.pb > 0.5 ? 0 : phi + (S.drop ? -0.45 * (S.dropP || 0) : S.dropT > 0 ? -0.4 * S.dropT * 2 : 0));
   // Beine: Füße auf dem Brett, beim Anschieben tritt der hintere Fuß
   // Beine: seitlich mit beiden Füßen auf dem Brett, oder beim Anschieben nach vorne schauen
   const spread = 0.2 + S.crouch * 0.1;
