@@ -131,6 +131,10 @@ function cleanProfile(p) {
   const s = p.shape || {};
   out.shape = { height: num(s.height, 0.85, 1.2, 1), width: num(s.width, 0.85, 1.35, 1), head: num(s.head, 0.85, 1.3, 1) };
   out.gender = p.gender === 'girl' || p.gender === 'boy' ? p.gender : null;
+  if (p.boardCustom && typeof p.boardCustom === 'object') {
+    const bc = p.boardCustom, col = v => Math.round(num(v, 0, 0xffffff, 0));
+    out.boardCustom = { deck: col(bc.deck), grip: col(bc.grip), wheels: col(bc.wheels), accent: col(bc.accent), pattern: ['none', 'stripes', 'flames', 'stars', 'checker', 'dots'].includes(bc.pattern) ? bc.pattern : 'none' };
+  }
   return out;
 }
 const roleOf = u => (D().users[u] && D().users[u].role) || null;
@@ -151,7 +155,7 @@ function meOf(u) {
   const usr = D().users[u];
   return { name: usr.name, age: ageGroup(usr.year), years: new Date().getFullYear() - usr.year, role: usr.role || null, owner: D().owner === u, noOwner: !ownerOk(), bans: bansOf(u), mail: (usr.mail || []).filter(m => !m.read).map(m => m.text), profile: usr.profile };
 }
-const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, owner: D().owner === u, body: p.body, wear: p.wear, shape: p.shape }; };
+const lookOf = u => { const usr = D().users[u], p = usr.profile || {}; return { name: usr.name, role: usr.role || null, owner: D().owner === u, body: p.body, wear: p.wear, shape: p.shape, boardCustom: p.boardCustom || null }; };
 
 // ---------- Freunde & Gruppen ----------
 function partyInfo(p) { return { id: p.id, leader: D().users[p.leader].name, members: [...p.members].map(m => D().users[m].name) }; }

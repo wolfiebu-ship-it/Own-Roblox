@@ -110,6 +110,13 @@ input { -webkit-user-select: text; user-select: text; }
 .pill { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pill b { font-family: var(--display); font-weight: 400; font-size: 18px; }
 #topright { position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
+#boardDesign, .boardDesigner { flex-shrink: 0; }
+.boardDesigner .label { margin: 4px 0 0; }
+.boardDesigner { border: 3px solid var(--ink); border-radius: 12px; padding: 10px; background: var(--soft); display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.boardDesigner .bdsw { display: flex; flex-wrap: wrap; gap: 5px; }
+.boardDesigner .bdsw button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ink); padding: 0; }
+.boardDesigner .bdsw button[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 1px; }
+.boardDesigner .seg { flex-wrap: wrap; }
 .keyList { display: flex; flex-direction: column; gap: 4px; }
 .keyList .kr { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
 .keyList .kr button { min-width: 92px; padding: 6px 10px; font-size: 13px; }
@@ -179,7 +186,7 @@ body.editing #stickZone { display: none; }
 #trickBtns { position: absolute; right: 150px; bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); display: grid; grid-template-columns: repeat(3, auto); gap: 6px; touch-action: none; transform-origin: bottom right; }
 #trickBtns .btn { padding: 8px 10px; font-size: 13px; min-width: 70px; touch-action: none; box-shadow: 2px 2px 0 var(--ink); }
 #trickBtns .btn.on { background: var(--ink); color: var(--paper); }
-#trickBtns .pushBtn { grid-column: 1 / -1; font-size: 15px; padding: 10px; }
+#trickBtns .pushBtn { grid-column: span 2; font-size: 15px; padding: 10px; }
 body.editing #trickBtns { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; cursor: grab; }
 html[data-device="phone"] .pill { padding: 3px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
 html[data-device="phone"] .pill b { font-size: 15px; }
@@ -384,6 +391,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
         <input id="shopSearch" class="field" type="search" placeholder="Shop durchsuchen, z. B. Hut, rot, Brille" aria-label="Shop durchsuchen" autocomplete="off">
         <div class="chips" id="shopCats"></div>
         <p class="small">Tippe auf eine Sache, um sie anzuprobieren. Behalten kannst du sie erst, wenn du sie mit genug Münzen kaufst.</p>
+        <div id="boardDesign"></div>
         <div class="grid" id="shopGrid"></div>
       </div>
       <div class="buybar" id="buybar" hidden>
@@ -413,7 +421,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div id="trickBtns" hidden>
     <button class="btn" type="button" data-tk="KeyK">Kickflip</button><button class="btn" type="button" data-tk="KeyJ">Heelflip</button><button class="btn" type="button" data-tk="KeyQ">Shove-it</button>
     <button class="btn" type="button" data-tk="KeyR">Backflip</button><button class="btn" type="button" data-tk="KeyF">Frontflip</button><button class="btn" type="button" data-tk="KeyE">Grab</button>
-    <button class="btn primary pushBtn" type="button" data-tk="KeyT">Anschieben</button>
+    <button class="btn" type="button" data-tk="KeyV">Drop-In</button><button class="btn primary pushBtn" type="button" data-tk="KeyT">Anschieben</button>
   </div>
   <button class="btn" id="driftBtn" hidden>Drift</button>
   <button class="btn" id="wheelieBtn" hidden>Wheelie</button>
@@ -823,7 +831,9 @@ ITEMS.push(
   { id: 'b-night', slot: 'board', name: 'Nacht-Brett', price: 200, board: { deck: 0x2a2d34, grip: 0x121418, wheels: 0xff3b8d, accent: 0xff3b8d } },
   { id: 'b-flame', slot: 'board', name: 'Flammen-Brett', price: 260, board: { deck: 0x2a2d34, grip: 0x121418, wheels: 0xffd23f, accent: 0xff8a2b, flames: true } },
   { id: 'b-neon', slot: 'board', name: 'Neon-Brett', price: 350, board: { deck: 0x8b5cd6, grip: 0x1d2a44, wheels: 0x6fd0f0, accent: 0x6fd0f0, glow: true } },
-  { id: 'b-gold', slot: 'board', name: 'Gold-Brett', price: 500, board: { deck: 0xffc83d, grip: 0x2a2d34, wheels: 0xf4f4f0, accent: 0x8a5a00 } }
+  { id: 'b-gold', slot: 'board', name: 'Gold-Brett', price: 500, board: { deck: 0xffc83d, grip: 0x2a2d34, wheels: 0xf4f4f0, accent: 0x8a5a00 } },
+  { id: 'b-custom', slot: 'board', name: 'Eigenes Brett (selbst bemalen)', price: 250, board: { custom: true, deck: 0xff6b3d, grip: 0x2a2d34, wheels: 0xffd23f, accent: 0xf4f4f0 } },
+  { id: 'b-hover', slot: 'board', name: 'Hoverboard (fliegt, nur Admins)', price: 0, admin: true, board: { hover: true, deck: 0x1d2a44, grip: 0x2a2d34, wheels: 0x6fd0f0, accent: 0x6fd0f0, glow: true } }
 );
 ITEMS.sort((a, b) => a.price - b.price);
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
@@ -1445,7 +1455,7 @@ function thumbFor(item) {
       thumbCam = new THREE.PerspectiveCamera(35, 1, 0.05, 50);
     }
     if (item.slot === 'board') {
-      const w = makeBoard(item.id); w.rotation.set(-2.1, 0.75, 0); w.position.y = 0.2; thumbScene.add(w);
+      const w = makeBoard(item.id, item.id === 'b-custom' ? boardCustom() : null); w.rotation.set(-2.1, 0.75, 0); w.position.y = 0.2; thumbScene.add(w);
       thumbCam.position.set(0, 0.4, 3.4); thumbCam.lookAt(0, 0.2, 0);
       thumbR.render(thumbScene, thumbCam); const url = thumbR.domElement.toDataURL('image/png'); thumbScene.remove(w); thumbs.set(item.id, url); return url;
     }
@@ -2017,7 +2027,7 @@ const KEY_ACTIONS = [
   ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
   ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
   ['KeyF', 'Admin: Fliegen · Frontflip (Skaten)'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
-  ['KeyT', 'Skaten: Anschieben'], ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
+  ['KeyT', 'Skaten: Anschieben'], ['KeyV', 'Skaten: Drop-In'], ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
 ];
 let keyBinds = store.get('klotzwelt-tasten', {}) || {};
 const keyName = c => !c ? '–' : /^Mouse/.test(c) ? ({ Mouse0: 'Linksklick', Mouse1: 'Mausrad-Klick', Mouse2: 'Rechtsklick' })[c] || 'Maustaste ' + (Number(c.slice(5)) + 1) : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
@@ -2050,7 +2060,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.9';
+const BUILD = '2026-11-07.10';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -2329,11 +2339,38 @@ $('name').addEventListener('change', () => {
 let shopCat = 'hat', shopSel = null;
 const SLOT_WORDS = { hat: 'hüte hut mütze kappe', hair: 'haare frisur', face: 'gesicht gesichter', acc: 'brille brillen bart nase', neck: 'hals schal kette', shirt: 'oberteil oberteile shirt pulli hemd', pants: 'hose hosen rock röcke', shoes: 'schuhe schuh sneaker', back: 'rücken flügel' };
 const matchItem = (i, q) => (i.name + ' ' + SLOT_WORDS[i.slot]).toLowerCase().includes(q);
+// Eigenes Skateboard bemalen (nach dem Kauf von „Eigenes Brett“)
+const BOARD_COLORS = [0xff6b3d, 0xe2453c, 0xffd23f, 0x3fb55e, 0x3b7de0, 0x6fd0f0, 0x8b5cd6, 0xff6fae, 0xf4f4f0, 0x8a8f99, 0x2a2d34, 0x121418, 0x8b5a2b, 0xffc83d];
+const BOARD_PATTERNS = [['none', 'Keins'], ['stripes', 'Streifen'], ['flames', 'Flammen'], ['stars', 'Sterne'], ['checker', 'Karo'], ['dots', 'Punkte']];
+function boardCustom() { return Object.assign({ deck: 0xff6b3d, grip: 0x2a2d34, wheels: 0xffd23f, accent: 0xf4f4f0, pattern: 'stripes' }, profile.boardCustom || {}); }
+function boardDesigner() {
+  const box = document.createElement('div'); box.className = 'boardDesigner';
+  const own = profile.owned.includes('b-custom'), bc = boardCustom();
+  if (!own) { box.innerHTML = '<b>Eigenes Brett gestalten</b><p class="small">Kauf unten das „Eigene Brett“, dann kannst du hier Farben und Muster selbst aussuchen, so oft du willst.</p>'; return box; }
+  const row = (key, label) => `<div class="label">${label}</div><div class="bdsw">${BOARD_COLORS.map(c => `<button type="button" data-k="${key}" data-c="${c}" aria-label="${label}" aria-pressed="${bc[key] === c}" style="background:${hexStr(c)}"></button>`).join('')}</div>`;
+  box.innerHTML = '<b>Dein Brett gestalten</b>' + row('deck', 'Brett') + row('grip', 'Griptape') + row('wheels', 'Rollen') + row('accent', 'Muster-Farbe') +
+    `<div class="label">Muster unten</div><div class="seg">${BOARD_PATTERNS.map(([k, n]) => `<button type="button" data-p="${k}" aria-pressed="${bc.pattern === k}">${n}</button>`).join('')}</div>`;
+  const save = () => { profile.wear.board = 'b-custom'; thumbs.delete('b-custom'); saveProfile(); renderShop(); beep('equip'); };
+  box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { profile.boardCustom = Object.assign(boardCustom(), { [b.dataset.k]: +b.dataset.c }); save(); });
+  box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { profile.boardCustom = Object.assign(boardCustom(), { pattern: b.dataset.p }); save(); });
+  return box;
+}
+function patternTex(pattern, c1, c2) {
+  return canvasTex('bp-' + pattern + c1 + '-' + c2, 128, (g, n) => {
+    g.fillStyle = hexStr(c1); g.fillRect(0, 0, n, n); g.fillStyle = hexStr(c2);
+    if (pattern === 'stripes') for (let x = 10; x < n; x += 28) g.fillRect(x, 0, 12, n);
+    if (pattern === 'checker') for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) if ((i + j) % 2) g.fillRect(i * 16, j * 16, 16, 16);
+    if (pattern === 'dots') for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(14 + i * 25 + (j % 2) * 12, 14 + j * 25, 7, 0, Math.PI * 2); g.fill(); }
+    if (pattern === 'stars') for (let k = 0; k < 7; k++) star(g, 18 + (k * 37) % 100, 18 + (k * 53) % 100, 13, 6);
+    if (pattern === 'flames') { g.beginPath(); g.moveTo(0, n); for (let x = 0; x <= n; x += 16) { g.lineTo(x + 8, n * 0.35 + ((x / 16) % 2) * 22); g.lineTo(x + 16, n * 0.7); } g.lineTo(n, n); g.fill(); }
+  });
+}
 function renderShop() {
   const q = $('shopSearch').value.trim().toLowerCase();
   chipRow($('shopCats'), [...SLOTS, ['weapon', 'Waffen'], ['board', 'Skateboards']], q ? null : shopCat, c => { $('shopSearch').value = ''; shopCat = c; shopSel = null; if (tryOn) { tryOn = null; rebuildAvatar(); } renderShop(); });
   const grid = $('shopGrid'); grid.innerHTML = '';
-  const list = q ? ITEMS.filter(i => matchItem(i, q)) : ITEMS.filter(i => i.slot === shopCat);
+  const bdBox = $('boardDesign'); bdBox.innerHTML = ''; if (!q && shopCat === 'board') bdBox.appendChild(boardDesigner());
+  const list = (q ? ITEMS.filter(i => matchItem(i, q)) : ITEMS.filter(i => i.slot === shopCat)).filter(i => !i.admin || isAdmin());
   if (!list.length) grid.innerHTML = '<p class="small">Nichts gefunden. Versuch ein anderes Wort, zum Beispiel „Hut“, „rot“ oder „Brille“.</p>';
   for (const it of list) {
     const own = profile.owned.includes(it.id);
@@ -2359,6 +2396,8 @@ function renderShop() {
 }
 $('buyBtn').onclick = () => {
   const it = ITEM[shopSel]; if (!it) return;
+  if (it.admin && !isAdmin()) return;
+  if (it.admin && !profile.owned.includes(it.id)) profile.owned.push(it.id);
   if (!profile.owned.includes(it.id)) {
     if (!infCoins() && profile.coins < it.price) return;
     if (!infCoins()) profile.coins -= it.price; profile.owned.push(it.id); beep('buy'); toast('Gekauft!');
@@ -3000,20 +3039,27 @@ function deckGeo(w, l, t, y0) {
   g.computeVertexNormals();
   return g;
 }
-const myBoardId = () => (profile.wear.board && profile.owned.includes(profile.wear.board) && ITEM[profile.wear.board]) ? profile.wear.board : 'b-classic';
-function makeBoard(id) {
-  const bd = (ITEM[id] && ITEM[id].board) || ITEM['b-classic'].board;
+const myBoardId = () => { const b = profile.wear.board; if (b === 'b-hover') return isAdmin() ? b : 'b-classic'; return (b && profile.owned.includes(b) && ITEM[b]) ? b : 'b-classic'; };
+function makeBoard(id, custom) {
+  let bd = (ITEM[id] && ITEM[id].board) || ITEM['b-classic'].board;
+  if (bd.custom) bd = Object.assign({}, bd, custom || (id === myBoardId() ? boardCustom() : {}));
   const g = new THREE.Group(), deck = new THREE.Group(); deck.position.y = 0.2; g.add(deck);
   // Holzbrett (unten in der Brett-Farbe) und Griptape oben
   const body = new THREE.Mesh(deckGeo(BOARD_W, BOARD_L, BOARD_T, -BOARD_T / 2), tc(bd.deck)); body.castShadow = true; deck.add(body);
-  const ol = new THREE.Mesh(body.geometry, outlineMat); ol.scale.set(1.04, 1.25, 1.02); body.add(ol);
+  const ol = new THREE.Mesh(body.geometry, outlineMat); ol.scale.set(1.03, 1.06, 1.015); body.add(ol);
   const grip = new THREE.Mesh(deckGeo(BOARD_W - 0.03, BOARD_L - 0.03, 0.008, BOARD_T / 2 - 0.002), tc(bd.grip)); deck.add(grip);
   // Muster unten: Streifen (oder Flammen), bei Neon leuchtet es
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.006, 1.1), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe);
+  if (bd.custom) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W - 0.06, 1.2), toon('bpm-' + bd.pattern + bd.deck + '-' + bd.accent, { color: 0xffffff, map: patternTex(bd.pattern || 'none', bd.deck, bd.accent) })); pl.rotation.x = Math.PI / 2; pl.position.y = -BOARD_T / 2 - 0.003; deck.add(pl); }
+  else { const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.006, 1.1), tc(bd.accent)); stripe.position.y = -BOARD_T / 2 - 0.004; deck.add(stripe); }
   if (bd.flames) for (const z of [-0.3, 0, 0.3]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 8), tc(0xff8a2b)); f.rotation.x = Math.PI / 2; f.position.set(0, -BOARD_T / 2 - 0.01, z); f.scale.y = 0.15; deck.add(f); }
   if (bd.glow) { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.7), new THREE.MeshBasicMaterial({ color: bd.accent, transparent: true, opacity: 0.45 })); gl.rotation.x = Math.PI / 2; gl.position.y = -0.18; deck.add(gl); }
-  // Achsen (Trucks) und Rollen
+  // Achsen (Trucks) und Rollen – das Hoverboard hat stattdessen leuchtende Düsen
   const metal = tc(0xc8d0dc), wheels = [];
+  if (bd.hover) {
+    for (const z of [-0.5, 0.5]) { const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.08, 18), toon('jet', { color: 0x6fd0f0, emissive: 0x6fd0f0, emissiveIntensity: 1 })); jet.position.set(0, -0.06, z); deck.add(jet); }
+    g.userData.deck = deck; g.userData.wheels = wheels; g.userData.hover = true;
+    return g;
+  }
   for (const z of [-0.58, 0.58]) {
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.03, 0.13), metal); base.position.set(0, -BOARD_T / 2 - 0.015, z); deck.add(base);
     const hang = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), metal); hang.position.set(0, -0.07, z); deck.add(hang);
@@ -3150,7 +3196,15 @@ function updateSkate(dt) {
     const slope = gx * fx + gz * fz; S.slope += (slope - S.slope) * Math.min(1, dt * 12);
     S.speed -= 24 * slope / Math.sqrt(1 + slope * slope) * dt;
     const nx = x + fx * S.speed * dt, nz = z + fz * S.speed * dt, nH = skH(nx, nz);
-    if (ollie) { S.air = true; S.vy = 9 + Math.max(0, slope) * Math.abs(S.speed) * 0.3; S.airT = 0; S.spinV = 0; S.pop = 0.18; beep('jump'); if (want) startFlip(S, want); }
+    const lip = ollie ? qpLip(x, z) : null;
+    if (lip) { S.air = true; S.vert = false; S.vy = Math.sqrt(2 * 26 * Math.max(0.5, lip.top - P.pos.y + 0.7)); S.h = lip.toDeck; S.speed = 2.2; S.toDeck = true; S.airT = 0; S.spinV = 0; S.pop = 0.18; beep('jump'); feed('Hoch auf die Rampe!'); }
+    else if (ollie) { S.air = true; S.vy = 9 + Math.max(0, slope) * Math.abs(S.speed) * 0.3; S.airT = 0; S.spinV = 0; S.pop = 0.18; beep('jump'); if (want) startFlip(S, want); }
+    // Drop-In: oben auf einer Rampe stehen und die Drop-In-Taste drücken
+    else if (ctl && keys.KeyV && !S.vHeld) {
+      const d = dropInSpot(P.pos.x, P.pos.z, P.pos.y);
+      if (d) { P.pos.set(d.x, d.y, d.z); S.h = d.h; S.stance = 0; S.speed = 6; S.dropT = 0.5; addTrick(S, 'Drop-In', 350); beep('whoosh'); }
+      else feed('Für einen Drop-In fahr erst oben auf eine Rampe');
+    }
     else if (nH > P.pos.y + 0.6) {
       if (Math.abs(slope) > 1.6 && skH(x, z) > 0.5 && slope > 0) { S.air = true; S.vert = true; S.vy = Math.abs(S.speed) * 0.95; S.airT = 0; S.spinV = 0; }
       else { S.speed *= -0.3; beep('bonk'); }
@@ -3161,7 +3215,9 @@ function updateSkate(dt) {
     if (S.comboN && (S.comboT -= dt) <= 0) bankCombo(S);
   } else {
     // ---------- In der Luft ----------
-    S.airT += dt; S.vy -= 26 * dt; S.pop = Math.max(0, S.pop - dt);
+    const hover = S.board.userData.hover;
+    S.airT += dt; S.vy -= (hover ? 13 : 26) * dt; S.pop = Math.max(0, S.pop - dt);
+    if (hover && ctl && (keys.Space || keys.TouchUp) && !S.vert) { S.vy = Math.min(7, S.vy + 34 * dt); if (P.pos.y > 16) S.vy = Math.min(S.vy, 0); }
     if (!S.vert) { const nx = P.pos.x + fx * S.speed * dt, nz = P.pos.z + fz * S.speed * dt; if (railBlocks(P.pos.x, P.pos.z, nx, nz, P.pos.y) || skH(nx, nz) > P.pos.y + 0.3 || stepWall(P.pos.x, P.pos.z, nx, nz, P.pos.y + 0.3)) wallSlide(S, P.pos.x, P.pos.z, nx, nz, true); else { P.pos.x = nx; P.pos.z = nz; } }
     P.pos.y += S.vy * dt;
     S.spinV += (-steer * 7 - S.spinV) * Math.min(1, dt * 6); S.spin += S.spinV * dt;
@@ -3207,12 +3263,13 @@ function updateSkate(dt) {
         if (S.grabT > 0.2) addTrick(S, 'Indy Grab', Math.round(S.grabT * 260));
         if (!S.comboN && S.airT > 0.55) addTrick(S, 'Ollie', Math.round(S.airT * 120));
         S.comboPts += Math.round(S.airT * 60);
+        if (S.toDeck) { S.toDeck = false; S.speed = 0; } // oben auf der Plattform stehen bleiben (für den Drop-In)
         S.comboT = 1.4; S.land = 0.2; beep('land');
       }
       S.air = false; S.vert = false; S.spin = 0; S.spinV = 0; S.flip = null; S.flipT = 0; S.airT = 0; S.vy = 0; S.grab = false; S.grabT = 0; S.bf = null;
     }
   }
-  S.trickHeld = trick;
+  S.trickHeld = trick; S.vHeld = !!keys.KeyV;
   if (Math.abs(P.pos.x) > 54.5 || Math.abs(P.pos.z) > 54.5) {
     const hitX = Math.abs(P.pos.x) > 54.5;
     P.pos.x = Math.max(-54.5, Math.min(54.5, P.pos.x)); P.pos.z = Math.max(-54.5, Math.min(54.5, P.pos.z));
@@ -3228,7 +3285,7 @@ function updateSkate(dt) {
   }
   poseSkater(S, dt, push);
   P.facing = S.h; P.vel.set(fx * S.speed, S.vy, fz * S.speed); P.onGround = !S.air;
-  let dy = (S.h + Math.PI - 0.55 * (S.pb > 0.5 ? 0 : 1)) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  let dy = (S.h + Math.PI - 0.55) - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   if (!drags.size && !S.vert && (Math.abs(S.speed) > 2 || S.air)) cam.yaw += dy * Math.min(1, (Math.abs(dy) > 1.5 ? 7 : 4.5) * dt);
   camTarget.lerp(tmpV.set(P.pos.x, P.pos.y + 1.3, P.pos.z), 1 - Math.exp(-dt * 8));
 }
@@ -3241,6 +3298,29 @@ function wallSlide(S, x0, z0, x1, z1, air) {
   if (Math.abs(dz) > 0.001 && ok(x0, z1)) { P.pos.z = z1; if (!air) P.pos.y = skH(x0, z1); turnTo(S, Math.atan2(0, Math.sign(dz))); S.speed *= 0.93; return; }
   if (Math.abs(S.speed) > 3 && (!S.bonkT || tAll - S.bonkT > 0.4)) { S.bonkT = tAll; beep('bonk'); }
   S.speed = 0;
+}
+// Steht man fast oben in einer Quarterpipe? Dann bringt ein Ollie einen hoch auf die Plattform.
+function qpLip(x, z) {
+  for (const r of RAMPS) {
+    if (r.t !== 'qp') continue;
+    const fx = Math.sin(r.a), fz = Math.cos(r.a), u = (x - r.x) * fx + (z - r.z) * fz, v = (x - r.x) * fz - (z - r.z) * fx;
+    if (Math.abs(v) < r.w / 2 - 0.5 && u > r.r * 0.55 && u < r.r && rampH(r, x, z) > r.r * 0.45) return { toDeck: Math.atan2(fx, fz), top: r.r };
+  }
+  return null;
+}
+// Wo kann man von oben in die Rampe hineinfahren (Drop-In)?
+function dropInSpot(x, z, y) {
+  for (const r of RAMPS) {
+    const fx = Math.sin(r.a), fz = Math.cos(r.a), u = (x - r.x) * fx + (z - r.z) * fz, v = (x - r.x) * fz - (z - r.z) * fx;
+    if (Math.abs(v) > r.w / 2 - 0.3) continue;
+    const at = uu => ({ x: r.x + fx * uu + fz * v, z: r.z + fz * uu - fx * v });
+    if (r.t === 'qp' && u >= r.r - 0.3 && u <= r.r + r.d + 0.1 && Math.abs(y - r.r) < 0.4) { const p = at(r.r - 0.12); return { x: p.x, z: p.z, y: rampH(r, p.x, p.z), h: Math.atan2(-fx, -fz) }; }
+    if (r.t === 'box' && u > 2.3 && u < r.l - 2.3 && Math.abs(y - r.h) < 0.3) {
+      const front = u < r.l / 2, uu = front ? 2.4 : r.l - 2.4, p = at(uu);
+      return { x: p.x, z: p.z, y: rampH(r, p.x, p.z), h: front ? Math.atan2(-fx, -fz) : Math.atan2(fx, fz) };
+    }
+  }
+  return null;
 }
 // Rampen sind fest wie Beton: springt die Höhe auf dem Weg plötzlich nach oben (Seite oder Rückwand), ist dort eine Wand
 function stepWall(x0, z0, x1, z1, y) {
@@ -3322,7 +3402,8 @@ function poseSkater(S, dt, push) {
   }
   S.gpS = (S.gpS ?? gp) + (gp - (S.gpS ?? gp)) * Math.min(1, dt * 18);
   S.liftS = (S.liftS || 0) + (lift - (S.liftS || 0)) * Math.min(1, dt * 18);
-  const cy = P.pos.y + 1.0 + S.liftS;
+  const hoverUp = b.userData.hover ? 0.35 + Math.sin(tAll * 3) * 0.05 : 0;
+  const cy = P.pos.y + 1.0 + S.liftS + hoverUp;
   b.rotation.order = 'YXZ';
   b.position.set(P.pos.x - fwx * Math.sin(phi), cy - Math.cos(phi), P.pos.z - fwz * Math.sin(phi)); b.rotation.set(phi, yaw, 0);
   for (const w of b.userData.wheels || []) w.rotation.x += (S.air ? 0 : S.speed) * dt / 0.08;
@@ -3346,13 +3427,14 @@ function poseSkater(S, dt, push) {
   S.pushHold = Math.max(0, (S.pushHold || 0) - dt);
   const pbT = !S.air && !S.grind && (S.pushT > 0 || S.pushHold > 0) ? 1 : 0;
   S.pb = (S.pb || 0) + (pbT - (S.pb || 0)) * Math.min(1, dt * (pbT ? 6 : S.air ? 12 : 3));
-  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.1 * S.pb;
-  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.16 * S.pb : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw), shift = 0.06 * S.pb;
+  avatar.position.set(P.pos.x + fwx * off * Math.sin(phi) + rx * shift, cy + off * Math.cos(phi) - (S.pushT > 0 ? 0.24 * S.pb : 0), P.pos.z + fwz * off * Math.sin(phi) + rz * shift);
   // Stolpern: kurz nach vorne kippen und wieder aufrichten
   S.fall = Math.max(0, (S.fall || 0) - dt);
   S.wobble = Math.max(0, (S.wobble || 0) - dt);
   const fallTilt = S.wobble > 0 ? Math.sin(S.wobble * 40) * 0.12 * (S.wobble / 0.35) : 0;
-  avatar.rotation.set(S.pb > 0.5 ? 0 : lean + fallTilt, yaw + Math.PI / 2 * (1 - S.pb), S.pb > 0.5 ? 0 : phi);
+  S.dropT = Math.max(0, (S.dropT || 0) - dt);
+  avatar.rotation.set(S.pb > 0.5 ? 0 : lean + fallTilt, yaw + Math.PI / 2 * (1 - S.pb), S.pb > 0.5 ? 0 : phi + (S.dropT > 0 ? -0.4 * S.dropT * 2 : 0));
   // Beine: Füße auf dem Brett, beim Anschieben tritt der hintere Fuß
   // Beine: seitlich mit beiden Füßen auf dem Brett, oder beim Anschieben nach vorne schauen
   const spread = 0.2 + S.crouch * 0.1;
@@ -3361,8 +3443,9 @@ function poseSkater(S, dt, push) {
     // vorderer (linker) Fuß steht auf dem Brett, der rechte schiebt neben dem Brett am Boden an
     u.legL.rotation.set(0, 0, 0);
     if (S.pushT > 0) {
-      const ph = S.pushT, sw = ph < 0.7 ? -0.6 + 1.35 * (ph / 0.7) : 0.75 - 1.35 * ((ph - 0.7) / 0.3);
-      u.legR.rotation.set(sw, 0, -0.04); u.legL.rotation.set(-0.12, 0, 0);
+      // der rechte Fuß geht deutlich neben das Brett auf den Boden und tritt nach hinten
+      const ph = S.pushT, sw = ph < 0.7 ? -0.7 + 1.5 * (ph / 0.7) : 0.8 - 1.5 * ((ph - 0.7) / 0.3);
+      u.legR.rotation.set(sw, 0, 0.3); u.legL.rotation.set(-0.15, 0, 0);
       u.armL.rotation.set(-sw * 0.5, 0, -0.1); u.armR.rotation.set(sw * 0.5, 0, 0.1);
     } else { u.legR.rotation.set(0.3, 0, -0.32); } // rollen: hinterer Fuß wieder aufs Brett
   } else { u.legL.rotation.set(-tk, 0, -spread); u.legR.rotation.set(-tk, 0, spread); }
@@ -4688,7 +4771,7 @@ function netConnect() {
   };
   ws.onerror = () => {};
 }
-function profilePayload() { return { coins: profile.coins, owned: profile.owned, wear: profile.wear, body: profile.body, shape: profile.shape, gender: profile.gender || null }; }
+function profilePayload() { return { coins: profile.coins, owned: profile.owned, wear: profile.wear, body: profile.body, shape: profile.shape, gender: profile.gender || null, boardCustom: profile.boardCustom || null }; }
 function applyServerProfile(me) {
   const sp = me.profile;
   if (sp && Array.isArray(sp.owned) && sp.owned.length) {
@@ -4701,6 +4784,7 @@ function applyServerProfile(me) {
     profile.shape = Object.assign({ height: 1, width: 1, head: 1 }, sp.shape || {});
   }
   if (sp && (sp.gender === 'boy' || sp.gender === 'girl')) profile.gender = sp.gender;
+  if (sp && sp.boardCustom) profile.boardCustom = sp.boardCustom;
   profile.name = me.name;
   saveProfile(); rebuildAvatar();
   if (!sp || !Array.isArray(sp.owned) || !sp.owned.length) netSend({ t: 'profile', profile: profilePayload() });
@@ -4818,7 +4902,7 @@ function updatePeers(dt) {
       u.armL.rotation.x = st.a ? -2.6 : -sw; u.armR.rotation.x = st.a ? -2.6 : sw;
       if (playingGame() === 'skate') {
         // Mitspieler auf dem Skateboard
-        if (!pr.board) { pr.board = makeBoard(pr.look && pr.look.wear && pr.look.wear.board); }
+        if (!pr.board) { pr.board = makeBoard(pr.look && pr.look.wear && pr.look.wear.board, pr.look && pr.look.boardCustom); }
         if (pr.board.parent !== world) world.add(pr.board);
         const p = st.p || 6, air = p >= 7 && p <= 8;
         pr.board.position.copy(pr.pos); pr.board.rotation.set(0, pr.facing, 0);
@@ -5079,7 +5163,7 @@ function enterPlay(m) {
     buildSkate();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
     $('driftBtn').hidden = true;
-    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Anschieben-Knopf: schneller werden · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · T nachschieben · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
+    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Anschieben-Knopf: schneller werden · Drop-In oben auf der Rampe · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · T nachschieben · V Drop-In · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
     toast('Los, skaten!');
   } else if (MINI[m]) {
     mg = { key: m };
