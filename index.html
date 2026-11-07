@@ -179,6 +179,7 @@ body.editing #stickZone { display: none; }
 #trickBtns { position: absolute; right: 150px; bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px)); display: grid; grid-template-columns: repeat(3, auto); gap: 6px; touch-action: none; transform-origin: bottom right; }
 #trickBtns .btn { padding: 8px 10px; font-size: 13px; min-width: 70px; touch-action: none; box-shadow: 2px 2px 0 var(--ink); }
 #trickBtns .btn.on { background: var(--ink); color: var(--paper); }
+#trickBtns .pushBtn { grid-column: 1 / -1; font-size: 15px; padding: 10px; }
 body.editing #trickBtns { pointer-events: auto !important; opacity: 1 !important; outline: 3px dashed var(--accent); outline-offset: 5px; cursor: grab; }
 html[data-device="phone"] .pill { padding: 3px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
 html[data-device="phone"] .pill b { font-size: 15px; }
@@ -412,6 +413,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div id="trickBtns" hidden>
     <button class="btn" type="button" data-tk="KeyK">Kickflip</button><button class="btn" type="button" data-tk="KeyJ">Heelflip</button><button class="btn" type="button" data-tk="KeyQ">Shove-it</button>
     <button class="btn" type="button" data-tk="KeyR">Backflip</button><button class="btn" type="button" data-tk="KeyF">Frontflip</button><button class="btn" type="button" data-tk="KeyE">Grab</button>
+    <button class="btn primary pushBtn" type="button" data-tk="KeyT">Anschieben</button>
   </div>
   <button class="btn" id="driftBtn" hidden>Drift</button>
   <button class="btn" id="wheelieBtn" hidden>Wheelie</button>
@@ -2015,7 +2017,7 @@ const KEY_ACTIONS = [
   ['KeyJ', 'Schlagen · Schießen · Heelflip'], ['KeyK', 'Blocken'], ['KeyQ', 'Shove-it · Kamera links'],
   ['KeyE', 'Grab · Wheelie · Kamera rechts'], ['KeyC', 'Auto fliegen · Admin runter'],
   ['KeyF', 'Admin: Fliegen · Frontflip (Skaten)'], ['KeyH', 'Haupt-Erfinder: Bann-Hammer'], ['KeyG', 'Hammer zuschlagen'], ['KeyL', 'Liste der Gebannten'],
-  ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
+  ['KeyT', 'Skaten: Anschieben'], ['KeyU', 'Haupt-Erfinder: Unsterblich'], ['KeyB', 'Admin: Bauen'], ['KeyR', 'Backflip (Skaten) · Bauen: Werkzeug']
 ];
 let keyBinds = store.get('klotzwelt-tasten', {}) || {};
 const keyName = c => !c ? '–' : /^Mouse/.test(c) ? ({ Mouse0: 'Linksklick', Mouse1: 'Mausrad-Klick', Mouse2: 'Rechtsklick' })[c] || 'Maustaste ' + (Number(c.slice(5)) + 1) : c === 'Space' ? 'Leertaste' : /^Shift/.test(c) ? 'Shift' : /^Control/.test(c) ? 'Strg' : /^Alt/.test(c) ? 'Alt' : c === 'Enter' ? 'Enter' : c === 'Tab' ? 'Tab' : c === 'Backspace' ? 'Rücktaste' : c === 'CapsLock' ? 'Feststell' :
@@ -2048,7 +2050,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.7';
+const BUILD = '2026-11-07.8';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -3125,6 +3127,9 @@ function updateSkate(dt) {
     // Anschieben wie echt: der hintere Fuß tritt in Stößen auf den Boden, danach rollt man einfach weiter
     // Anschieben wie echt: zweimal mit dem Fuß treten, dann stellt man sich seitlich hin und rollt.
     // Erst wenn man wieder langsam wird (und weiter drückt), schiebt man noch einmal zweimal an.
+    // Anschiebe-Taste: jederzeit zweimal nachschieben, um wieder schneller zu werden
+    if (ctl && keys.KeyT && !S.tHeld && S.speed < 16 && S.speed > -1) { S.kicks = 2; S.kickDir = 1; if (S.pushT <= 0) S.pushT = 0.001; }
+    S.tHeld = !!keys.KeyT;
     if (!S.kicks && S.pushT <= 0) {
       if (push > 0.2 && S.speed < 8) S.kicks = 2, S.kickDir = 1;
       else if (push < -0.2 && S.speed < 1 && S.speed > -6) S.kicks = 2, S.kickDir = -1;
@@ -5074,7 +5079,7 @@ function enterPlay(m) {
     buildSkate();
     Object.assign(game, { coins: 0, total: coins.length, time: 0, running: true, deaths: 0, stage: 0, earned: 0 });
     $('driftBtn').hidden = true;
-    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
+    $('hint').textContent = isTouch ? 'Joystick: anschieben, lenken · Anschieben-Knopf: schneller werden · Ollie springen · Trick = Kickflip (Joystick links: Heelflip, rechts: Shove-it, hoch: Frontflip, runter: Backflip) · Trick halten = Grab · auf Rails landen = Grind' : 'W anschieben (dann rollen lassen) · T nachschieben · S bremsen / rückwärts · A/D lenken · Leertaste Ollie · Shift Kickflip · J Heelflip · Q Shove-it · R Backflip · F Frontflip · E Grab · auf Rails landen = Grind';
     toast('Los, skaten!');
   } else if (MINI[m]) {
     mg = { key: m };
