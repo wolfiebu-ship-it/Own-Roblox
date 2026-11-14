@@ -299,6 +299,7 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div id="topbar">
     <div class="brandbox"><div class="brand">Klotzwelt</div><div class="who" id="who" hidden></div></div>
     <div class="topright2">
+      <button class="btn" id="installBtn" type="button" hidden>App installieren</button>
       <button class="btn" id="fsBtn" type="button">Vollbild</button>
       <button class="btn" id="deviceBtn" aria-label="Gerät wählen">Gerät</button>
       <div class="wallet" title="Deine Münzen"><i class="coin"></i><b id="coinCount">0</b></div>
@@ -515,6 +516,8 @@ body.menu #feed { left: 50%; transform: translateX(-50%); align-items: center; t
   <div class="seg" id="soundSeg"><button type="button" data-snd="1">An</button><button type="button" data-snd="0">Aus</button></div>
   <div class="label">Lautstärke</div>
   <div class="bigRange"><input type="range" id="setVol" min="0" max="1" step="0.05" aria-label="Lautstärke"><div class="ends"><span>leise</span><span>laut</span></div></div>
+  <div class="label">Als App</div>
+  <button type="button" class="btn" id="installBtn2">Klotzwelt als App installieren</button>
   <p class="small" id="verInfo" style="margin:0;opacity:.7"></p>
   <div class="row"><button class="btn" id="setReset" type="button">Knöpfe zurücksetzen</button><button class="btn primary" id="setClose" type="button">Fertig</button></div>
 </div>
@@ -2095,7 +2098,7 @@ function actionUp(vc) {
   keys[vc] = false;
 }
 // Version: wenn auf dem Server eine neuere liegt, kommt ein Hinweis zum Neuladen
-const BUILD = '2026-11-07.18';
+const BUILD = '2026-11-14.1';
 async function checkUpdate() {
   if (!/^https?:$/.test(location.protocol)) return;
   try {
@@ -6643,6 +6646,20 @@ async function toggleFullscreen() {
   }
   fsLabel();
 }
+// Als App installieren (Google Chrome, Edge, Android). Auf dem iPad geht das über „Zum Home-Bildschirm“.
+let installEvt = null;
+const isInstalled = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+function installUI() { $('installBtn').hidden = !installEvt || isInstalled(); $('installBtn2').hidden = isInstalled(); }
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; installUI(); });
+addEventListener('appinstalled', () => { installEvt = null; installUI(); toast('Klotzwelt ist jetzt als App installiert'); });
+async function installApp() {
+  if (installEvt) { const ev = installEvt; installEvt = null; ev.prompt(); try { await ev.userChoice; } catch (e) {} installUI(); return; }
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  showInfo('Als App installieren', ios
+    ? 'In Safari auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen. Danach startest du Klotzwelt über das neue Symbol.'
+    : 'In Google Chrome: oben rechts in der Adressleiste auf das Symbol mit dem Bildschirm und Pfeil klicken („Installieren“). Oder im Menü mit den drei Punkten: „Streamen, speichern und teilen“ und dann „Seite als App installieren“. Auf dem Android-Handy: Drei-Punkte-Menü und „Zum Startbildschirm hinzufügen“. Danach startet Klotzwelt wie ein eigenes Programm, ohne Adressleiste.');
+}
+$('installBtn').onclick = installApp; $('installBtn2').onclick = installApp; installUI();
 $('fsBtn').onclick = toggleFullscreen; onTap($('fsBtn2'), toggleFullscreen);
 $('fsClose').onclick = () => { $('fsHelp').hidden = true; };
 document.addEventListener('fullscreenchange', fsLabel); document.addEventListener('webkitfullscreenchange', fsLabel);
